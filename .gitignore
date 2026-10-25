@@ -1,0 +1,8 @@
+node_modules/
+www/
+dist/
+*.jks
+android/app/build/
+android/.gradle/
+web/carrel.html
+web/test/carrel-test.html
