@@ -177,7 +177,7 @@ function calItem(it, k, y, left, width) {
 
 /* ---------- side panels ---------- */
 function vCalSide(days, now, tk) {
-  return [vMiniMonth(days, now, tk), vGcalPanel(), vLivePanel(), vDeadlinesPanel(tk), vBacklogPanel(tk), vTargetsPanel(now, tk), vTimetablePanel()].join('');
+  return [vMiniMonth(days, now, tk), vGcalPanel(), vDeadlinesPanel(tk), vBacklogPanel(tk), vTargetsPanel(now, tk), vTimetablePanel()].join('');
 }
 function mmBase() { return UI.cal.mm || calDays()[0].slice(0, 7); }
 function shiftMonth(ym, d) { const [y, m] = ym.split('-').map(Number); const x = new Date(y, m - 1 + d, 1); return x.getFullYear() + '-' + pad(x.getMonth() + 1); }

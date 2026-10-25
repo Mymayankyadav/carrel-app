@@ -1,0 +1,11 @@
+{
+  "name": "carrel-app",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build:web": "python3 web/build.py && mkdir -p www/vendor && cp node_modules/@supabase/supabase-js/dist/umd/supabase.js www/vendor/supabase.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2"
+  }
+}

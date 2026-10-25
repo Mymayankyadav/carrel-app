@@ -262,7 +262,6 @@ function subscribe() {
   S.unsubs.push(db.doc('state/current').onSnapshot(s => { S.base.current = s.exists ? s.data() : null; S.loaded.current = true; changed(); }, onErr('current')));
   S.unsubs.push(db.doc('config/activities').onSnapshot(s => { S.base.activities = s.exists ? s.data() : null; S.loaded.activities = true; changed(); }, onErr('activities')));
   S.unsubs.push(db.doc('config/settings').onSnapshot(s => { S.base.settings = s.exists ? s.data() : null; S.loaded.settings = true; changed(); }, onErr('settings')));
-  S.unsubs.push(db.doc('config/live').onSnapshot(s => { if (s.exists) Object.assign(LV.cfg, { enabled: false, calendarId: null, calendarName: '', eventId: null, pushedRev: 0, pushedSig: '', pushedAt: null, imported: {} }, s.data()); changed(); }, onErr('live')));
   const coll = (name, key) => db.collection(name).where('date', '>=', from).onSnapshot(q => {
     const m = {};
     for (const k in S.base[key]) if (k < from) m[k] = S.base[key][k];
@@ -417,7 +416,7 @@ function inverseOf(w, prev) {
 }
 function commit(msg, w, opt) {
   opt = opt || {};
-  if (!canWrite()) { toast(S.db ? 'This view can’t save changes.' : 'Not connected. Open Carrel from your Claude account to save.'); return false; }
+  if (!canWrite()) { toast(S.db ? 'This view can’t save changes.' : 'Sign in to save changes.'); return false; }
   const writes = Array.isArray(w) ? w : w.list();
   if (!writes.length) return false;
   const inv = writes.map(x => inverseOf(x, readPath(V, x.path))).reverse();
@@ -832,7 +831,7 @@ function exEntries(now) {
 /* ---------- views: shell ---------- */
 function vHeader() {
   const st = syncState(), pend = S.pending.length;
-  const lbl = { live: 'Saved', saving: 'Saving…', offline: 'Offline · ' + pend + ' waiting', readonly: 'View only', none: 'Not connected', connecting: 'Connecting…' }[st];
+  const lbl = { live: 'Saved', saving: 'Saving…', offline: 'Offline · ' + pend + ' waiting', readonly: 'View only', none: 'Signed out', connecting: 'Connecting…' }[st];
   const tabs = [['today', 'Today'], ['calendar', 'Calendar'], ['week', 'Week'], ['patterns', 'Patterns']].map(([v, t]) =>
     `<button type="button" class="tt ${UI.view === v ? 'on' : ''}" data-act="view" data-v="${v}"${UI.view === v ? ' aria-current="page"' : ''}>${t}</button>`).join('');
   let pill = '';
@@ -847,7 +846,7 @@ function vNav() {
   return `<div class="tb-in">${items.map(([v, t, ic]) => `<button type="button" class="tb ${UI.view === v ? 'on' : ''}" data-act="view" data-v="${v}"${UI.view === v ? ' aria-current="page"' : ''}>${icon(ic)}<span>${t}</span></button>`).join('')}<button type="button" class="tb" data-act="setup">${icon('sliders')}<span>Setup</span></button></div>`;
 }
 function vNotices() {
-  if (S.conn === 'none') return `<div class="banner bad" style="margin-bottom:22px"><h3>Not connected to your saved log</h3><p>Carrel keeps your timers and log in your Claude account. Open this page from the Claude app or claude.ai while signed in, then reload.</p></div>`;
+  if (S.conn === 'none') return `<div class="banner" style="margin-bottom:22px"><h3>Sign in to Carrel</h3><p>Your timers and log are saved to your own account so they follow you across devices.</p><div class="row"><button type="button" class="btn lamp" data-act="signin">Sign in with Google</button></div></div>`;
   if (!S.owner) return `<div class="banner" style="margin-bottom:22px"><h3>This tracker is private</h3><p>Only the person who owns it can see or change its log.</p></div>`;
   if (S.conn === 'readonly') return `<div class="banner warn" style="margin-bottom:22px"><h3>View only</h3><p>This view can’t save changes right now. Reload the page to reconnect.</p></div>`;
   return '';
@@ -1617,7 +1616,7 @@ function sSetup() {
       ${PROMPTS.map(([p, d]) => `<div class="field"><div class="ask"><code>${esc(p)}</code><button type="button" class="btn sm" data-act="copy" data-text="${esc(p)}">${icon('copy')}Copy</button></div><span style="font-weight:400;color:var(--ink-3)">${esc(d)}</span></div>`).join('')}
     </div>
     <div class="setsec"><h3>Your data</h3><p class="note-line">${ne} entries across ${nd} days are loaded on this device. Exports include everything saved.</p>
-      <div class="row">${S.dl ? `<button type="button" class="btn sm" data-act="export" data-f="csv">${icon('download')}Export CSV</button><button type="button" class="btn sm" data-act="export" data-f="json">${icon('download')}Export JSON backup</button>` : '<span class="note-line">Exports are available when Carrel is open in the Claude app or claude.ai.</span>'}</div>
+      ${S.user && S.user.email ? `<div class="row"><span class="note-line">Signed in as ${esc(S.user.email)}</span><button type="button" class="btn sm" data-act="signout">Sign out</button></div>` : ''}<div class="row">${S.dl ? `<button type="button" class="btn sm" data-act="export" data-f="csv">${icon('download')}Export CSV</button><button type="button" class="btn sm" data-act="export" data-f="json">${icon('download')}Export JSON backup</button>` : '<span class="note-line">Exports are not available in this view.</span>'}</div>
     </div>
     <div class="setsec"><h3>Keyboard</h3><div class="keys">
       <kbd>1–9</kbd><span>Start or switch to an activity, in the order shown on Today</span>
@@ -1737,7 +1736,6 @@ function render() {
   morphInto(document.getElementById('desk'), UI.desk ? vDesk() : '');
   document.documentElement.style.overflow = UI.sheet || UI.desk ? 'hidden' : '';
   if (S.mcp) gcWatch();
-  liveSync();
   if (UI.view === 'calendar' && UI.cal.scrollTo) { const sc = document.getElementById('cv-scroll'); if (sc) { UI.cal.scrollTo = false; sc.scrollTop = calScrollTarget(); } }
   tick(true);
 }
@@ -2141,21 +2139,5 @@ async function boot(hot) {
   render();
   let seenW = 0;
   setInterval(() => { tick(false); const n = Date.now(); if (document.visibilityState === 'visible' && n - seenW > 30000) { seenW = n; store.set('seen', n); } }, 1000);
-  const cl = window.claude;
-  if (!cl || typeof cl.use !== 'function') { S.conn = 'none'; recompute(); render(); return; }
-  let db = null, user = null, dl = null;
-  try { [db, user, dl] = await Promise.all([cl.use('db'), cl.use('user').catch(() => null), cl.use('downloads').catch(() => null)]); }
-  catch (e) { console.warn('Carrel capabilities', e); }
-  S.dl = dl || null;
-  S.user = user || null;
-  if (!db) { S.conn = 'none'; recompute(); render(); return; }
-  S.db = db;
-  S.conn = 'live';
-  if (user && typeof user.isOwner === 'function') {
-    try { S.owner = await user.isOwner(); } catch (e) { S.owner = true; }
-  }
-  if (S.owner) { subscribe(); pumpAll(); }
-  cl.use('mcp').then(m => { S.mcp = m || null; if (S.mcp) gcWatch(); changed(); }).catch(() => { S.mcp = null; });
-  recompute();
-  render();
+  await startSession();
 }

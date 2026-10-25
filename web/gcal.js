@@ -67,7 +67,7 @@ async function gcPermissions() {
 function gcFor(k) { const ds = dayStartMs(k), de = dayEndMs(k); return GC.events.filter(x => !x.allDay && x.s < de && x.e > ds); }
 function gcAllDay(k) { return GC.events.filter(x => x.allDay && x.from <= k && x.to > k); }
 function vGcalPanel() {
-  if (!S.mcp) return '';
+  if (!S.mcp) return `<section class="panel"><div class="sec-head"><h2>Google Calendar</h2></div><p class="cap">Busy time from Google Calendar is coming in a later update.</p></section>`;
   const st = GC.status;
   const n = GC.events.filter(x => x.allDay ? x.to > todayKey() : x.e > Date.now()).length;
   let text, btn = '';
