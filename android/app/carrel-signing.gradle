@@ -1,0 +1,18 @@
+android {
+    def keystore = System.getenv('KEYSTORE_PATH')
+    if (keystore) {
+        signingConfigs {
+            carrelRelease {
+                storeFile file(keystore)
+                storePassword System.getenv('KEYSTORE_PASSWORD')
+                keyAlias System.getenv('KEY_ALIAS')
+                keyPassword System.getenv('KEY_PASSWORD')
+            }
+        }
+        buildTypes { release { signingConfig signingConfigs.carrelRelease } }
+    }
+    defaultConfig {
+        versionCode((System.getenv('VERSION_CODE') ?: '1') as int)
+        versionName(System.getenv('VERSION_NAME') ?: '1.0')
+    }
+}
