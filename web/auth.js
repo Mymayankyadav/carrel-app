@@ -28,9 +28,9 @@ function openDb(session) {
   let tries = 0;
   const tzTimer = setInterval(() => {
     if (++tries > 30 || !S.db) return clearInterval(tzTimer);
-    if (S.loaded.settings && S.base.settings) {
+    if (S.loaded.settings) {
       clearInterval(tzTimer);
-      if (!S.base.settings.tz) { try { saveSetting({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata' }); } catch (e) { /* later */ } }
+      if (!S.base.settings || !S.base.settings.tz) { try { saveSetting({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata' }); } catch (e) { /* later */ } }
     }
   }, 2000);
   recompute(); render();
