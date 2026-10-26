@@ -59,7 +59,14 @@ jobs:
         working-directory: android
         run: |
           chmod +x gradlew
-          ./gradlew --no-daemon assembleRelease
+          set +e
+          ./gradlew --no-daemon assembleRelease > "$RUNNER_TEMP/gradle.log" 2>&1
+          code=$?
+          if [ $code -ne 0 ]; then
+            msg=$(grep -nE "^e: |error:|What went wrong|Execution failed|Could not |Unresolved|AAPT|FAILURE" -A2 "$RUNNER_TEMP/gradle.log" | head -45 | cut -c1-300 | sed ':a;N;$!ba;s/\n/%0A/g')
+            echo "::error title=Gradle build failed::$msg"
+          fi
+          exit $code
       - name: Verify signature
         run: |
           APK=$(ls android/app/build/outputs/apk/release/*.apk | head -1)

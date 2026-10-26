@@ -1612,6 +1612,7 @@ function sSetup() {
       </div>
       <p class="note-line">Time after midnight and before the day start still counts toward the evening it began.</p>
     </div>
+    ${vPhonePanel()}
     <div class="setsec"><h3>Ask Claude in chat</h3><p class="note-line">Everything routine happens on this page. For thinking work, open a chat with Claude and say one of these.</p>
       ${PROMPTS.map(([p, d]) => `<div class="field"><div class="ask"><code>${esc(p)}</code><button type="button" class="btn sm" data-act="copy" data-text="${esc(p)}">${icon('copy')}Copy</button></div><span style="font-weight:400;color:var(--ink-3)">${esc(d)}</span></div>`).join('')}
     </div>
@@ -1736,6 +1737,7 @@ function render() {
   morphInto(document.getElementById('desk'), UI.desk ? vDesk() : '');
   document.documentElement.style.overflow = UI.sheet || UI.desk ? 'hidden' : '';
   if (S.mcp) gcWatch();
+  nativeSync();
   if (UI.view === 'calendar' && UI.cal.scrollTo) { const sc = document.getElementById('cv-scroll'); if (sc) { UI.cal.scrollTo = false; sc.scrollTop = calScrollTarget(); } }
   tick(true);
 }

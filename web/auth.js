@@ -46,6 +46,7 @@ async function startMock() {
 async function startSession() {
   if (MOCK) return startMock();
   if (typeof supabase === 'undefined' || !supabase.createClient) { showSignedOut(); return; }
+  await adoptNativeSession();
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: !NATIVE } });
   sb.auth.onAuthStateChange((ev, session) => {
     // Never call auth methods synchronously inside this callback.

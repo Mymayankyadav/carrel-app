@@ -23,6 +23,24 @@ if 'android:scheme="app.carrel.study"' not in t:
 if 'android:launchMode' not in t:
     t = t.replace('<activity', '<activity android:launchMode="singleTask"', 1)
     changed.append('launchMode')
+if 'app.carrel.study.live.ActionReceiver' not in t:
+    perms = ''.join(f'    <uses-permission android:name="android.permission.{x}" />\n' for x in
+                    ['POST_NOTIFICATIONS', 'VIBRATE', 'SCHEDULE_EXACT_ALARM', 'RECEIVE_BOOT_COMPLETED'])
+    comps = ('        <receiver android:name="app.carrel.study.live.ActionReceiver" android:exported="false" />\n'
+             '        <receiver android:name="app.carrel.study.live.AlarmReceiver" android:exported="false" />\n'
+             '        <receiver android:name="app.carrel.study.live.SystemReceiver" android:exported="true">\n'
+             '            <intent-filter>\n'
+             '                <action android:name="android.intent.action.BOOT_COMPLETED" />\n'
+             '                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />\n'
+             '                <action android:name="android.intent.action.TIMEZONE_CHANGED" />\n'
+             '                <action android:name="android.intent.action.TIME_SET" />\n'
+             '                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />\n'
+             '            </intent-filter>\n'
+             '        </receiver>\n'
+             '        <activity android:name="app.carrel.study.live.DriftActivity" android:exported="false" '
+             'android:theme="@style/Theme.Carrel.Translucent" android:excludeFromRecents="true" android:taskAffinity="" />\n')
+    t = t.replace('</application>', comps + '    </application>', 1).replace('</manifest>', perms + '</manifest>', 1)
+    changed.append('manifest notification components')
 man.write_text(t)
 
 # 2. release signing and version from environment (see android.yml)
@@ -43,10 +61,29 @@ man.write_text(t)
         versionCode((System.getenv('VERSION_CODE') ?: '1') as int)
         versionName(System.getenv('VERSION_NAME') ?: '1.0')
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_21
+        targetCompatibility JavaVersion.VERSION_21
+    }
+}
+kotlin { jvmToolchain(21) }
+dependencies {
+    implementation 'androidx.work:work-runtime:2.10.1'
 }
 """)
+rg = root / 'build.gradle'
+rs = rg.read_text()
+if 'kotlin-gradle-plugin' not in rs:
+    rs = re.sub(r"(classpath 'com\.android\.tools\.build:gradle:[^']*')", r"\1\n        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.2.20'", rs, count=1)
+    rg.write_text(rs)
+    changed.append('kotlin classpath')
 g = app / 'build.gradle'
 if g.exists():
+    s = g.read_text()
+    if "org.jetbrains.kotlin.android" not in s:
+        s = s.replace("apply plugin: 'com.android.application'", "apply plugin: 'com.android.application'\napply plugin: 'org.jetbrains.kotlin.android'", 1)
+        g.write_text(s)
+        changed.append('kotlin plugin')
     s = g.read_text()
     if 'carrel-signing.gradle' not in s:
         g.write_text(s.rstrip('\n') + "\n\napply from: 'carrel-signing.gradle'\n")
