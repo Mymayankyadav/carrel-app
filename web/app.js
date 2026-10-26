@@ -36,11 +36,11 @@ const store = {
 
 const S = {
   db: null, dl: null, user: null, conn: 'connecting', owner: true, offline: false,
-  base: { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {} },
-  loaded: { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false },
+  base: { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {} },
+  loaded: { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false },
   pending: [], inflight: new Set(), windowFrom: null, fetched: new Set(), unsubs: [], resubT: 0
 };
-let V = { current: null, activities: null, settings: null, days: {}, plans: {}, reviews: [], planning: {} };
+let V = { current: null, activities: null, settings: null, days: {}, plans: {}, reviews: [], planning: {}, distractions: {} };
 let DRAG = null;
 let CFG = Object.assign({}, DEFAULTS), ACTS = [], ACTMAP = {}, ENTRIES = [], CUR = null;
 let H12 = false;
@@ -144,6 +144,7 @@ function readPath(v, path) {
   if (c === 'days') return v.days[id];
   if (c === 'plans') return v.plans[id];
   if (c === 'planning') return v.planning[id];
+  if (c === 'distractions') return v.distractions[id];
   return undefined;
 }
 function writePath(v, path, val) {
@@ -153,6 +154,7 @@ function writePath(v, path, val) {
   else if (c === 'days') { if (val === undefined) delete v.days[id]; else v.days[id] = val; }
   else if (c === 'plans') { if (val === undefined) delete v.plans[id]; else v.plans[id] = val; }
   else if (c === 'planning') { if (val === undefined) delete v.planning[id]; else v.planning[id] = val; }
+  else if (c === 'distractions') { if (val === undefined) delete v.distractions[id]; else v.distractions[id] = val; }
 }
 function applyOp(v, op) {
   const prev = readPath(v, op.path);
@@ -164,7 +166,7 @@ function applyOp(v, op) {
 }
 function computeView() {
   const b = S.base;
-  const v = { current: b.current, activities: b.activities, settings: b.settings, days: Object.assign({}, b.days), plans: Object.assign({}, b.plans), reviews: b.reviews || [], planning: Object.assign({}, b.planning) };
+  const v = { current: b.current, activities: b.activities, settings: b.settings, days: Object.assign({}, b.days), plans: Object.assign({}, b.plans), reviews: b.reviews || [], planning: Object.assign({}, b.planning), distractions: Object.assign({}, b.distractions) };
   for (const op of S.pending) applyOp(v, op);
   return v;
 }
@@ -272,6 +274,7 @@ function subscribe() {
   }, onErr(name));
   S.unsubs.push(coll('days', 'days'));
   S.unsubs.push(coll('plans', 'plans'));
+  S.unsubs.push(coll('distractions', 'distractions'));
   S.unsubs.push(db.collection('reviews').orderBy('week', 'desc').limit(12).onSnapshot(q => {
     S.base.reviews = q.docs.filter(d => d.exists).map(d => Object.assign({ id: d.id }, d.data()));
     S.loaded.reviews = true;
@@ -293,8 +296,10 @@ function ensureRange(fromK, toK) {
   S.fetched.add(tag);
   Promise.all([
     S.db.collection('days').where('date', '>=', fromK).where('date', '<=', hi).get(),
-    S.db.collection('plans').where('date', '>=', fromK).where('date', '<=', hi).get()
-  ]).then(([d, p]) => {
+    S.db.collection('plans').where('date', '>=', fromK).where('date', '<=', hi).get(),
+    S.db.collection('distractions').where('date', '>=', fromK).where('date', '<=', hi).get()
+  ]).then(([d, p, ds]) => {
+    ds.docs.forEach(x => { if (x.exists) S.base.distractions[x.id] = x.data(); });
     d.docs.forEach(x => { if (x.exists) S.base.days[x.id] = x.data(); });
     p.docs.forEach(x => { if (x.exists) S.base.plans[x.id] = x.data(); });
     changed();
@@ -397,6 +402,7 @@ function W() {
     },
     set(path, data, cond) { map.set(path, { path, kind: 'set', data: clone(data), cond: cond || null }); return api; },
     day(k, entries) { return api.update('days/' + k, { date: k, entries }, { date: k }); },
+    dis(k, id, item) { return api.update('distractions/' + k, { date: k, items: { [id]: item } }, { date: k }); },
     plan(k, data) { return api.update('plans/' + k, Object.assign({ date: k }, data), { date: k, source: 'me', blocks: {} }); },
     list() { return Array.from(map.values()); }
   };
@@ -889,6 +895,7 @@ function vToday() {
   if (isToday) {
     colA.push(vOnboard());
     colA.push(vTimer(now, pm));
+    colA.push(vParking(k));
     colA.push(vSwitcher(now, agg));
     colA.push(vPlan(k, pm, now));
     colB.push(vLog(k, now, pm));
@@ -966,10 +973,119 @@ function vTimer(now, pm) {
     <div class="t-top"><span class="t-act"><i class="dot"></i><span>${esc(a.name)}</span></span>${phase}<span class="tools"><button type="button" class="icon-btn" data-act="edit-running" aria-label="Edit the running timer" title="Edit">${icon('edit')}</button><button type="button" class="icon-btn" data-act="desk" aria-label="Open desk view" title="Desk view">${icon('moon')}</button></span></div>
     <div class="t-main">${big}${ring}</div>
     <p class="t-meta">${meta.join('')}</p>
-    <input class="t-note" id="cur-note" data-change="cur-note" value="${esc(c.note || '')}" placeholder="What are you working on? (optional)" maxlength="200" autocomplete="off" aria-label="Note for this session">
+    <input class="t-note" id="cur-note" data-change="cur-note" value="${esc(c.note || '')}" placeholder="This session I will… (optional)" maxlength="200" autocomplete="off" aria-label="What I will do this session">
+    ${vNoticeBar()}
     ${guard}
     <div class="t-actions">${buttons}</div>
   </section>`;
+}
+/* ---------- distractions: noticed, drifted, parked ---------- */
+function noticeOpen() { return UI.notice && UI.notice.until > Date.now() && CUR; }
+function vNoticeBar() {
+  if (!CUR) return '';
+  const back = UI.back && UI.back.until > Date.now() ? `<p class="reentry" role="status" aria-live="polite">Back to: <b>${esc(UI.back.text)}</b></p>` : '';
+  const chips = noticeOpen() ? `<span class="chips" role="group" aria-label="Did you drift?"><span class="lbl">Drifted</span>${[1, 5, 15].map(m => `<button type="button" class="chip-btn" data-act="notice-drift" data-m="${m}">${m} min</button>`).join('')}</span>` : '';
+  return `${back}<div class="row notice-row"><button type="button" class="btn sm" data-act="notice" title="Press X">Noticed <kbd>X</kbd></button>${chips}
+    <form class="row" data-submit="park-add" style="flex:1 1 150px"><input class="inp" id="park-text" style="flex:1 1 100px;width:auto" maxlength="140" placeholder="Park a thought" data-bind="parkText" value="${esc(UI.parkText || '')}" autocomplete="off" aria-label="Park a thought for later"></form></div>`;
+}
+function backText() {
+  const c = CUR;
+  if (!c) return '';
+  if (c.note) return c.note;
+  const p = V.plans[dayKeyOf(parseT(c.start))], b = c.block && p && p.blocks && p.blocks[c.block];
+  return (b && b.title) || act(c.activity).name;
+}
+function showBack(ms) { UI.back = { text: backText(), until: Date.now() + (ms || 8000) }; setTimeout(render, (ms || 8000) + 100); }
+function noticeNow() {
+  const c = CUR;
+  if (!c || !canWrite()) return;
+  const now = Date.now(), k = dayKeyOf(now), id = uid('d');
+  const w = W().dis(k, id, { type: 'urge', at: isoLocal(now), driftMin: null, text: null, activity: c.activity, entry: c.id, src: 'page', applied: true });
+  commit(null, w, { undo: false });
+  UI.notice = { k, id, until: now + 6000 };
+  showBack(8000);
+  setTimeout(render, 6100);
+  render();
+}
+/* Cuts the drifted minutes out of whatever was logged and records them as drift, so the log stays honest. */
+function driftWrites(w, at, min, note) {
+  const dr = ACTS.find(a => a.role === 'drift' && !a.archived);
+  if (!dr || !(min > 0)) return;
+  const now = Date.now(), e = Math.min(at, now), s = e - min * MIN;
+  trimOthers(ENTRIES.filter(x => x.s < e && entryEnd(x, now) > s), s, e, w);
+  w.day(dayKeyOf(s), { [uid('e')]: { activity: dr.id, start: isoLocal(s), end: isoLocal(e), note: note || 'drift', focus: null, block: null, pomo: null } });
+}
+function noticeDrift(m) {
+  const n = UI.notice;
+  if (!n || !canWrite()) return;
+  const at = parseT(V.distractions[n.k] && V.distractions[n.k].items && V.distractions[n.k].items[n.id] && V.distractions[n.k].items[n.id].at) || Date.now();
+  const w = W().dis(n.k, n.id, { type: 'drift', driftMin: m, applied: true });
+  driftWrites(w, at, m, 'drift');
+  UI.notice = null;
+  commit(`Noted ${m} minute${m > 1 ? 's' : ''} of drift.`, w, { undo: true });
+  showBack(8000);
+}
+/* Drifts tapped on the phone arrive with applied:false. The first device that sees them cuts the time out, and flips the flag in the same commit. */
+const APPLYING = new Set();
+function applyPhoneDrifts() {
+  if (!S.db || !canWrite() || !S.loaded.days || !S.loaded.distractions || !S.loaded.current || !S.loaded.activities) return;
+  const w = W();
+  let n = 0;
+  for (const k in V.distractions) {
+    const items = (V.distractions[k] && V.distractions[k].items) || {};
+    for (const id in items) {
+      const it = items[id];
+      if (!it || it.type !== 'drift' || it.applied !== false || APPLYING.has(id)) continue;
+      APPLYING.add(id);
+      driftWrites(w, parseT(it.at), +it.driftMin || 0, 'drift (from phone)');
+      w.dis(k, id, { applied: true });
+      n++;
+    }
+  }
+  if (n) commit(`From your phone: ${n} drift${n > 1 ? 's' : ''} logged.`, w, { undo: false });
+}
+function parkAdd(text) {
+  const t = String(text || '').trim().slice(0, 140);
+  if (!t || !canWrite()) return;
+  const now = Date.now(), k = dayKeyOf(now);
+  commit('Parked.', W().dis(k, uid('d'), { type: 'park', at: isoLocal(now), driftMin: null, text: t, activity: CUR ? CUR.activity : null, entry: CUR ? CUR.id : null, src: 'page', applied: true }), { undo: true });
+  UI.parkText = '';
+  render();
+}
+function parkedItems(k) {
+  const items = (V.distractions[k] && V.distractions[k].items) || {};
+  return Object.keys(items).filter(id => items[id].type === 'park' && !items[id].moved && !items[id].dismissed).map(id => Object.assign({ id }, items[id])).sort((a, b) => (a.at < b.at ? -1 : 1));
+}
+function vParking(k) {
+  const list = parkedItems(k);
+  if (!list.length) return '';
+  const onBreak = CUR && act(CUR.activity).role === 'break';
+  return `<section class="panel parking" aria-labelledby="pk-h"><div class="sec-head"><h2 id="pk-h">${onBreak ? 'Parked while you worked' : 'Parked thoughts'}</h2></div>
+    <ul class="plist">${list.map(x => `<li><span>${esc(x.text)}</span><span class="row-btns"><button type="button" class="btn sm" data-act="park-backlog" data-k="${k}" data-id="${esc(x.id)}">→ backlog</button><button type="button" class="btn sm ghost" data-act="park-drop" data-k="${k}" data-id="${esc(x.id)}">Drop</button></span></li>`).join('')}</ul></section>`;
+}
+function parkToBacklog(k, id) {
+  const it = V.distractions[k] && V.distractions[k].items && V.distractions[k].items[id];
+  if (!it || !canWrite()) return;
+  const cur = (V.planning.backlog && V.planning.backlog.items) || {};
+  const order = Object.keys(cur).reduce((m, x) => Math.max(m, +cur[x].order || 0), 0) + 1;
+  const first = ACTS.find(a => a.kind === 'study' && !a.archived);
+  const w = W();
+  w.update('planning/backlog', { items: { [uid('t')]: { title: it.text, activity: (it.activity && isStudyId(it.activity) ? it.activity : first && first.id) || null, minutes: 30, due: null, prio: 2, order, created: isoLocal(Date.now()) } } }, { items: {} });
+  w.dis(k, id, { moved: true });
+  commit('Moved to your backlog.', w, { undo: true });
+}
+function vDistractionPatterns(now, weeks) {
+  const fromMs = dayStartMs(addDaysKey(todayKey(), -(weeks * 7) + 1));
+  const items = [];
+  for (const k in V.distractions) { const d = V.distractions[k]; for (const id in ((d && d.items) || {})) { const x = d.items[id]; items.push({ type: x.type, at: parseT(x.at), driftMin: x.driftMin }); } }
+  const st = distractionStats(ENTRIES, items, now, fromMs);
+  const body = !st.enough ? `<div class="empty"><p>Not enough data yet. This needs at least three study sessions of five minutes or more. Press X when you notice your mind wandering.</p></div>`
+    : `<div class="stats4"><div><span class="lbl">Catch rate</span><b class="num">${st.catchRate == null ? '–' : Math.round(st.catchRate * 100) + '%'}</b><small>noticed before drifting</small></div>
+      <div><span class="lbl">Per focused hour</span><b class="num">${st.perHour.toFixed(1)}</b><small>${st.urges} noticed · ${st.drifts} drifted</small></div>
+      <div><span class="lbl">Lost to drift</span><b class="num">${fmtDur(st.lostMin * MIN)}</b><small>in ${weeks} weeks</small></div>
+      <div><span class="lbl">Longest focus</span><b class="num">${fmtDur(st.longestStretch)}</b><small>${st.firstAtMin == null ? '' : 'first slip around minute ' + Math.round(st.firstAtMin)}</small></div></div>
+      <p class="cap">Counts often rise at first, because you start noticing more. The catch rate is the number to watch.</p>`;
+  return `<section class="panel span2" aria-labelledby="dp-h"><div class="sec-head"><h2 id="dp-h">Distractions</h2></div>${body}</section>`;
 }
 function vGuardFix(s, now) {
   const seen = +store.get('seen') || 0;
@@ -1405,6 +1521,7 @@ function vPatterns() {
   const insHtml = ins.length ? `<ul class="insights">${ins.map(x => `<li>${esc(x.text)}</li>`).join('')}</ul>` : `<div class="empty"><p>Findings appear here after a few days of tracking, once there are at least three study days and two hours of study in the range.</p></div>`;
   return head + (ex ? vExBar() : '') + `<div class="pgrid">
     <section class="panel span2" aria-labelledby="in-h"><div class="sec-head"><h2 id="in-h">What the log says</h2></div>${insHtml}</section>
+    ${vDistractionPatterns(now, weeks)}
     ${vHeat(pm)}
     ${vCal(pm, tk)}
     ${vHist(pm)}
@@ -1729,6 +1846,7 @@ function render() {
   const app = document.getElementById('app');
   if (!app) return;
   lastFull = Date.now();
+  applyPhoneDrifts();
   computeNextDue();
   morphInto(document.getElementById('hdr'), vHeader());
   morphInto(document.getElementById('main'), vMain());
@@ -1859,6 +1977,10 @@ async function exportData(fmt) {
 
 /* ---------- actions ---------- */
 const ACT = {
+  notice() { noticeNow(); },
+  'notice-drift'(el) { noticeDrift(+el.getAttribute('data-m')); },
+  'park-backlog'(el) { parkToBacklog(el.getAttribute('data-k'), el.getAttribute('data-id')); },
+  'park-drop'(el) { const k = el.getAttribute('data-k'); commit('Dropped.', W().dis(k, el.getAttribute('data-id'), { dismissed: true }), { undo: true }); },
   noop() {},
   view(el) { UI.view = el.getAttribute('data-v'); UI.planMenu = false; if (UI.view === 'today') UI.date = null; if (UI.view === 'calendar') UI.cal.scrollTo = true; try { history.replaceState(null, '', '#' + UI.view); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
   setup() { openSheet({ type: 'setup' }); },
@@ -2025,6 +2147,7 @@ const ACT = {
   pw(el) { UI.pweeks = +el.getAttribute('data-w'); render(); }
 };
 const SUBMIT = {
+  'park-add'() { parkAdd(UI.parkText); },
   'onb-add'() { const names = String(UI.onbText || '').split(/[,;\n]/).map(s => s.trim()).filter(Boolean); if (!names.length) return; UI.onbText = ''; const el = document.getElementById('onb-text'); if (el) el.value = ''; addActs(names, 'study'); },
   'act-add'() { const n = UI.newAct.name; if (!String(n).trim()) return; UI.newAct.name = ''; const el = document.getElementById('na-name'); if (el) el.value = ''; addActs([n], UI.newAct.kind); },
   'blk-add'(f) { planAddBlock(f.getAttribute('data-k')); }
@@ -2094,6 +2217,7 @@ document.addEventListener('keydown', e => {
   if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z' && !typing) { e.preventDefault(); undo(); return; }
   if (typing || e.ctrlKey || e.metaKey || e.altKey || UI.sheet) return;
   const k = e.key;
+  if (k === 'x' || k === 'X') { if (CUR) { e.preventDefault(); noticeNow(); } return; }
   if (/^[1-9]$/.test(k)) {
     const list = ACTS.filter(a => !a.archived);
     const order = list.filter(a => a.kind === 'study').concat(list.filter(a => a.kind !== 'study'));

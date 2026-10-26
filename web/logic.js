@@ -585,4 +585,32 @@ function planMarks(marks, curStart, imported) {
 }
 function localNoOffset(ms) { return isoLocal(ms).slice(0, 19); }
 
-if (typeof module !== 'undefined') module.exports = { LIVE_URL, b64urlEnc, b64urlDec, encodeToken, decodeToken, liveColor, liveStateOf, liveTitle, cleanMark, planMarks, localNoOffset, busyFor, mergeIntervals, dayCapacity, layoutOverlaps, CTX, MIN, HOUR, DAY, hmToMin, minToHm, keyOfDate, dateOfKey, addDaysKey, dayKeyOf, dayStartMs, dayEndMs, hmOnDay, weekStartKey, isoLocal, parseT, fmtDur, fmtClock, aggregate, pomodoroByDay, studySessions, planCompute, patternsModel, insights, exampleEntries, eachDaySlice };
+
+/* Distraction patterns over a window. items: [{type:'urge'|'drift', at:ms, driftMin}], entries as from normEntries. */
+function distractionStats(entries, items, now, fromMs) {
+  const study = entries.filter(en => isStudyId(en.a) && en.s >= fromMs && entryEnd(en, now) - en.s >= 5 * MIN)
+    .map(en => ({ s: en.s, e: entryEnd(en, now) })).sort((a, b) => a.s - b.s);
+  if (study.length < 3) return { enough: false, sessions: study.length };
+  const marks = items.filter(m => (m.type === 'urge' || m.type === 'drift') && m.at >= fromMs);
+  const urges = marks.filter(m => m.type === 'urge').length, drifts = marks.length - urges;
+  const hours = study.reduce((t, x) => t + (x.e - x.s), 0) / HOUR;
+  const lost = marks.reduce((t, m) => t + (m.type === 'drift' ? (+m.driftMin || 0) : 0), 0);
+  let longest = 0, a = study[0].s, b = study[0].e;
+  for (const x of study.slice(1)) { if (x.s - b <= 2 * MIN) b = Math.max(b, x.e); else { longest = Math.max(longest, b - a); a = x.s; b = x.e; } }
+  longest = Math.max(longest, b - a);
+  const firsts = [];
+  for (const x of study) {
+    const inside = marks.filter(m => m.at >= x.s && m.at <= x.e).map(m => m.at);
+    if (inside.length) firsts.push((Math.min.apply(null, inside) - x.s) / MIN);
+  }
+  firsts.sort((p, q) => p - q);
+  const median = firsts.length ? (firsts.length % 2 ? firsts[(firsts.length - 1) / 2] : (firsts[firsts.length / 2 - 1] + firsts[firsts.length / 2]) / 2) : null;
+  return {
+    enough: true, sessions: study.length, hours, urges, drifts,
+    perHour: hours ? marks.length / hours : 0,
+    catchRate: marks.length ? urges / marks.length : null,
+    lostMin: lost, longestStretch: longest, firstAtMin: median
+  };
+}
+
+if (typeof module !== 'undefined') module.exports = { distractionStats, LIVE_URL, b64urlEnc, b64urlDec, encodeToken, decodeToken, liveColor, liveStateOf, liveTitle, cleanMark, planMarks, localNoOffset, busyFor, mergeIntervals, dayCapacity, layoutOverlaps, CTX, MIN, HOUR, DAY, hmToMin, minToHm, keyOfDate, dateOfKey, addDaysKey, dayKeyOf, dayStartMs, dayEndMs, hmOnDay, weekStartKey, isoLocal, parseT, fmtDur, fmtClock, aggregate, pomodoroByDay, studySessions, planCompute, patternsModel, insights, exampleEntries, eachDaySlice };

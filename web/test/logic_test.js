@@ -142,6 +142,21 @@ ok('running block stops for the call and resumes after it', pmA.rows[0].pieces.m
   ok('localNoOffset has no offset', L.localNoOffset(S0) === '2026-10-24T09:00:00');
 }
 
+
+// distraction patterns
+{
+  const n = T('2026-10-24T20:00:00'), from = T('2026-10-20T04:00:00');
+  const ses = [E('d1', 'phys', '2026-10-24T09:00:00', '2026-10-24T10:00:00'), E('d2', 'math', '2026-10-24T10:01:00', '2026-10-24T11:00:00'), E('d3', 'chem', '2026-10-24T14:00:00', '2026-10-24T14:30:00'), E('d4', 'brk', '2026-10-24T11:00:00', '2026-10-24T11:20:00')];
+  const few = L.distractionStats(ses.slice(0, 2), [], n, from);
+  ok('distraction stats need 3 sessions', few.enough === false && few.sessions === 2);
+  const items = [{ type: 'urge', at: T('2026-10-24T09:10:00') }, { type: 'urge', at: T('2026-10-24T09:40:00') }, { type: 'drift', at: T('2026-10-24T10:30:00'), driftMin: 5 }, { type: 'urge', at: T('2026-10-24T14:20:00') }, { type: 'park', at: T('2026-10-24T14:21:00') }];
+  const st = L.distractionStats(ses, items, n, from);
+  ok('distraction counts', st.enough && st.urges === 3 && st.drifts === 1 && st.lostMin === 5, JSON.stringify(st));
+  ok('catch rate 3 of 4', Math.abs(st.catchRate - 0.75) < 1e-9);
+  ok('per focused hour', Math.abs(st.perHour - 4 / (149 / 60)) < 1e-9, String(st.perHour));
+  ok('longest stretch merges a 1-minute gap', st.longestStretch === 120 * MIN, String(st.longestStretch / MIN));
+  ok('first distraction median minute', st.firstAtMin === 20, String(st.firstAtMin));
+}
 console.log(out.join('\n'));
 console.log('\nInsights:\n- ' + ins.map(x => x.text).join('\n- '));
 console.log('\nPeak col', pmod.bestCol, 'median', Math.round(pmod.median), 'streak', pmod.streak, 'best', pmod.bestStreak);
