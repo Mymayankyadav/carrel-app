@@ -138,7 +138,8 @@ async function checkUpdates(manual) {
         else if (store.get('updReady') === m.version) UPDI.web = 'Update ready. Reopen Carrel to apply.';
         else {
           step = 'downloading ' + m.version;
-          const b = await UPD.download({ url: m.url, version: m.version });
+          if (!m.checksum) throw new Error('latest.json has no checksum');
+          const b = await UPD.download({ url: m.url, version: m.version, checksum: m.checksum });
           step = 'switching to ' + m.version;
           await UPD.next({ id: b.id });
           store.set('updReady', m.version);

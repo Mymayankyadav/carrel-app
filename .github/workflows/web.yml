@@ -34,7 +34,8 @@ jobs:
           NATIVE=$(sed -n 's/^const NATIVE_API = \([0-9]*\).*/\1/p' web/config.js)
           (cd www && zip -qr "../web-$V.zip" . -x 'updates/*')
           mkdir -p www/updates && mv "web-$V.zip" www/updates/
-          printf '{"version":"%s","url":"https://%s.github.io/%s/updates/web-%s.zip","minNative":%s}\n' "$V" "${OWNER,,}" "$REPO" "$V" "$NATIVE" > www/updates/latest.json
+          SUM=$(sha256sum "www/updates/web-$V.zip" | cut -d' ' -f1)   # the updater refuses bundles without a SHA-256 checksum
+          printf '{"version":"%s","url":"https://%s.github.io/%s/updates/web-%s.zip","checksum":"%s","minNative":%s}\n' "$V" "${OWNER,,}" "$REPO" "$V" "$SUM" "$NATIVE" > www/updates/latest.json
           cat www/updates/latest.json; unzip -l "www/updates/web-$V.zip" | grep -E ' index.html$'
       - uses: actions/configure-pages@v5
         with: { enablement: true }

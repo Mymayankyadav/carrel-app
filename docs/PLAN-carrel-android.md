@@ -687,7 +687,7 @@ const CL = NATIVE ? Capacitor.registerPlugin('CarrelLive') : null;
 ## Phase P6: Self-update · **Sonnet, medium effort**
 
 1. **Install the updater.** Add `@capgo/capacitor-updater` (a scaffold-style one-off step, or in `android.yml` before `cap sync`; commit `package.json`). Set `capacitor.config.json` `plugins.CapacitorUpdater = {"autoUpdate": false}`. **First read its current README** with WebFetch on the npm or GitHub page, to confirm the manual-mode API: `notifyAppReady`, `download({url, version})`, `next({id})`/`set`, `current()`. Adapt names to what it documents.
-2. **`web.yml` also publishes the bundle.** It zips `www/` → `updates/web-<sha7>.zip` and writes `updates/latest.json` = `{"version":"<sha7>","url":"https://<owner>.github.io/<repo>/updates/web-<sha7>.zip","minNative":<lowest versionCode compatible>}`. Keep `minNative` in `web/config.js` as `NATIVE_API` and bump it whenever JS starts calling a new plugin method.
+2. **`web.yml` also publishes the bundle.** (Capgo 8.x refuses `download()` without `checksum` = lowercase SHA-256 hex of the zip; `latest.json` carries it.) It zips `www/` → `updates/web-<sha7>.zip` and writes `updates/latest.json` = `{"version":"<sha7>","url":"https://<owner>.github.io/<repo>/updates/web-<sha7>.zip","minNative":<lowest versionCode compatible>}`. Keep `minNative` in `web/config.js` as `NATIVE_API` and bump it whenever JS starts calling a new plugin method.
 3. **App boot (native):**
    - Call `notifyAppReady()` first; otherwise Capgo rolls back after 10 s.
    - Then fetch `latest.json` with `cache: 'no-store'`, failing silently offline.
