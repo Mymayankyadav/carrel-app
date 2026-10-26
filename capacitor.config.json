@@ -2,6 +2,15 @@
   "appId": "app.carrel.study",
   "appName": "Carrel",
   "webDir": "www",
-  "android": { "allowMixedContent": false },
-  "plugins": { "SplashScreen": { "launchShowDuration": 0 } }
+  "android": {
+    "allowMixedContent": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 0
+    },
+    "CapacitorUpdater": {
+      "autoUpdate": false
+    }
+  }
 }

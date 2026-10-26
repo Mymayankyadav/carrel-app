@@ -27,6 +27,15 @@ jobs:
         run: |
           TZ=Asia/Kolkata node web/test/logic_test.js
           node web/test/supa_test.js
+      - name: Publish the web bundle for in-app updates
+        env: { RUN: '${{ github.run_number }}', OWNER: '${{ github.repository_owner }}', REPO: '${{ github.event.repository.name }}' }
+        run: |
+          V="1.0.$RUN"
+          NATIVE=$(sed -n 's/^const NATIVE_API = \([0-9]*\).*/\1/p' web/config.js)
+          (cd www && zip -qr "../web-$V.zip" . -x 'updates/*')
+          mkdir -p www/updates && mv "web-$V.zip" www/updates/
+          printf '{"version":"%s","url":"https://%s.github.io/%s/updates/web-%s.zip","minNative":%s}\n' "$V" "${OWNER,,}" "$REPO" "$V" "$NATIVE" > www/updates/latest.json
+          cat www/updates/latest.json; unzip -l "www/updates/web-$V.zip" | grep -E ' index.html$'
       - uses: actions/configure-pages@v5
         with: { enablement: true }
       - uses: actions/upload-pages-artifact@v3

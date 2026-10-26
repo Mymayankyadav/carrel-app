@@ -2,4 +2,4 @@
 const SUPABASE_URL = 'https://xttknrvqldizerzdjokz.supabase.co';
 const SUPABASE_KEY = 'sb_publishable_SJ_-HsqQfxoWIiQ_fR4ePg_u-i4oyKS';
 const APP_SCHEME = 'app.carrel.study';
-const NATIVE_API = 1;
+const NATIVE_API = 100004;   // lowest APK versionCode this web code works with (100000 + build number)

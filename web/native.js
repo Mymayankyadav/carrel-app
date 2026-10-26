@@ -49,6 +49,7 @@ function nativeBoot() {
   nsSig = '';
   if (nbDone) return;
   nbDone = true;
+  updateBoot();
   CL.addListener('session', s => { if (sb && s && s.refresh) sb.auth.setSession({ access_token: s.access, refresh_token: s.refresh }).catch(() => {}); });
   CL.addListener('action', () => { if (S.db && S.db.refresh) S.db.refresh(); });
   CL.getPrefs().then(p => { Object.assign(NP, p); changed(); }).catch(() => {});
@@ -91,6 +92,7 @@ function vPhonePanel() {
     ${row('privacy', 'Hide details on the lock screen')}
     <div class="row"><span class="note-line">Last buzz: ${esc(NP.lastNudge || 'none yet')}</span><span><button type="button" class="btn sm" data-act="np-test">Test buzz</button> <button type="button" class="btn sm ghost" data-act="np-check">Refresh</button></span></div>
     <div class="row"><span class="note-line">${NP.exactAlarms === false ? 'Exact alarms are off, so the vibration can arrive a few minutes late.' : 'Exact alarms are allowed.'}</span><button type="button" class="btn sm" data-act="np-exact">Open settings</button></div>
+    <div class="row"><span class="note-line">${UPDI.apk ? `<b>New app version available.</b>` : `App build ${UPDI.build || '?'}, web code ${esc(UPDI.bundle || 'built in')}.`} ${esc(UPDI.web)}</span><span>${UPDI.apk ? `<button type="button" class="btn sm" data-act="upd-apk">Download</button> ` : ''}<button type="button" class="btn sm ghost" data-act="upd-check">${UPDI.busy ? 'Checking' : 'Check now'}</button></span></div>
     <div class="row"><span class="note-line">If the notification stops updating, let Carrel run in the background.</span><button type="button" class="btn sm" data-act="np-battery">Battery settings</button></div>
   </div>`;
 }
@@ -104,9 +106,53 @@ Object.assign(ACT, {
   'np-notif'() { if (CL) CL.requestNotifications().then(p => { Object.assign(NP, p); changed(); }).catch(() => {}); },
   'np-test'() { if (CL) CL.testNudge().then(p => { Object.assign(NP, p); changed(); }).catch(() => toast('Could not test the buzz.')); },
   'np-check'() { if (CL) CL.getPrefs().then(p => { Object.assign(NP, p); changed(); }).catch(() => {}); },
+  'upd-check'() { checkUpdates(true); },
+  'upd-apk'() { if (UPDI.apk && CAP.Browser) CAP.Browser.open({ url: UPDI.apk.url }); },
   'np-exact'() { if (CL) CL.openExactAlarmSettings(); },
   'np-battery'() { if (CL) CL.openBatterySettings().then(r => { if (r && r.help) toast(r.help); }).catch(() => {}); }
 });
+
+/* ----- self-update: new web code arrives without reinstalling; a new APK shows a banner ----- */
+const UPD = NATIVE && CAP.CapacitorUpdater ? CAP.CapacitorUpdater : null;
+const UPDATE_URL = 'https://mymayankyadav.github.io/carrel-app/updates/latest.json';
+const RELEASES_URL = 'https://api.github.com/repos/Mymayankyadav/carrel-app/releases?per_page=1';
+const UPDI = { build: 0, bundle: '', web: '', apk: null, busy: false };
+if (UPD) UPD.notifyAppReady().catch(() => {});   // without this the updater rolls the new code back
+
+async function checkUpdates(manual) {
+  if (!NATIVE || UPDI.busy) return;
+  UPDI.busy = true;
+  try {
+    try { const i = await CAP.App.getInfo(); UPDI.build = +i.build || 0; } catch (e) { /* keep 0 */ }
+    if (UPD) { try { const c = await UPD.current(); UPDI.bundle = (c.bundle && c.bundle.version) || ''; } catch (e) { /* keep */ } }
+    try {   // 1) new web code
+      if (UPD) {
+        const m = await (await fetch(UPDATE_URL, { cache: 'no-store' })).json();
+        if (!m.version || m.version === UPDI.bundle) UPDI.web = manual ? 'Web code is up to date.' : UPDI.web;
+        else if (m.minNative && UPDI.build < m.minNative) UPDI.web = 'A new web version needs the new app first.';
+        else if (store.get('updReady') === m.version) UPDI.web = 'Update ready. Reopen Carrel to apply.';
+        else {
+          const b = await UPD.download({ url: m.url, version: m.version });
+          await UPD.next({ id: b.id });
+          store.set('updReady', m.version);
+          UPDI.web = 'Update ready. Reopen Carrel to apply.';
+          toast('Update ready. Reopen Carrel to apply.');
+        }
+      }
+    } catch (e) { if (manual) UPDI.web = 'Could not check for web updates.'; }
+    try {   // 2) new APK, at most once a day unless asked
+      const last = +store.get('apkChecked') || 0;
+      if (manual || Date.now() - last > 864e5) {
+        const rel = (await (await fetch(RELEASES_URL)).json())[0];
+        store.set('apkChecked', Date.now());
+        const n = rel && /^build-(\d+)$/.exec(rel.tag_name);
+        const a = rel && (rel.assets || []).find(x => /\.apk$/.test(x.name));
+        UPDI.apk = n && a && 100000 + +n[1] > UPDI.build ? { tag: rel.tag_name, url: a.browser_download_url } : null;
+      }
+    } catch (e) { /* offline: try tomorrow */ }
+  } finally { UPDI.busy = false; changed(); }
+}
+function updateBoot() { if (NATIVE) setTimeout(() => checkUpdates(false), 5000); }
 
 /* Google sign-in returns to the app through the app.carrel.study://auth deep link. */
 if (NATIVE && CAP.App) {
