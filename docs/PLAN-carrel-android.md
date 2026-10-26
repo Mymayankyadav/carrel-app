@@ -736,11 +736,11 @@ The sketch to validate:
 6. Whether the Supabase connector in claude.ai runs SQL as `postgres` (so `carrel_uid()` resolves through `carrel_owner`). Check in P3 step 6 with `select carrel_uid()`.
 
 ## 12. Progress log (update as you go)
-- [ ] P0 Setup
-- [ ] P1 Database
-- [ ] P2 Web on Supabase
-- [ ] P3 Migration + guide
-- [ ] P4 Capacitor APK
-- [ ] P5 Native notification
-- [ ] P6 Self-update
-- Notes:
+- [x] P0 Setup
+- [x] P1 Database
+- [x] P2 Web on Supabase
+- [x] P3 Migration + guide
+- [x] P4 Capacitor APK
+- [x] P5 Native notification
+- [~] P6 Self-update (code pushed; needs the two-reopen phone check)
+- Notes: P3 became "start clean, no migration". Focus-end buzz was not felt on the phone in build-4 (stronger alarm-usage buzz + Test buzz + "Last buzz" line added); parked by the user for later. 1/1 quick Pomodoro chip added for testing. Drifted/Take break/Stop-undo/offline-stop still unconfirmed on the phone.
