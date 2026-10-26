@@ -125,21 +125,27 @@ async function checkUpdates(manual) {
   try {
     try { const i = await CAP.App.getInfo(); UPDI.build = +i.build || 0; } catch (e) { /* keep 0 */ }
     if (UPD) { try { const c = await UPD.current(); UPDI.bundle = (c.bundle && c.bundle.version) || ''; } catch (e) { /* keep */ } }
+    let step = 'start';
     try {   // 1) new web code
       if (UPD) {
-        const m = await (await fetch(UPDATE_URL, { cache: 'no-store' })).json();
+        step = 'reading latest.json';
+        const r = await fetch(UPDATE_URL, { cache: 'no-store' });
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const m = await r.json();
         if (!m.version || m.version === UPDI.bundle) UPDI.web = manual ? 'Web code is up to date.' : UPDI.web;
         else if (m.minNative && UPDI.build < m.minNative) UPDI.web = 'A new web version needs the new app first.';
         else if (store.get('updReady') === m.version) UPDI.web = 'Update ready. Reopen Carrel to apply.';
         else {
+          step = 'downloading ' + m.version;
           const b = await UPD.download({ url: m.url, version: m.version });
+          step = 'switching to ' + m.version;
           await UPD.next({ id: b.id });
           store.set('updReady', m.version);
           UPDI.web = 'Update ready. Reopen Carrel to apply.';
           toast('Update ready. Reopen Carrel to apply.');
         }
       }
-    } catch (e) { if (manual) UPDI.web = 'Could not check for web updates.'; }
+    } catch (e) { UPDI.web = 'Web update failed while ' + step + ': ' + String((e && (e.message || e.errorMessage || e.code)) || e).slice(0, 140); }
     try {   // 2) new APK, at most once a day unless asked
       const last = +store.get('apkChecked') || 0;
       if (manual || Date.now() - last > 864e5) {
