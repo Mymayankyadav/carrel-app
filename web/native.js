@@ -116,6 +116,7 @@ Object.assign(ACT, {
 const UPD = NATIVE && CAP.CapacitorUpdater ? CAP.CapacitorUpdater : null;
 const UPDATE_URL = 'https://mymayankyadav.github.io/carrel-app/updates/latest.json';
 const RELEASES_URL = 'https://api.github.com/repos/Mymayankyadav/carrel-app/releases?per_page=1';
+const m_url = step => UPDATE_URL.replace('latest.json', 'web-' + step.replace('downloading ', '') + '.zip');
 const UPDI = { build: 0, bundle: '', web: '', apk: null, busy: false };
 if (UPD) UPD.notifyAppReady().catch(() => {});   // without this the updater rolls the new code back
 
@@ -145,7 +146,15 @@ async function checkUpdates(manual) {
           toast('Update ready. Reopen Carrel to apply.');
         }
       }
-    } catch (e) { UPDI.web = 'Web update failed while ' + step + ': ' + String((e && (e.message || e.errorMessage || e.code)) || e).slice(0, 140); }
+    } catch (e) {
+      let more = '';
+      if (/downloading/.test(step)) {   // can the page itself reach the zip?
+        try { const z = await fetch(m_url(step), { cache: 'no-store' }); more = ' | page fetch: HTTP ' + z.status + ', ' + (await z.arrayBuffer()).byteLength + ' bytes'; }
+        catch (e2) { more = ' | page fetch failed: ' + String(e2 && e2.message || e2).slice(0, 60); }
+      }
+      let raw = ''; try { raw = JSON.stringify(e).slice(0, 160); } catch (e3) { /* not serialisable */ }
+      UPDI.web = 'Web update failed while ' + step + ': ' + String((e && (e.message || e.errorMessage || e.code)) || e).slice(0, 100) + ' ' + raw + more;
+    }
     try {   // 2) new APK, at most once a day unless asked
       const last = +store.get('apkChecked') || 0;
       if (manual || Date.now() - last > 864e5) {
