@@ -83,7 +83,7 @@ function nativeSync() {
 function vPhonePanel() {
   if (!CL) return '';
   const row = (k, label) => `<div class="row"><span class="note-line">${label}</span><button type="button" class="btn sm" data-act="np-toggle" data-k="${k}" aria-pressed="${NP[k] ? 'true' : 'false'}">${NP[k] ? 'On' : 'Off'}</button></div>`;
-  return `<div class="setsec"><h3>Phone notification (update test)</h3>
+  return `<div class="setsec"><h3>Phone notification</h3>
     <p class="note-line">The running timer in your notification shade, with Urge, Drifted, Park, Stop and Take break buttons.</p>
     ${NP.notifications === false ? `<div class="row"><span class="note-line">Notifications are off for Carrel.</span><button type="button" class="btn sm" data-act="np-notif">Allow</button></div>` : ''}
     ${row('vibrateFocus', 'Vibrate when focus time ends')}
