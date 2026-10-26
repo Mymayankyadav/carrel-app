@@ -85,10 +85,11 @@ function vPhonePanel() {
   return `<div class="setsec"><h3>Phone notification</h3>
     <p class="note-line">The running timer in your notification shade, with Urge, Drifted, Park, Stop and Take break buttons.</p>
     ${NP.notifications === false ? `<div class="row"><span class="note-line">Notifications are off for Carrel.</span><button type="button" class="btn sm" data-act="np-notif">Allow</button></div>` : ''}
-    ${row('vibrateFocus', 'Gentle vibration when focus time ends')}
-    ${row('vibrateBreak', 'Gentle vibration when a break ends')}
+    ${row('vibrateFocus', 'Vibrate when focus time ends')}
+    ${row('vibrateBreak', 'Vibrate when a break ends')}
     ${row('respectDnd', 'Stay quiet in Do Not Disturb')}
     ${row('privacy', 'Hide details on the lock screen')}
+    <div class="row"><span class="note-line">Last buzz: ${esc(NP.lastNudge || 'none yet')}</span><span><button type="button" class="btn sm" data-act="np-test">Test buzz</button> <button type="button" class="btn sm ghost" data-act="np-check">Refresh</button></span></div>
     <div class="row"><span class="note-line">${NP.exactAlarms === false ? 'Exact alarms are off, so the vibration can arrive a few minutes late.' : 'Exact alarms are allowed.'}</span><button type="button" class="btn sm" data-act="np-exact">Open settings</button></div>
     <div class="row"><span class="note-line">If the notification stops updating, let Carrel run in the background.</span><button type="button" class="btn sm" data-act="np-battery">Battery settings</button></div>
   </div>`;
@@ -101,6 +102,8 @@ Object.assign(ACT, {
     changed();
   },
   'np-notif'() { if (CL) CL.requestNotifications().then(p => { Object.assign(NP, p); changed(); }).catch(() => {}); },
+  'np-test'() { if (CL) CL.testNudge().then(p => { Object.assign(NP, p); changed(); }).catch(() => toast('Could not test the buzz.')); },
+  'np-check'() { if (CL) CL.getPrefs().then(p => { Object.assign(NP, p); changed(); }).catch(() => {}); },
   'np-exact'() { if (CL) CL.openExactAlarmSettings(); },
   'np-battery'() { if (CL) CL.openBatterySettings().then(r => { if (r && r.help) toast(r.help); }).catch(() => {}); }
 });

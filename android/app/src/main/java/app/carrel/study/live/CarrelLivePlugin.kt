@@ -92,12 +92,15 @@ class CarrelLivePlugin : Plugin() {
     }
 
     @com.getcapacitor.PluginMethod
+    fun testNudge(call: PluginCall) { live.io.execute { Nudges.test(context); call.resolve(prefs()) } }
+
+    @com.getcapacitor.PluginMethod
     fun getPrefs(call: PluginCall) { call.resolve(prefs()) }
 
     private fun prefs(): JSObject {
         val s = live.store
         return JSObject().put("vibrateFocus", s.vibrateFocus).put("vibrateBreak", s.vibrateBreak)
-            .put("respectDnd", s.respectDnd).put("privacy", s.privacy)
+            .put("respectDnd", s.respectDnd).put("privacy", s.privacy).put("lastNudge", s.p.getString("lastNudge", ""))
             .put("notifications", live.notifications.allowed())
             .put("exactAlarms", Build.VERSION.SDK_INT < 31 || context.getSystemService(android.app.AlarmManager::class.java).canScheduleExactAlarms())
     }

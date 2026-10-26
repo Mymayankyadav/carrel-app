@@ -62,21 +62,46 @@ class AlarmReceiver : BroadcastReceiver() {
     }
 }
 
-/** A gentle double pulse when focus or break time ends. Never sound. */
+/** A clear double buzz when focus or break time ends. Never sound. */
 object Nudges {
+    private fun note(context: Context, msg: String) {
+        val t = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.US).format(java.util.Date())
+        context.live.store.p.edit().putString("lastNudge", "$t $msg").apply()
+    }
+
+    private fun buzz(context: Context): String {
+        @Suppress("DEPRECATION")
+        val vibrator = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(VibratorManager::class.java).defaultVibrator
+            else context.getSystemService(Vibrator::class.java)
+        if (!vibrator.hasVibrator()) return "this phone has no vibrator"
+        val timings = longArrayOf(0, 300, 160, 300, 160, 450)
+        val effect = if (vibrator.hasAmplitudeControl())
+            VibrationEffect.createWaveform(timings, intArrayOf(0, 220, 0, 220, 0, 255), -1)
+        else VibrationEffect.createWaveform(timings, -1)
+        return try {
+            // USAGE_ALARM is not hidden by the phone's "notification vibration" switch.
+            vibrator.vibrate(effect, AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_ALARM)
+                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION).build())
+            "buzzed"
+        } catch (e: RuntimeException) { "vibrate failed: ${e.message}" }
+    }
+
+    fun test(context: Context) = note(context, "test: " + buzz(context))
+
     fun fire(context: Context, kind: PulseKind, deadline: Long) {
         val store = context.live.store
         val enabled = if (kind == PulseKind.FOCUS) store.vibrateFocus else store.vibrateBreak
         val all = context.getSystemService(NotificationManager::class.java).currentInterruptionFilter == NotificationManager.INTERRUPTION_FILTER_ALL
-        if (!shouldPulse(deadline, pulseDeadline(store.active, kind), System.currentTimeMillis(), enabled, store.respectDnd, all)) return
-        @Suppress("DEPRECATION")
-        val vibrator = if (Build.VERSION.SDK_INT >= 31) context.getSystemService(VibratorManager::class.java).defaultVibrator
-            else context.getSystemService(Vibrator::class.java)
-        if (!vibrator.hasVibrator() || !store.claimPulse(kind, deadline)) return
-        val amplitude = if (vibrator.hasAmplitudeControl()) 45 else VibrationEffect.DEFAULT_AMPLITUDE
-        try {
-            vibrator.vibrate(VibrationEffect.createWaveform(longArrayOf(0, 120, 150, 120), intArrayOf(0, amplitude, 0, amplitude), -1),
-                AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT).build())
-        } catch (_: RuntimeException) { /* a failed attempt must not repeat */ }
+        val now = System.currentTimeMillis()
+        val expected = pulseDeadline(store.active, kind)
+        val label = kind.name.lowercase()
+        when {
+            !enabled -> return note(context, "$label end: skipped, vibration is switched off")
+            deadline != expected -> return note(context, "$label end: skipped, timer changed")
+            now < deadline -> return note(context, "$label end: skipped, fired early")
+            store.respectDnd && !all -> return note(context, "$label end: skipped, Do Not Disturb is on")
+            !store.claimPulse(kind, deadline) -> return note(context, "$label end: already buzzed")
+        }
+        note(context, "$label end (${(now - deadline) / 1000}s late): " + buzz(context))
     }
 }

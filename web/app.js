@@ -1596,8 +1596,8 @@ function sSetup() {
       ${arch ? `<button type="button" class="btn sm ghost" data-act="show-arch" style="justify-self:start">${UI.showArchived ? 'Hide' : 'Show'} ${arch} archived</button>` : ''}
     </div>
     <div class="setsec"><h3>Pomodoro</h3><p class="note-line">Silent by design. When a focus block ends, the timer turns brass and waits; time keeps counting as study until you take the break.</p>
-      <div class="chips">${Object.keys(PRESETS).map(p => `<button type="button" class="chip-btn ${presetLabel(pd) === p ? 'on' : ''}" data-act="preset-apply" data-p="${p}">${p}</button>`).join('')}</div>
-      <div class="g2">${num('focus', pd.focus, 5, 180, 5, 'Focus minutes')}${num('short', pd.short, 1, 60, 1, 'Short break')}${num('long', pd.long, 1, 90, 1, 'Long break')}${num('every', pd.every, 2, 8, 1, 'Long break every')}</div>
+      <div class="chips">${Object.keys(PRESETS).concat(['1/1']).map(p => `<button type="button" class="chip-btn ${presetLabel(pd) === p ? 'on' : ''}" data-act="preset-apply" data-p="${p}">${p === '1/1' ? '1/1 test' : p}</button>`).join('')}</div>
+      <div class="g2">${num('focus', pd.focus, 1, 180, 1, 'Focus minutes')}${num('short', pd.short, 1, 60, 1, 'Short break')}${num('long', pd.long, 1, 90, 1, 'Long break')}${num('every', pd.every, 2, 8, 1, 'Long break every')}</div>
     </div>
     <div class="setsec"><h3>Your day</h3>
       <div class="g2">
@@ -2003,11 +2003,11 @@ const ACT = {
   },
   'na-kind'(el) { UI.newAct.kind = el.getAttribute('data-k'); renderSheet(); },
   'show-arch'() { UI.showArchived = !UI.showArchived; renderSheet(); },
-  'preset-apply'(el) { const p = PRESETS[el.getAttribute('data-p')]; if (p) saveSetting({ pomodoro: p }, null); },
+  'preset-apply'(el) { const p = parsePreset(el.getAttribute('data-p')); if (p) saveSetting({ pomodoro: p }, null); },
   'set-num'(el) {
     const f = el.getAttribute('data-f'), v = +el.value;
     if (!Number.isFinite(v)) return;
-    const lim = { focus: [5, 180], short: [1, 60], long: [1, 90], every: [2, 8], gap: [0, 60], guardHours: [1, 12] }[f];
+    const lim = { focus: [1, 180], short: [1, 60], long: [1, 90], every: [2, 8], gap: [0, 60], guardHours: [1, 12] }[f];
     if (!lim) return;
     const val = clamp(Math.round(v), lim[0], lim[1]);
     if (['focus', 'short', 'long', 'every'].includes(f)) saveSetting({ pomodoro: { [f]: val } }, null); else saveSetting({ [f]: val }, null);
