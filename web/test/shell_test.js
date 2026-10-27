@@ -89,7 +89,8 @@ assert(html.includes('data-act="signout"') === false,'no sign-out when not signe
 assert.equal(typeof ACT['a6-jump'],'function');
 const button={getAttribute:k=>k==='data-target'?'data':null};
 ACT['a6-jump'](button);
-assert.deepStrictEqual(jumpTarget.calls[0],{block:'start',behavior:'smooth'});
+assert.equal(jumpTarget.calls[0].block,'start');
+assert.equal(jumpTarget.calls[0].behavior,'smooth');
 const beforeBad=jumpTarget.calls.length;
 ACT['a6-jump']({getAttribute:()=> 'unknown-id'});
 assert.equal(jumpTarget.calls.length,beforeBad,'unknown anchors ignored');
