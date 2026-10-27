@@ -1,0 +1,33 @@
+name: T1 Today mobile/desktop visual QA
+on:
+  push:
+    branches: [redesign/t1-visual-qa]
+  workflow_dispatch:
+  pull_request:
+    branches: [redesign/t1-today]
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Chromium and build test mock
+        run: |
+          npm install --no-audit --no-fund
+          python3 -m pip install --break-system-packages playwright pillow
+          python3 -m playwright install --with-deps chromium
+          npm run build:web
+      - name: Today interaction smoke and snapshots
+        run: TZ=Asia/Kolkata python3 tools/t1_smoke.py
+      - name: Upload screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t1-today-phone-desktop-light-dark
+          path: t1-screens/
+          if-no-files-found: ignore
+          retention-days: 7
