@@ -20,6 +20,7 @@ with sync_playwright() as p:
         page.wait_for_timeout(800)
         page.evaluate("pushPage('tasks',{tab:'deadlines'})")
         expect(page.locator('.k-page-title')).to_contain_text('Tasks')
+        page.wait_for_timeout(350)  # page-entry transition can translate 12px horizontally
         def capture(label):
             actual=page.evaluate("Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)")
             page.screenshot(path=str(out/(name+'-'+label+'.png')),full_page=True)
