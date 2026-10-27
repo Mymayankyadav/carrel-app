@@ -13,7 +13,7 @@ const T = s => Date.parse(s + '+05:30');
 const now = T('2026-10-27T21:00:00');
 const iso = (s, d = '2026-10-26') => T(d + 'T' + s);
 const entry = (id, day, hour, act = 'math') => ({
-  id, a: act, s: T(day + 'T' + hour + ':00:00'),
+  id, a: act, s: T(day + 'T' + hour + ':00'),
   e: T(day + 'T' + String(Number(hour.slice(0, 2)) + 1).padStart(2, '0') + hour.slice(2) + ':00'),
   focus: null, block: null, running: false
 });
