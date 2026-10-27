@@ -52,8 +52,14 @@ assert.equal(typeof PAGES.tasks.render,'function','Tasks registered');
 const params={tab:'deadlines'};
 let html=PAGES.tasks.render(params);
 assert(html.includes('Algebra exam')&&html.includes('Finished test'));
-assert(html.includes('Done (1)')&&html.includes('in 1d'));
+assert(html.includes('Done (1)')&&html.includes('Tomorrow'));
 assert(html.includes('p3-count urgent'));
+assert(html.includes('data-id="d1"')&&html.includes('--p3-subject:#3D7EA6'));
+assert(html.includes('exam')&&html.includes('due'),'semantic bundled deadline icons');
+assert(html.includes('Done</span>'),'completed rows do not say overdue');
+assert.equal(env.p3DueLabel('2026-10-28'),'Tomorrow');
+assert.equal(env.p3DueLabel('2026-10-27'),'Yesterday'); // mocked daysUntil defaults to -1
+
 params.tab='backlog';html=PAGES.tasks.render(params);
 assert(html.includes('Finish chapter')&&html.includes('Plan all'));
 assert(html.includes('data-act="p3-schedule" data-id="t1"'));
@@ -71,6 +77,11 @@ ACT['p3-schedule'](el({'data-id':'t1'}));
 assert(calls.includes('scheduled:t1:2026-10-30:null'));
 UI.pages.at(-1).params.tab='deadlines';ACT['p3-add']();assert.equal(UI.sheet.type,'deadline');
 assert(SHEETS.deadline(UI.sheet).includes('Deadline'));
+const icons=fs.readFileSync(path.join(__dirname,'../ui/icons.js'),'utf8');
+for(const key of ['exam','due','other','high'])
+  assert(icons.includes('"'+key+'":'),key+' must be bundled for P3');
+assert(!source.includes("icon:'education'")&&!source.includes("icon:'file'"),
+  'all P3 deadline icon keys must exist in the bundle');
 UI.pages.at(-1).params.tab='weekly';ACT['p3-add']();
 assert.equal(UI.sheet.type,'busy');assert.equal(UI.sheet.rec,true);
 const days=UI.sheet.days.slice();
