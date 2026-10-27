@@ -112,5 +112,5 @@ assert(css.includes('.dayhead + .dlc{display:flex;flex-wrap:nowrap;overflow-x:au
 assert(css.includes('.dayhead + .dlc > button{flex:none'), 'chips never shrink to several rows');
 assert(css.includes('details.fold') === false || css.includes('.fold > summary'), 'native fold summary styling present');
 assert(css.includes('@media (pointer:fine) and (min-width:860px){.kbd{display:inline-block}}'), 'shortcut hidden on touch devices');
-assert(cal.includes('function vDeadlineChips(tk)'), 'calendar supplies deadline chips');
+assert(fs.readFileSync(path.join(__dirname, '../ui/tasks.js'), 'utf8').includes('function vDeadlineChips(tk)'), 'tasks module supplies deadline chips');
 console.log('TODAY TESTS PASSED');
