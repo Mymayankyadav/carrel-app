@@ -7,11 +7,21 @@ const path = require('path');
 const app = require('./src').app;
 const css = require('./src').css;
 const cal = fs.readFileSync(path.join(__dirname, '../cal.js'), 'utf8');
+const todaySource = fs.readFileSync(path.join(__dirname, '../ui/today.js'), 'utf8');
+// Extract a single top-level renderer, never the view-registry statements that
+// follow the last renderer after the R0a file split.
 const fn = (name, next) => {
-  const a = app.indexOf('function ' + name + '(');
-  const b = app.indexOf('function ' + next + '(', a);
-  assert(a >= 0 && b > a, name + ' function boundary');
-  return app.slice(a, b);
+  const a = todaySource.indexOf('function ' + name + '(');
+  assert(a >= 0, name + ' renderer exists');
+  const nextMatch = /^function [A-Za-z_$]/gm;
+  nextMatch.lastIndex = a + 9;
+  const m = nextMatch.exec(todaySource);
+  const explicit = todaySource.indexOf('function ' + next + '(', a + 9);
+  const registration = todaySource.indexOf('\nVIEWS.', a);
+  const ends = [m && m.index, explicit, registration]
+    .filter(x => Number.isInteger(x) && x > a);
+  const b = ends.length ? Math.min(...ends) : todaySource.length;
+  return todaySource.slice(a, b);
 };
 const clean = s => String(s).replace(/[&<>"']/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 
