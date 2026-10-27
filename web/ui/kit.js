@@ -104,23 +104,42 @@ function kNav(view){
     '<button type="button" class="k-nav-item" data-act="view" data-v="'+id+'" aria-current="'+(id===view?'page':'false')+'">'+icon(id)+kEsc(label)+'</button>').join('')+'</nav>';
 }
 
+// Distinguish browser-initiated back from in-app back to avoid unwinding
+// two navigation levels for a single gesture.
+let kIgnorePopstate = 0;
+function kHistoryPush(kind) {
+  try {
+    if (typeof history !== 'undefined') history.pushState({carrelNav:kind}, '');
+  } catch (_) { /* file URLs and native history implementations vary */ }
+}
+function kHistoryConsume(kind) {
+  try {
+    if (typeof history !== 'undefined' && history.state && history.state.carrelNav === kind) {
+      kIgnorePopstate++;
+      history.back();
+    }
+  } catch (_) { /* browser history unavailable */ }
+}
 function pushPage(id,params){
   if(typeof PAGES==='undefined'||!PAGES[id]){if(typeof console!=='undefined')console.warn('Unknown page:',id);return false;}
-  UI.pages=UI.pages||[];UI.pages.push({id:id,params:params||{}});render();return true;
+  UI.pages=UI.pages||[];UI.pages.push({id:id,params:params||{}});
+  kHistoryPush('page');render();return true;
 }
-
-function popPage(){if(!UI.pages||!UI.pages.length)return false;UI.pages.pop();render();return true;}
-
+function popPage(fromHistory){
+  if(!UI.pages||!UI.pages.length)return false;
+  UI.pages.pop();
+  if(!fromHistory)kHistoryConsume('page');
+  render();return true;
+}
 function openPage(tab,id,params){
   if(typeof PAGES==='undefined'||!PAGES[id]){console.warn('Unknown page:',id);return false;}
   UI.view=tab;UI.pages=[];return pushPage(id,params);
 }
-
-function goBack(){
+function goBack(fromHistory){
   if(UI.kDialog){const resolve=UI.kDialog.resolve;UI.kDialog=null;kRenderPop();if(resolve)resolve(false);return true;}
   if(UI.kMenu){UI.kMenu=null;kRenderPop();return true;}
-  if(UI.sheet){if(typeof closeSheet==='function')closeSheet();else {UI.sheet=null;render();}return true;}
-  if(UI.pages&&UI.pages.length)return popPage();
+  if(UI.sheet){if(typeof closeSheet==='function')closeSheet(false,!!fromHistory);else {UI.sheet=null;render();}return true;}
+  if(UI.pages&&UI.pages.length)return popPage(!!fromHistory);
   if(UI.view!=='today'){UI.view='today';render();return true;}
   return false;
 }

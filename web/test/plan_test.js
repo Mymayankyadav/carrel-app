@@ -27,12 +27,15 @@ assert.equal(noClash.rows[0].clashWith, null);
 const twice = L.planCompute({ blocks: { f: { activity: 'math', minutes: 60, order: 1, at: '20:45' } } }, k, [], now, null, [[T('2026-10-28T21:40:00'), T('2026-10-28T22:00:00')], [busy[0].s, busy[0].e]]);
 assert.equal(twice.rows[0].clashWith, 0, 'first clashing interval in busy array selected');
 
-const app = fs.readFileSync(require('path').join(__dirname, '../app.js'), 'utf8');
+const app = require('./src').app;
 function section(a, b) {
   const from = app.indexOf('function ' + a + '(');
-  const to = app.indexOf('function ' + b + '(', from);
-  assert(from >= 0 && to > from, a + ' source exists');
-  return app.slice(from, to);
+  const next = app.indexOf('function ' + b + '(', from);
+  assert(from >= 0, a + ' source exists');
+  const r=/^function [A-Za-z_$]/gm; r.lastIndex=from+9;
+  const m=r.exec(app);
+  const to=next>from?(m?Math.min(next,m.index):next):(m?m.index:app.length);
+  return app.slice(from,to).replace(/^VIEWS\.[^\n]*$/gm,'').replace(/^SHEETS\.[^\n]*$/gm,'');
 }
 const display = vm.runInNewContext(section('planDisplayRows', 'vPlan') + '\nplanDisplayRows');
 const order = Array.from(display(pm), x => x.id);

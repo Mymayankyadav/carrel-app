@@ -4,14 +4,24 @@ const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-const app = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
-const css = fs.readFileSync(path.join(__dirname, '../style.css'), 'utf8');
+const app = require('./src').app;
+const css = require('./src').css;
 const cal = fs.readFileSync(path.join(__dirname, '../cal.js'), 'utf8');
+const todaySource = fs.readFileSync(path.join(__dirname, '../ui/today.js'), 'utf8');
+// Extract a single top-level renderer, never the view-registry statements that
+// follow the last renderer after the R0a file split.
 const fn = (name, next) => {
-  const a = app.indexOf('function ' + name + '(');
-  const b = app.indexOf('function ' + next + '(', a);
-  assert(a >= 0 && b > a, name + ' function boundary');
-  return app.slice(a, b);
+  const a = todaySource.indexOf('function ' + name + '(');
+  assert(a >= 0, name + ' renderer exists');
+  const nextMatch = /^function [A-Za-z_$]/gm;
+  nextMatch.lastIndex = a + 9;
+  const m = nextMatch.exec(todaySource);
+  const explicit = todaySource.indexOf('function ' + next + '(', a + 9);
+  const registration = todaySource.indexOf('\nVIEWS.', a);
+  const ends = [m && m.index, explicit, registration]
+    .filter(x => Number.isInteger(x) && x > a);
+  const b = ends.length ? Math.min(...ends) : todaySource.length;
+  return todaySource.slice(a, b);
 };
 const clean = s => String(s).replace(/[&<>"']/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 
@@ -102,5 +112,5 @@ assert(css.includes('.dayhead + .dlc{display:flex;flex-wrap:nowrap;overflow-x:au
 assert(css.includes('.dayhead + .dlc > button{flex:none'), 'chips never shrink to several rows');
 assert(css.includes('details.fold') === false || css.includes('.fold > summary'), 'native fold summary styling present');
 assert(css.includes('@media (pointer:fine) and (min-width:860px){.kbd{display:inline-block}}'), 'shortcut hidden on touch devices');
-assert(cal.includes('function vDeadlineChips(tk)'), 'calendar supplies deadline chips');
+assert(fs.readFileSync(path.join(__dirname, '../ui/tasks.js'), 'utf8').includes('function vDeadlineChips(tk)'), 'tasks module supplies deadline chips');
 console.log('TODAY TESTS PASSED');

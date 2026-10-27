@@ -205,235 +205,7 @@ function vMiniMonth(days, now, tk) {
   const wds = Array.from({ length: 7 }, (_, i) => `<span>${esc(rowWeekday(i).slice(0, 2))}</span>`).join('');
   return `<section class="panel mm" aria-label="Month"><div class="mm-head"><b>${esc(DF({ month: 'long', year: 'numeric' }).format(first))}</b><span><button type="button" class="icon-btn" data-act="mm-prev" aria-label="Previous month">${icon('left')}</button><button type="button" class="icon-btn" data-act="mm-next" aria-label="Next month">${icon('right')}</button></span></div><div class="mm-grid">${wds}${cells.join('')}</div></section>`;
 }
-function vDeadlineChips(tk) {
-  const list = deadlineList().filter(d => !d.done && d.date >= tk && daysUntil(d.date) <= 21).slice(0, 4);
-  if (!list.length) return '';
-  return `<div class="dlc" aria-label="Coming up">${list.map(d => `<button type="button" data-act="dl-edit" data-id="${esc(d.id)}">${icon('flag')}<span>${esc(d.title)}</span><b>${countdown(d.date)}</b></button>`).join('')}</div>`;
-}
-function vDeadlinesPanel(tk) {
-  const list = deadlineList().filter(d => !d.done && d.date >= addDaysKey(tk, -3)).slice(0, 8);
-  const rows = list.map(d => {
-    const c = d.activity && ACTMAP[d.activity] ? act(d.activity).color : 'var(--rust)';
-    const n = daysUntil(d.date);
-    return `<button type="button" class="pitem" style="--c:${c}" data-act="dl-edit" data-id="${esc(d.id)}"><i class="dot"></i><span class="pb"><span class="nm">${esc(d.title)}</span><span class="sub">${esc(shortDay(d.date))}${d.time ? ' · ' + fmtHM(d.time) : ''}${d.activity && ACTMAP[d.activity] ? ' · ' + esc(act(d.activity).name) : ''}</span></span><span class="rt ${n <= 2 && n >= 0 ? 'soon' : n < 0 ? 'gone' : ''}">${countdown(d.date)}</span></button>`;
-  }).join('');
-  return `<section class="panel" aria-labelledby="dl-h"><div class="sec-head"><h2 id="dl-h">Deadlines</h2><button type="button" class="icon-btn" data-act="dl-new" aria-label="Add a deadline">${icon('plus')}</button></div>
-    ${rows ? `<div class="plist">${rows}</div>` : `<p class="cap">Add exams and due dates. They get a countdown here, on the calendar and on Today.</p>`}</section>`;
-}
-function vBacklogPanel(tk) {
-  const list = backlogList();
-  const rows = list.map(t => {
-    const a = t.activity && ACTMAP[t.activity] ? act(t.activity) : null;
-    const n = t.due ? daysUntil(t.due) : null;
-    return `<button type="button" class="pitem drag" style="--c:${a ? a.color : 'var(--ink-3)'}" data-act="task-open" data-id="${esc(t.id)}" data-bdrag="1"><i class="dot"></i><span class="pb"><span class="nm">${t.prio === 1 ? '<b class="hi">!</b> ' : ''}${esc(t.title)}</span><span class="sub">${a ? esc(a.name) + ' · ' : ''}${fmtDur(t.minutes * MIN)}</span></span><span class="rt ${n != null && n < 0 ? 'gone' : n != null && n <= 2 ? 'soon' : ''}">${t.due ? (n < 0 ? 'overdue' : 'due ' + countdown(t.due).replace(/^in /, 'in ')) : ''}</span></button>`;
-  }).join('');
-  const tot = list.reduce((s, t) => s + t.minutes, 0) * MIN;
-  const opts = [30, 45, 60, 90, 120, 180].map(m => `<option value="${m}"${+UI.ta.minutes === m ? ' selected' : ''}>${fmtDur(m * MIN)}</option>`).join('');
-  if (!ACTMAP[UI.ta.activity]) UI.ta.activity = firstStudyId();
-  return `<section class="panel" aria-labelledby="bl-h"><div class="sec-head"><h2 id="bl-h">Backlog${list.length ? ` <small>${list.length} · ${fmtDur(tot)}</small>` : ''}</h2>${list.length ? `<button type="button" class="btn sm" data-act="bl-auto" title="Place every task on the earliest day with room, before its due date">${icon('wand')}Find time for all</button>` : ''}</div>
-    ${rows ? `<div class="plist">${rows}</div><p class="cap">Drag a task onto the calendar, or tap it to schedule.</p>` : `<p class="cap">Collect study tasks here before they have a time. Find time places them on the first day with room, around your timetable and deadlines.</p>`}
-    <form class="qadd" data-submit="task-add"><input class="inp" id="ta-title" maxlength="80" data-bind="ta.title" value="${esc(UI.ta.title)}" placeholder="Add a task, e.g. Chapter 7 problems" autocomplete="off" aria-label="New task">
-      <div class="row"><select class="sel sm" id="ta-act" data-bind="ta.activity" data-value="${esc(UI.ta.activity)}" aria-label="Subject">${ACTS.filter(a => !a.archived).map(a => `<option value="${esc(a.id)}"${a.id === UI.ta.activity ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}</select><select class="sel sm" id="ta-min" data-bind="ta.minutes" data-value="${esc(UI.ta.minutes)}" aria-label="Time needed">${opts}</select><button type="submit" class="btn sm lamp">${icon('plus')}Add</button></div></form>
-  </section>`;
-}
-function vTargetsPanel(now, tk) {
-  const anchor = UI.cal.anchor || tk, ws = weekStartKey(anchor), we = addDaysKey(ws, 6);
-  const agg = aggregate(ENTRIES, now, ws, we);
-  const logged = {}, planned = {};
-  Object.values(agg).forEach(d => { for (const id in d.acts) logged[id] = (logged[id] || 0) + d.acts[id]; });
-  for (let k = ws; k <= we; k = addDaysKey(k, 1)) {
-    if (k < tk) continue;
-    const pm = planModelFor(k, now);
-    if (pm) pm.rows.forEach(r => { if (r.remaining > 0) planned[r.activity] = (planned[r.activity] || 0) + r.remaining; });
-  }
-  const list = ACTS.filter(a => a.kind === 'study' && !a.archived && (a.goal || logged[a.id] || planned[a.id]));
-  const head = `<div class="sec-head"><h2 id="tg-h">Week targets</h2><span class="lbl">${esc(shortDay(ws))} – ${esc(shortDay(we))}</span></div>`;
-  if (!list.length) return `<section class="panel" aria-labelledby="tg-h">${head}<p class="cap">Give subjects a weekly goal in Setup to see whether this week’s plan gets you there.</p></section>`;
-  const rows = list.map(a => {
-    const g = (a.goal || 0) * MIN, L = logged[a.id] || 0, Pn = planned[a.id] || 0, tot = L + Pn;
-    const mx = Math.max(g, tot, 1);
-    const status = g ? (tot >= g ? (tot - g >= 30 * MIN ? fmtDur(tot - g) + ' over' : 'on track') : fmtDur(g - tot) + ' short') : fmtDur(tot);
-    return `<div class="tg-row" style="--c:${a.color}"><div class="top"><span class="nm"><i class="dot"></i>${esc(a.name)}</span><span class="${g && tot < g ? 'short' : ''}">${status}</span></div>
-      <div class="bar"><i style="width:${(L / mx * 100).toFixed(1)}%"></i><i class="pl" style="width:${(Pn / mx * 100).toFixed(1)}%"></i>${g ? `<b style="left:calc(${(g / mx * 100).toFixed(1)}% - 1px)"></b>` : ''}</div>
-      <small>${fmtDur(L)} logged · ${fmtDur(Pn)} planned${g ? ' · goal ' + fmtDur(g) : ''}</small></div>`;
-  }).join('');
-  return `<section class="panel" aria-labelledby="tg-h">${head}<div class="tg">${rows}</div></section>`;
-}
-function vTimetablePanel() {
-  const ws = +CFG.weekStart || 0;
-  const items = Object.entries(commitmentsMap()).filter(([, c]) => c && !c.archived && Array.isArray(c.days) && c.days.length)
-    .map(([id, c]) => ({ id, ...c, first: Math.min(...c.days.map(d => (d - ws + 7) % 7)) }))
-    .sort((a, b) => a.first - b.first || String(a.start).localeCompare(String(b.start)));
-  const dn = d => wdName(new Date(2026, 0, 4 + d));
-  const rows = items.map(c => {
-    const col = c.activity && ACTMAP[c.activity] ? act(c.activity).color : 'var(--ink-3)';
-    const ds = c.days.slice().sort((x, y) => ((x - ws + 7) % 7) - ((y - ws + 7) % 7)).map(dn).join(', ');
-    return `<button type="button" class="pitem" style="--c:${col}" data-act="tt-edit" data-id="${esc(c.id)}"><i class="dot"></i><span class="pb"><span class="nm">${esc(c.title || 'Busy')}</span><span class="sub">${esc(ds)}</span></span><span class="rt">${fmtHM(c.start)}–${fmtHM(c.end)}</span></button>`;
-  }).join('');
-  return `<section class="panel" aria-labelledby="tt-h"><div class="sec-head"><h2 id="tt-h">Weekly timetable</h2><button type="button" class="icon-btn" data-act="tt-new" aria-label="Add to timetable">${icon('plus')}</button></div>
-    ${rows ? `<div class="plist">${rows}</div>` : `<p class="cap">Add classes, coaching, shifts or anything fixed each week. Plans flow around them automatically.</p>`}</section>`;
-}
-
 /* ---------- sheets: new item, busy time, deadline, task, block ---------- */
-function wdChips(sel) {
-  const ws = +CFG.weekStart || 0;
-  return `<div class="wdays" role="group" aria-label="Repeat on">${[0, 1, 2, 3, 4, 5, 6].map(i => { const wd = (ws + i) % 7, on = sel.indexOf(wd) >= 0; return `<button type="button" class="${on ? 'on' : ''}" data-act="q-day" data-d="${wd}" aria-pressed="${on}">${esc(wdName(new Date(2026, 0, 4 + wd)).slice(0, 2))}</button>`; }).join('')}</div>`;
-}
-function actSelect(id, bind, val, none) {
-  return `<select class="sel" id="${id}" data-bind="${bind}" data-value="${esc(val || '')}">${none ? `<option value=""${!val ? ' selected' : ''}>None</option>` : ''}${ACTS.filter(a => !a.archived || a.id === val).map(a => `<option value="${esc(a.id)}"${a.id === val ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}</select>`;
-}
-const errLine = sh => sh.err ? `<p class="err" role="alert">${esc(sh.err)}</p>` : '';
-const closeBtn = `<button type="button" class="icon-btn" data-act="sheet-close" aria-label="Close">${icon('x')}</button>`;
-function openQnew(k, s, e, tab, days) {
-  openSheet({ type: 'qnew', tab: tab || 'block', k, start: msToHm(s), end: msToHm(e), minutes: Math.max(5, Math.round((e - s) / MIN)), activity: ACTMAP[UI.ab.activity] ? UI.ab.activity : firstStudyId(), title: '', pin: true, pomo: '', btitle: '', days: days || [], bact: '', err: '' });
-}
-function sQnew(sh) {
-  const tabs = `<div class="seg" role="tablist" aria-label="Kind"><button type="button" role="tab" aria-selected="${sh.tab === 'block'}" class="${sh.tab === 'block' ? 'on' : ''}" data-act="q-tab" data-v="block">Plan a block</button><button type="button" role="tab" aria-selected="${sh.tab === 'busy'}" class="${sh.tab === 'busy' ? 'on' : ''}" data-act="q-tab" data-v="busy">Busy time</button></div>`;
-  let body;
-  if (sh.tab === 'block') {
-    body = `${actPick(sh.activity, 'sheet.activity')}
-      <label class="field"><span>What exactly (optional)</span><input class="inp" id="q-title" maxlength="80" data-bind="sheet.title" value="${esc(sh.title)}" placeholder="e.g. Chapter 6 problems" autocomplete="off"></label>
-      <div class="g3"><label class="field"><span>Start</span><input type="time" class="inp" id="q-start" data-bind="sheet.start" value="${esc(sh.start)}"></label><label class="field"><span>Minutes</span><input type="number" class="inp" id="q-min" min="5" max="720" step="5" data-bind="sheet.minutes" value="${esc(sh.minutes)}"></label>
-      <label class="field"><span>Pomodoro</span><select class="sel" id="q-pomo" data-bind="sheet.pomo" data-value="${esc(sh.pomo)}"><option value=""${!sh.pomo ? ' selected' : ''}>Use my switch</option>${Object.keys(PRESETS).map(p => `<option value="${p}"${sh.pomo === p ? ' selected' : ''}>${p}</option>`).join('')}</select></label></div>
-      <div class="chips">${[25, 50, 60, 90, 120].map(m => `<button type="button" class="chip-btn ${+sh.minutes === m ? 'on' : ''}" data-act="q-min" data-m="${m}">${fmtDur(m * MIN)}</button>`).join('')}</div>
-      <label class="check"><input type="checkbox" id="q-pin" data-bind="sheet.pin" ${sh.pin ? 'checked' : ''}> Keep it at this time. Untick to let Carrel fit it into free time.</label>`;
-  } else {
-    body = `<label class="field"><span>What is it</span><input class="inp" id="q-btitle" maxlength="60" data-bind="sheet.btitle" value="${esc(sh.btitle)}" placeholder="e.g. Lecture, lab, tuition, doctor" autocomplete="off"></label>
-      <div class="g2"><label class="field"><span>Start</span><input type="time" class="inp" id="q-bstart" data-bind="sheet.start" value="${esc(sh.start)}"></label><label class="field"><span>End</span><input type="time" class="inp" id="q-bend" data-bind="sheet.end" value="${esc(sh.end)}"></label></div>
-      <div class="field"><span>Repeat every week on (leave empty for just this day)</span>${wdChips(sh.days)}</div>
-      <label class="field"><span>Counts as (optional, used when you log it)</span>${actSelect('q-bact', 'sheet.bact', sh.bact, true)}</label>`;
-  }
-  return `<div class="sh-head"><h2 id="sh-title">${esc(longDay(sh.k))}</h2>${closeBtn}</div>${tabs}${body}${errLine(sh)}
-    <div class="sh-foot"><button type="button" class="btn ghost" data-act="sheet-close">Cancel</button><button type="button" class="btn lamp" data-act="q-save">${sh.tab === 'block' ? 'Add to plan' : sh.days.length ? 'Add to timetable' : 'Add busy time'}</button></div>`;
-}
-const HM = /^\d{1,2}:\d{2}/;
-function saveQnew() {
-  const sh = UI.sheet, k = sh.k;
-  sh.err = '';
-  if (sh.tab === 'block') {
-    const m = Math.round(+sh.minutes);
-    if (!ACTMAP[sh.activity]) sh.err = 'Choose an activity.';
-    else if (!(m >= 5 && m <= 720)) sh.err = 'Use between 5 and 720 minutes.';
-    else if (sh.pin && !HM.test(sh.start || '')) sh.err = 'Enter a start time, or untick “Keep it at this time”.';
-    if (sh.err) { renderSheet(); return; }
-    const w = W();
-    w.plan(k, { blocks: { [uid('b')]: blockDoc({ activity: sh.activity, title: (sh.title || '').trim(), minutes: m, order: nextOrder(k), at: sh.pin ? sh.start.slice(0, 5) : null, pomo: sh.pomo || null }) } });
-    UI.ab.activity = sh.activity;
-    closeSheet(true);
-    commit('Planned ' + fmtDur(m * MIN) + ' of ' + act(sh.activity).name + (sh.pin ? ' at ' + fmtHM(sh.start) : '') + ' on ' + dayName(k) + '.', w);
-    return;
-  }
-  const title = (sh.btitle || '').trim() || 'Busy';
-  if (!HM.test(sh.start || '') || !HM.test(sh.end || '')) sh.err = 'Enter a start and an end time.';
-  else if (sh.start.slice(0, 5) === sh.end.slice(0, 5)) sh.err = 'The end time needs to differ from the start.';
-  if (sh.err) { renderSheet(); return; }
-  const w = W();
-  const doc = { title, start: sh.start.slice(0, 5), end: sh.end.slice(0, 5), activity: sh.bact || null };
-  if (sh.days.length) w.update('planning/commitments', { items: { [uid('c')]: Object.assign(doc, { days: sh.days.slice().sort(), from: k, until: null, archived: false }) } }, { items: {} });
-  else w.plan(k, { events: { [uid('v')]: doc } });
-  closeSheet(true);
-  commit(sh.days.length ? 'Added ' + title + ' to your weekly timetable.' : 'Added ' + title + ' on ' + dayName(k) + '.', w);
-}
-function openBusySheet(k, id, rec) {
-  if (rec) {
-    const c = commitmentsMap()[id];
-    if (!c) return;
-    openSheet({ type: 'busy', rec: true, id, k, title: c.title || '', start: c.start || '', end: c.end || '', days: Array.isArray(c.days) ? c.days.slice() : [], bact: c.activity || '', armed: false, err: '' });
-  } else {
-    const ev = ((V.plans[k] && V.plans[k].events) || {})[id];
-    if (!ev) return;
-    openSheet({ type: 'busy', rec: false, id, k, title: ev.title || '', start: ev.start || '', end: ev.end || '', days: [], bact: ev.activity || '', armed: false, err: '' });
-  }
-}
-function sBusy(sh) {
-  return `<div class="sh-head"><h2 id="sh-title">${sh.rec ? 'Timetable item' : 'Busy time'}</h2>${closeBtn}</div>
-    ${sh.k ? `<p class="note-line">${sh.rec ? 'Repeats every week' : esc(longDay(sh.k))}</p>` : ''}
-    <label class="field"><span>What is it</span><input class="inp" id="bz-title" maxlength="60" data-bind="sheet.title" value="${esc(sh.title)}" autocomplete="off"></label>
-    <div class="g2"><label class="field"><span>Start</span><input type="time" class="inp" id="bz-start" data-bind="sheet.start" value="${esc(sh.start)}"></label><label class="field"><span>End</span><input type="time" class="inp" id="bz-end" data-bind="sheet.end" value="${esc(sh.end)}"></label></div>
-    ${sh.rec ? `<div class="field"><span>Days</span>${wdChips(sh.days)}</div>` : ''}
-    <label class="field"><span>Counts as (optional)</span>${actSelect('bz-act', 'sheet.bact', sh.bact, true)}</label>
-    <div class="row">${sh.rec && sh.k ? `<button type="button" class="btn sm" data-act="busy-skip">${icon('skip')}Skip on ${esc(dayName(sh.k))} only</button>` : ''}<button type="button" class="btn sm danger ${sh.armed ? 'armed' : ''}" data-act="busy-del">${icon('trash')}${sh.armed ? 'Tap again to remove' : sh.rec ? 'Remove from timetable' : 'Delete'}</button></div>
-    ${errLine(sh)}
-    <div class="sh-foot"><button type="button" class="btn ghost" data-act="sheet-close">Cancel</button><button type="button" class="btn lamp" data-act="busy-save">Save</button></div>`;
-}
-function openDeadlineSheet(id) {
-  if (id) {
-    const d = deadlinesMap()[id];
-    if (!d) return;
-    openSheet({ type: 'deadline', id, title: d.title || '', date: d.date || todayKey(), time: d.time || '', activity: d.activity || '', kind: d.kind || 'exam', done: !!d.done, armed: false, err: '' });
-  } else openSheet({ type: 'deadline', id: null, title: '', date: addDaysKey(todayKey(), 7), time: '', activity: '', kind: 'exam', done: false, armed: false, err: '' });
-}
-function sDeadline(sh) {
-  const kinds = [['exam', 'Exam or test'], ['due', 'Assignment due'], ['other', 'Other']];
-  return `<div class="sh-head"><h2 id="sh-title">${sh.id ? 'Deadline' : 'New deadline'}</h2>${closeBtn}</div>
-    <label class="field"><span>Title</span><input class="inp" id="dl-title" maxlength="60" data-bind="sheet.title" value="${esc(sh.title)}" placeholder="e.g. Physics unit test" autocomplete="off"></label>
-    <div class="seg" role="group" aria-label="Kind">${kinds.map(([v, t]) => `<button type="button" class="${sh.kind === v ? 'on' : ''}" data-act="dl-kind" data-v="${v}" aria-pressed="${sh.kind === v}">${t}</button>`).join('')}</div>
-    <div class="g2"><label class="field"><span>Date</span><input type="date" class="inp" id="dl-date" data-bind="sheet.date" value="${esc(sh.date)}"></label><label class="field"><span>Time (optional)</span><input type="time" class="inp" id="dl-time" data-bind="sheet.time" value="${esc(sh.time)}"></label></div>
-    <label class="field"><span>Subject (optional)</span>${actSelect('dl-act', 'sheet.activity', sh.activity, true)}</label>
-    ${/^\d{4}-\d{2}-\d{2}$/.test(sh.date || '') ? `<p class="note-line">${esc(longDay(sh.date))}, ${countdown(sh.date)}.</p>` : ''}
-    ${errLine(sh)}
-    <div class="sh-foot"><div class="left">${sh.id ? `<button type="button" class="btn sm danger ${sh.armed ? 'armed' : ''}" data-act="dl-del">${icon('trash')}${sh.armed ? 'Tap again to delete' : 'Delete'}</button><button type="button" class="btn sm ghost" data-act="dl-done">${icon('check')}${sh.done ? 'Not done' : 'Done'}</button>` : ''}</div><button type="button" class="btn ghost" data-act="sheet-close">Cancel</button><button type="button" class="btn lamp" data-act="dl-save">Save</button></div>`;
-}
-function openTaskSheet(id) {
-  const t = id ? backlogMap()[id] : null;
-  if (id && !t) return;
-  openSheet({ type: 'task', id: id || null, title: t ? t.title : '', activity: t && ACTMAP[t.activity] ? t.activity : (ACTMAP[UI.ta.activity] ? UI.ta.activity : firstStudyId()), minutes: t ? (+t.minutes || 60) : 60, due: (t && t.due) || '', prio: t ? (+t.prio || 2) : 2, day: addDaysKey(todayKey(), 1), err: '' });
-}
-function sTask(sh) {
-  const tk = todayKey();
-  return `<div class="sh-head"><h2 id="sh-title">${sh.id ? 'Task' : 'New task'}</h2>${closeBtn}</div>
-    <label class="field"><span>Task</span><input class="inp" id="tk-title" maxlength="80" data-bind="sheet.title" value="${esc(sh.title)}" placeholder="e.g. Chapter 7 problems 1–30" autocomplete="off"></label>
-    ${actPick(sh.activity, 'sheet.activity')}
-    <div class="g2"><label class="field"><span>Minutes needed</span><input type="number" class="inp" id="tk-min" min="5" max="720" step="5" data-bind="sheet.minutes" value="${esc(sh.minutes)}"></label><label class="field"><span>Due (optional)</span><input type="date" class="inp" id="tk-due" data-bind="sheet.due" value="${esc(sh.due)}"></label></div>
-    <div class="chips">${[30, 60, 90, 120, 180].map(m => `<button type="button" class="chip-btn ${+sh.minutes === m ? 'on' : ''}" data-act="task-min" data-m="${m}">${fmtDur(m * MIN)}</button>`).join('')}</div>
-    <div class="field"><span>Priority</span><div class="seg" role="group" aria-label="Priority">${[[1, 'High'], [2, 'Normal'], [3, 'Low']].map(([v, t]) => `<button type="button" class="${+sh.prio === v ? 'on' : ''}" data-act="task-prio" data-v="${v}" aria-pressed="${+sh.prio === v}">${t}</button>`).join('')}</div></div>
-    <div class="field"><span>Schedule it</span>
-      <div class="row"><button type="button" class="btn sm lamp" data-act="task-sched" data-w="find">${icon('wand')}Find time</button><button type="button" class="btn sm" data-act="task-sched" data-w="today">Today</button><button type="button" class="btn sm" data-act="task-sched" data-w="tomorrow">Tomorrow</button></div>
-      <div class="row"><input type="date" class="inp sm" id="tk-day" data-bind="sheet.day" value="${esc(sh.day)}" min="${tk}" aria-label="Pick a day"><button type="button" class="btn sm" data-act="task-sched" data-w="day">Add to that day</button></div>
-      <span class="muted" style="font-weight:400;font-size:12px">Find time picks the first day${sh.due ? ' up to the due date' : ''} with enough free time around your timetable.</span></div>
-    ${errLine(sh)}
-    <div class="sh-foot"><div class="left">${sh.id ? `<button type="button" class="btn sm ghost" data-act="task-done">${icon('check')}Done, remove it</button>` : ''}</div><button type="button" class="btn ghost" data-act="sheet-close">Cancel</button><button type="button" class="btn lamp" data-act="task-save">Save to backlog</button></div>`;
-}
-function taskFromSheet() {
-  const sh = UI.sheet, m = Math.round(+sh.minutes);
-  sh.err = '';
-  if (!String(sh.title || '').trim()) sh.err = 'Give the task a name.';
-  else if (!ACTMAP[sh.activity]) sh.err = 'Choose a subject or activity.';
-  else if (!(m >= 5 && m <= 720)) sh.err = 'Use between 5 and 720 minutes.';
-  else if (sh.due && !/^\d{4}-\d{2}-\d{2}$/.test(sh.due)) sh.err = 'Pick a valid due date.';
-  if (sh.err) { renderSheet(); return null; }
-  return { title: String(sh.title).trim().slice(0, 80), activity: sh.activity, minutes: m, due: sh.due || null, prio: +sh.prio || 2 };
-}
-function openBlockSheet(k, id) {
-  const b = blocksOf(k)[id];
-  if (!b) return;
-  openSheet({ type: 'block', k, id, armed: false, err: '', b: { activity: b.activity, title: b.title || '', minutes: b.minutes, at: b.at || '', pomo: b.pomo || '', day: k } });
-}
-function saveBlockSheet() {
-  const sh = UI.sheet, b = sh.b, tk = todayKey(), m = Math.round(+b.minutes);
-  sh.err = '';
-  if (!ACTMAP[b.activity]) sh.err = 'Choose an activity.';
-  else if (!(m >= 5 && m <= 720)) sh.err = 'Use between 5 and 720 minutes.';
-  else if (b.at && !HM.test(b.at)) sh.err = 'Enter a start time, or leave it empty to fit it in automatically.';
-  else if (b.day && !/^\d{4}-\d{2}-\d{2}$/.test(b.day)) sh.err = 'Choose a day.';
-  else if (b.day && b.day !== sh.k && b.day < tk) sh.err = 'Pick today or a later day.';
-  if (sh.err) { renderSheet(); return; }
-  const patch = { activity: b.activity, title: (b.title || '').trim(), minutes: m, at: b.at ? b.at.slice(0, 5) : null, pomo: b.pomo || null };
-  const w = W();
-  if (b.day && b.day !== sh.k) {
-    const r = (planModelFor(sh.k) || { rows: [] }).rows.find(x => x.id === sh.id);
-    const done = r ? Math.round(r.done / MIN) : 0;
-    w.plan(sh.k, { blocks: { [sh.id]: done >= 1 ? { minutes: done, status: 'done' } : null } });
-    w.plan(b.day, { blocks: { [uid('b')]: blockDoc(Object.assign({}, patch, { minutes: Math.max(5, m - done), order: nextOrder(b.day) })) } });
-    closeSheet(true);
-    commit('Moved the block to ' + dayName(b.day) + '.', w);
-    return;
-  }
-  w.plan(sh.k, { blocks: { [sh.id]: patch } });
-  closeSheet(true);
-  commit('Saved the block.', w);
-}
-
 /* ---------- planning actions ---------- */
 function moveBlock(k1, id, k2, s) {
   const now = Date.now(), tk = todayKey();
@@ -568,7 +340,7 @@ function colAt(x, y) {
   return null;
 }
 document.addEventListener('pointerdown', e => {
-  if (DRAG || UI.view !== 'calendar' || UI.sheet) return;
+  if (DRAG || UI.view !== 'plan' || UI.sheet) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   const t = e.target;
   if (!t || !t.closest) return;
@@ -707,7 +479,7 @@ Object.assign(ACT, {
   'cal-next'() { calShift(1); },
   'cal-today'() { UI.cal.anchor = null; UI.cal.mm = null; UI.cal.scrollTo = true; render(); },
   'cal-pick'(el) { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) { UI.cal.anchor = el.value; UI.cal.mm = null; UI.cal.scrollTo = true; render(); } },
-  'cal-open'(el) { UI.cal.anchor = el.getAttribute('data-k'); UI.view = 'calendar'; UI.cal.mm = null; UI.cal.scrollTo = true; try { history.replaceState(null, '', '#calendar'); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
+  'cal-open'(el) { UI.cal.anchor = el.getAttribute('data-k'); UI.view = 'plan'; UI.cal.mm = null; UI.cal.scrollTo = true; try { history.replaceState(null, '', '#plan'); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
   'mm-day'(el) { UI.cal.anchor = el.getAttribute('data-k'); UI.cal.scrollTo = true; render(); },
   'mm-prev'() { UI.cal.mm = shiftMonth(mmBase(), -1); render(); },
   'mm-next'() { UI.cal.mm = shiftMonth(mmBase(), 1); render(); },
@@ -721,7 +493,7 @@ Object.assign(ACT, {
   'cal-busy'(el) { openBusySheet(el.getAttribute('data-k'), el.getAttribute('data-id'), el.getAttribute('data-rec') === '1'); },
   'cal-new'() {
     const tk = todayKey(), now = Date.now();
-    const days = UI.view === 'calendar' ? calDays() : [tk];
+    const days = UI.view === 'plan' ? calDays() : [tk];
     const k = days.includes(tk) || days[0] < tk ? tk : days[0];
     const ds = dayStartMs(k);
     const s = k === tk ? ds + Math.ceil((now - ds) / SNAP) * SNAP : hmOnDay(k, CFG.planStart);

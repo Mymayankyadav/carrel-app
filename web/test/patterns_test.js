@@ -25,12 +25,16 @@ const seven = Array.from({length:7},(_,i)=>entry(String(i), L.addDaysKey('2026-1
 const pm7 = L.patternsModel(seven, now, 4);
 assert.equal(pm7.studyDays, 7, 'threshold counts distinct days, not hours or sessions');
 
-const app = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
-const css = fs.readFileSync(path.join(__dirname, '../style.css'), 'utf8');
+const app = require('./src').app;
+const css = require('./src').css;
 function section(name, after) {
-  const i=app.indexOf('function '+name+'('), j=app.indexOf('function '+after+'(',i);
-  assert(i >= 0 && j > i, 'found function '+name);
-  return app.slice(i,j);
+  const i=app.indexOf('function '+name+'('), next=app.indexOf('function '+after+'(',i);
+  assert(i >= 0, 'found function '+name);
+  const match=/^function [A-Za-z_$]/gm;
+  match.lastIndex=i+9;
+  let m=match.exec(app);
+  const j=next>i ? (m?Math.min(next,m.index):next) : (m?m.index:app.length);
+  return app.slice(i,j).replace(/^VIEWS\.[^\n]*$/gm,'').replace(/^SHEETS\.[^\n]*$/gm,'');
 }
 const context = { esc: s=>String(s), MIN, HOUR,
   fmtDur: ms=>Math.round(ms/MIN)+'m',
