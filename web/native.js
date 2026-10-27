@@ -20,7 +20,7 @@ const DL = {
 };
 
 /* ----- phone notification (the CarrelLive plugin) ----- */
-const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifications: true, exactAlarms: true };
+const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifDistractions: false, notifications: true, exactAlarms: true };
 let nbDone = false, nsSig = '';
 
 /* Native may have refreshed the login while the app was closed; pick up the newer tokens before supabase-js starts. */
@@ -82,23 +82,40 @@ function nativeSync() {
 
 function vPhonePanel() {
   if (!CL) return '';
-  const row = (k, label) => `<div class="row"><span class="note-line">${label}</span><button type="button" class="btn sm" data-act="np-toggle" data-k="${k}" aria-pressed="${NP[k] ? 'true' : 'false'}" aria-label="${esc(label)}: ${NP[k] ? 'On' : 'Off'}">${NP[k] ? 'On' : 'Off'}</button></div>`;
-  return `<div class="setsec"><h3>Phone notification</h3>
-    <p class="note-line">The running timer in your notification shade, with Urge, Drifted, Park, Stop and Take break buttons.</p>
-    ${NP.notifications === false ? `<div class="row"><span class="note-line">Notifications are off for Carrel.</span><button type="button" class="btn sm" data-act="np-notif">Allow</button></div>` : ''}
-    ${row('vibrateFocus', 'Vibrate when focus time ends')}
-    ${row('vibrateBreak', 'Vibrate when a break ends')}
-    ${row('respectDnd', 'Stay quiet in Do Not Disturb')}
-    ${row('privacy', 'Hide details on the lock screen')}
-    <div class="row"><span class="note-line">Last buzz: ${esc(NP.lastNudge || 'none yet')}</span><span><button type="button" class="btn sm" data-act="np-test">Test buzz</button> <button type="button" class="btn sm ghost" data-act="np-check">Refresh</button></span></div>
-    <div class="row"><span class="note-line">${NP.exactAlarms === false ? 'Exact alarms are off, so the vibration can arrive a few minutes late.' : 'Exact alarms are allowed.'}</span><button type="button" class="btn sm" data-act="np-exact">Open settings</button></div>
-    <div class="row"><span class="note-line">${UPDI.apk ? `<b>New app version available.</b>` : `App build ${UPDI.build || '?'}, web code ${esc(UPDI.bundle || 'built in')}.`} ${esc(UPDI.web)}</span><span>${UPDI.apk ? `<button type="button" class="btn sm" data-act="upd-apk">Download</button> ` : ''}<button type="button" class="btn sm ghost" data-act="upd-check">${UPDI.busy ? 'Checking' : 'Check now'}</button></span></div>
-    <div class="row"><span class="note-line">If the notification stops updating, let Carrel run in the background.</span><button type="button" class="btn sm" data-act="np-battery">Battery settings</button></div>
-  </div>`;
+  const toggles = [
+    ['vibrateFocus', 'Vibrate when focus ends'],
+    ['vibrateBreak', 'Vibrate when a break ends'],
+    ['respectDnd', 'Quiet in Do Not Disturb'],
+    ['privacy', 'Hide on lock screen'],
+    ['notifDistractions', 'Noticed buttons']
+  ];
+  if (typeof kRow === 'function' && typeof kSwitch === 'function' && typeof kCollapse === 'function') {
+    const toggle = ([k, label]) => kRow({ label, right: kSwitch({ act: 'np-toggle', on: !!NP[k], label })
+      .replace('data-act="np-toggle"', 'data-act="np-toggle" data-k="' + k + '"') });
+    const blocked = NP.notifications === false ? kRow({ label: 'Notifications blocked',
+      right: '<button type="button" class="k-btn text" data-act="np-notif">Allow</button>' }) : '';
+    const troubleshooting = kRow({ label: 'Exact alarms', value: NP.exactAlarms === false ? 'Off' : 'Allowed', open: true, attrs: 'data-act="np-exact"' }) +
+      kRow({ label: 'Background activity', open: true, attrs: 'data-act="np-battery"' }) +
+      kRow({ label: 'Test vibration', value: NP.lastNudge || '', open: true, attrs: 'data-act="np-test"' });
+    return blocked + toggles.map(toggle).join('') + kCollapse('r5-troubleshoot', 'Troubleshoot', troubleshooting);
+  }
+  const row = ([k, label]) => '<div class="row"><span class="note-line">' + esc(label) + '</span>' +
+    '<button type="button" class="btn sm" data-act="np-toggle" data-k="' + k + '" aria-pressed="' +
+    (!!NP[k]) + '" aria-label="' + esc(label) + '">' + (NP[k] ? 'On' : 'Off') + '</button></div>';
+  return '<div class="setsec">' +
+    (NP.notifications === false ? '<div class="row">Notifications blocked <button class="btn sm" data-act="np-notif">Allow</button></div>' : '') +
+    toggles.map(row).join('') +
+    '<div class="row"><button class="btn text" data-act="np-exact">Exact alarms</button>' + (NP.exactAlarms === false ? 'Off' : 'Allowed') + '</div>' +
+    '<div class="row"><button class="btn text" data-act="np-battery">Background activity</button></div>' +
+    '<div class="row"><button class="btn text" data-act="np-test">Test vibration</button></div></div>';
 }
+
+// R0a's page registry is not present on legacy main; register only when the new shell exists.
+if (typeof PAGES !== 'undefined') PAGES['settings.notifications'] = { title: 'Notifications', render: () => vPhonePanel() };
 Object.assign(ACT, {
   'np-toggle'(el) {
     const k = el.getAttribute('data-k');
+    if (!['vibrateFocus', 'vibrateBreak', 'respectDnd', 'privacy', 'notifDistractions'].includes(k)) return;
     NP[k] = !NP[k];
     if (CL) CL.setPrefs({ [k]: NP[k] }).then(p => { Object.assign(NP, p); changed(); }).catch(() => {});
     changed();
