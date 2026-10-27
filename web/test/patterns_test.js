@@ -34,7 +34,8 @@ function section(name, after) {
   match.lastIndex=i+9;
   let m=match.exec(app);
   const j=next>i ? (m?Math.min(next,m.index):next) : (m?m.index:app.length);
-  return app.slice(i,j);
+  const registration = app.indexOf('\nVIEWS.', i);
+  return app.slice(i, registration > i ? Math.min(j, registration) : j);
 }
 const context = { esc: s=>String(s), MIN, HOUR,
   fmtDur: ms=>Math.round(ms/MIN)+'m',
