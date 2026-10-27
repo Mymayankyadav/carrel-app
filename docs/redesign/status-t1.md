@@ -16,12 +16,13 @@ Branch: `redesign/t1-today`, stacked on T2 PR #21.
 - The old helper functions and styles still exist in the same file during transition to protect other modules' calls. Phase-3 integrator should remove only after a global reference sweep. **No frozen core/shell edits**.
 - `buildActs` currently drops the optional per-activity `today` pinned flag. Until the integrator threads it through, the view defaults to all Study + Break + Sleep; Settings Activities needs to persist and expose the optional `today` value if pinning is to be user-configurable.
 - Default Settings Pomodoro preference remains `UI.pomoOn`; the advanced preset UI lives in T2.
-- Focus feedback buttons after stopping and final UX cleanup remain to be completed in T1; do not claim final Phase-2 acceptance.
+- Post-study Focus? rating controls (Scattered, Okay, Deep) now write through the existing W().day commit contract, remain available for up to 60s and clear after selection.
+- Obsolete Today JavaScript renderers were deleted after checking every other loaded UI module for consumers. Legacy CSS still requires integrator reference sweep and screenshot approval.
 
 ## Checks
 - [x] Initial implementation and unit assertions committed.
-- [ ] Complete CI web build and all JavaScript tests.
-- [ ] Four viewport browser screenshots, interaction and accessibility checks.
+- [x] Full web build and Node tests passed at [CI #40558843115](https://github.com/Mymayankyadav/carrel-app/actions/runs/40558843115), including the rewritten Today regression suite.
+- [ ] Four viewport browser screenshots, interaction and accessibility checks ([QA-only PR #24](https://github.com/Mymayankyadav/carrel-app/pull/24)).
 - [ ] Physical Android notification, system Back, keyboard, Wake Lock and long press acceptance.
 
 **Do not merge/deploy** until upstream PRs land in the required order and T1 acceptance is complete.
