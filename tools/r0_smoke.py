@@ -36,7 +36,7 @@ with sync_playwright() as p:
     # Registering a page must not erase the underlying tab or interfere with Escape.
     page.evaluate("openPage('settings','kit')")
     assert page.evaluate('UI.pages.length')==1
-    expect(page.locator('.k-page .k-page-title')).to_contain_text('Kit gallery')
+    expect(page.locator('.k-page > .k-page-head .k-page-title')).to_contain_text('Kit gallery')
     page.keyboard.press('Escape')
     assert page.evaluate('UI.pages.length')==0,'Escape must close subpage'
     # Editing while mock data is loaded must open exactly one sheet; no click-through.
