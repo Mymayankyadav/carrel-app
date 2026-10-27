@@ -122,7 +122,7 @@ function vCalHead(k, now, tk, m) {
     if (cap && cap.need > 0) {
       const over = cap.need > cap.free;
       const pct = cap.free > 0 ? Math.min(100, cap.need / cap.free * 100) : 100;
-      load = `<div class="cv-load ${over ? 'over' : ''}" title="${fmtDur(cap.need)} planned, ${fmtDur(cap.free)} free in your planning hours"><span>${over ? fmtDur(cap.need - cap.free) + ' too much' : fmtDur(cap.free - cap.need) + ' spare'}</span><span class="tr"><i style="width:${pct.toFixed(1)}%"></i></span></div>`;
+      load = `<div class="cv-load ${over ? 'over' : ''}" title="${over ? 'Planned ' + fmtDur(cap.need - cap.free) + ' more than the free time today' : fmtDur(cap.need) + ' planned, ' + fmtDur(cap.free) + ' free in your planning hours'}"><span>${over ? fmtDur(cap.need - cap.free) + ' over' : fmtDur(cap.free - cap.need) + ' spare'}</span><span class="tr"><i style="width:${pct.toFixed(1)}%"></i></span></div>`;
     } else if (cap && cap.free > 0) load = `<div class="cv-load"><span>${fmtDur(cap.free)} free</span><span class="tr"><i style="width:0"></i></span></div>`;
   } else {
     const a = aggregate(ENTRIES, now, k, k)[k];
