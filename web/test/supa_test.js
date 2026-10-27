@@ -5,9 +5,20 @@ const assert = require('assert');
 function deepMerge(t, s) { t = Object.assign({}, t); for (const k of Object.keys(s)) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && t[k] && typeof t[k] === 'object') t[k] = deepMerge(t[k], s[k]); else t[k] = s[k]; } return t; }
 function fakeSb(rows, hooks) {
   hooks = hooks || {};
-  const log = { filters: [], rpcs: [] };
+  const log = { filters: [], rpcs: [], channels: [] };
   const sb = {
     log,
+    channel(name) {
+      const handlers = [];
+      const ch = {
+        name, handlers,
+        on(type, config, callback) { handlers.push({ type, config, callback }); return ch; },
+        subscribe(callback) { if (callback) callback('SUBSCRIBED'); return ch; }
+      };
+      log.channels.push(ch);
+      return ch;
+    },
+    removeChannel() { },
     from() {
       const st = { f: [] };
       const qb = {
@@ -77,6 +88,24 @@ const tick = () => new Promise(r => setTimeout(r, 5));
   assert.strictEqual(cur.exists, true);
   await db.doc('state/current').update({ running: true, id: 'x' });
   assert.strictEqual(cur.data().running, true, 'local echo reached the listener');
+
+  // INSERT/UPDATE are owner-filtered, but DELETE must be unfiltered by Supabase.
+  const handlers = sb.log.channels[0].handlers;
+  assert.deepStrictEqual(handlers.map(h => h.config.event), ['INSERT', 'UPDATE', 'DELETE']);
+  assert.ok(handlers.slice(0, 2).every(h => h.config.filter === 'owner=eq.u1'));
+  const deleted = handlers[2];
+  assert.ok(!('filter' in deleted.config), 'DELETE subscription must not be filtered');
+  deleted.callback({ eventType: 'DELETE', old: { owner: 'other-user', path: 'state/current' } });
+  assert.strictEqual(cur.exists, true, 'foreign owners cannot evict the cached document');
+  deleted.callback({ eventType: 'DELETE', old: { path: 'state/current' } });
+  assert.strictEqual(cur.exists, true, 'missing owner cannot evict the cached document');
+  deleted.callback({ eventType: 'DELETE', old: { owner: 'u1', path: 'state/current' } });
+  assert.strictEqual(cur.exists, false, 'cross-device DELETE removes cached document and notifies subscribers');
+  handlers[0].callback({ eventType: 'INSERT', new: { owner: 'u1', path: 'state/current', data: { running: true } } });
+  assert.strictEqual(cur.exists, true, 'cross-device INSERT restores cached document');
+  handlers[1].callback({ eventType: 'UPDATE', new: { owner: 'other-user', path: 'state/current', data: { running: false } } });
+  assert.strictEqual(cur.data().running, true, 'foreign UPDATE ignored');
+
   assert.strictEqual(sb.log.rpcs.at(-1)[0], 'doc_merge');
   assert.strictEqual(sb.log.rpcs.at(-1)[1].p_ensure, null);
 
@@ -98,6 +127,17 @@ const tick = () => new Promise(r => setTimeout(r, 5));
   await assert.rejects(dbAuth.doc('a/b').set({}), e => e.code === 'not_granted');
   const dbBad = makeDb(fakeSb(new Map(), { rpcError: { code: '23514', message: 'check violation' } }), 'u1', {});
   await assert.rejects(dbBad.doc('a/b').set({}), e => e.code === 'invalid_argument');
+  for (const [code, expected] of [
+    ['P0002', 'invalid_argument'], ['22007', 'invalid_argument'],
+    ['23505', 'invalid_argument'], ['42P01', 'invalid_argument'],
+    ['42883', 'invalid_argument'], ['42703', 'unavailable'],
+    ['40001', 'unavailable'], ['PGRST202', 'unavailable']
+  ]) {
+    const errDb = makeDb(fakeSb(new Map(), { rpcError: { code, message: 'database failure' } }), 'u1', {});
+    await assert.rejects(errDb.doc('a/b').set({}), e => e.code === expected,
+      'SQLSTATE ' + code + ' should be ' + expected);
+    errDb.close();
+  }
 
   // refresh drops rows deleted elsewhere
   rows.delete('days/2026-10-21');
