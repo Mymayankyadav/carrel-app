@@ -156,13 +156,16 @@ function vCalCol(k, now, tk, m) {
 function calItem(it, k, y, left, width) {
   const top = y(it.s), h = Math.max(15, y(it.e) - top - 2);
   const pos = `top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;left:calc(${left.toFixed(2)}% + 2px);width:calc(${width.toFixed(2)}% - 4px)`;
-  const size = h < 27 ? 'xs' : h < 46 ? 'sm' : '';
+  // Single-day columns can still have 3+ overlapping events; on a phone,
+  // 3-day and week columns are narrow even without overlap.
+  const narrow = it.ncol >= 3 || (window.innerWidth < 480 && (it.ncol >= 2 || UI.cal.view !== 'day'));
+  const size = [h < 27 ? 'xs' : h < 46 ? 'sm' : '', narrow ? 'ce-narrow' : ''].filter(Boolean).join(' ');
   const span = `${fmtT(it.s)}–${fmtT(it.e)}`;
   if (it.kind === 'busy') {
     const z = it.z, c = z.activity && ACTMAP[z.activity] ? act(z.activity).color : 'var(--ink-3)';
     if (z.gcal) {
       const inner = `<span class="t">${icon('cal', 'pi')}${esc(z.title)}</span><span class="m">${span} · Google Calendar</span>`;
-      return z.link ? `<a class="ce ce-busy gcal ${size}" style="${pos}" href="${esc(z.link)}" target="_blank" rel="noopener" data-key="${esc(z.id)}" aria-label="Google Calendar: ${esc(z.title)}, ${span}">${inner}</a>` : `<div class="ce ce-busy gcal ${size}" style="${pos}" data-key="${esc(z.id)}">${inner}</div>`;
+      return z.link ? `<a class="ce ce-busy gcal ${size}" style="${pos}" href="${esc(z.link)}" target="_blank" rel="noopener" data-key="${esc(z.id)}" aria-label="Google Calendar: ${esc(z.title)}, ${span}">${inner}</a>` : `<div class="ce ce-busy gcal ${size}" style="${pos}" data-key="${esc(z.id)}" role="img" aria-label="Google Calendar: ${esc(z.title)}, ${span}">${inner}</div>`;
     }
     return `<button type="button" class="ce ce-busy ${size}" style="${pos};--c:${c}" data-act="cal-busy" data-k="${k}" data-id="${esc(z.id)}" data-rec="${z.rec ? 1 : 0}" data-key="z-${esc(z.id)}" aria-label="Busy: ${esc(z.title)}, ${span}"><span class="t">${esc(z.title)}</span><span class="m">${span}${z.rec ? ' · weekly' : ''}</span></button>`;
   }
