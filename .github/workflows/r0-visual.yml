@@ -35,6 +35,10 @@ jobs:
       - name: Kit gallery and navigation smoke tests
         run: |
           python3 tools/shots.py screenshots/gallery --js "openPage('settings','kit')"
+      - name: Legacy sheet and editor snapshots
+        run: |
+          python3 tools/shots.py screenshots/entry-sheet --js "openEntrySheet('add')"
+          python3 tools/shots.py screenshots/plan-sheet --js "ACT['cal-new']()"
       - name: Preserve screenshots and failure evidence
         if: always()
         uses: actions/upload-artifact@v4
