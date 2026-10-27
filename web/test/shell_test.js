@@ -10,6 +10,11 @@ const between=(a,b)=>{
   return shell.slice(from,to);
 };
 assert.equal(manifest.js.at(-1),'boot.js');
+const combined=fs.readFileSync(path.join(__dirname,'../logic.js'),'utf8')+
+  String.fromCharCode(10)+manifest.js.map(p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8')).join(String.fromCharCode(10));
+assert.doesNotThrow(()=>new vm.Script(combined),'bundled modules parse as one script');
+assert.ok(combined.indexOf('SUBMIT = {}')<combined.indexOf('Object.assign(SUBMIT,'),'submit registry ready');
+
 assert.equal(manifest.js[2],'core/state.js');
 assert.equal(manifest.css[0],'ui/kit.css');
 assert.ok(manifest.js.includes('ui/shell.js'));
