@@ -717,9 +717,13 @@ function planAddBlock(k) {
 function planReorder(k, id, dir) {
   const pm = planModelFor(k);
   if (!pm) return;
-  const ids = pm.rows.map(r => r.id);
-  const i = ids.indexOf(id), j = i + dir;
-  if (i < 0 || j < 0 || j >= ids.length) return;
+  const rows = planDisplayRows(pm);
+  const i = rows.findIndex(r => r.id === id);
+  if (i < 0 || rows[i].at || !(rows[i].remaining > 0)) return;
+  let j = i + dir;
+  while (j >= 0 && j < rows.length && (rows[j].at || !(rows[j].remaining > 0))) j += dir;
+  if (j < 0 || j >= rows.length) return;
+  const ids = rows.map(r => r.id);
   [ids[i], ids[j]] = [ids[j], ids[i]];
   const blocks = {};
   ids.forEach((x, n) => { blocks[x] = { order: n + 1 }; });
@@ -1144,6 +1148,13 @@ function vSwitcher(now, agg) {
 }
 
 /* ---------- views: plan ---------- */
+function planDisplayRows(pm) {
+  const done = pm.rows.filter(r => !(r.remaining > 0));
+  const live = pm.rows.filter(r => r.remaining > 0);
+  const time = r => r.st === 'active' ? -Infinity : r.pieces.length ? r.pieces[0][0] : Infinity;
+  live.sort((a, b) => (time(a) - time(b)) || (a.order - b.order) || a.id.localeCompare(b.id));
+  return done.concat(live);
+}
 function vPlan(k, pm, now) {
   const plan = V.plans[k], tk = todayKey();
   const isToday = k === tk, isPast = k < tk, editable = !isPast;
@@ -1165,7 +1176,7 @@ function vPlan(k, pm, now) {
   }
   if (plan && plan.note) parts.push(`<div class="p-note"><span class="lbl">${plan.source === 'claude' ? 'From Claude' : 'Note'}</span><p>${esc(plan.note)}</p></div>`);
   if (isToday) parts.push(vCarry(k));
-  if (!isPast) { const bz = busyOf(k); if (bz.length) parts.push(`<p class="p-sum"><span>Busy: ${bz.map(b => `<b>${esc(b.title)}</b> <span class="num">${fmtT(b.s)}–${fmtT(b.e)}</span>`).join(' · ')}</span></p>`); }
+  if (!isPast) { const bz = busyOf(k); if (bz.length) parts.push(`<p class="p-sum"><span>Busy: ${bz.map(b => `<span class="busy-it"><b>${esc(b.title)}</b> <span class="num">${fmtT(b.s)}–${fmtT(b.e)}</span></span>`).join(' · ')}</span></p>`); }
   if (pm && pm.rows.length) {
     const prog = pm.rows.filter(r => r.st !== 'skipped' && r.target > 0).map(r => {
       const a = act(r.activity);
@@ -1177,7 +1188,7 @@ function vPlan(k, pm, now) {
     if (!isPast && pm.finish) sum.push(`<span>finish ≈ <b class="num">${fmtT(pm.finish)}</b></span>`);
     if (pm.orig && Math.abs(pm.orig - pm.planned) >= 5 * MIN) sum.push(`<span class="muted">first planned ${fmtDur(pm.orig)}</span>`);
     parts.push(`<div class="p-prog" role="img" aria-label="${Math.round(pm.done / Math.max(pm.planned, 1) * 100)}% of planned time done">${prog}</div><p class="p-sum">${sum.join('')}</p>`);
-    parts.push(`<ol class="blocks">${pm.rows.map(r => vBlk(r, k, pm, editable)).join('')}</ol>`);
+    parts.push(`<ol class="blocks">${planDisplayRows(pm).map(r => vBlk(r, k, pm, editable)).join('')}</ol>`);
     if (editable && pm.over > 0) {
       const ext = roundUpMs(pm.finish, 15 * MIN);
       parts.push(`<div class="banner warn"><p><b>${fmtDur(pm.over)} won’t fit before ${fmtT(pm.endMs)}.</b> At this pace you finish around ${fmtT(pm.finish)}.</p><div class="row"><button type="button" class="btn sm" data-act="plan-shrink">${icon('shrink')}Shrink to fit</button><button type="button" class="btn sm" data-act="plan-overflow">${icon('next')}Move overflow to ${k === tk ? 'tomorrow' : 'the next day'}</button><button type="button" class="btn sm ghost" data-act="plan-extend" data-t="${msToHm(ext)}">Work until ${fmtT(ext)}</button></div></div>`);
@@ -1218,9 +1229,17 @@ function vBlk(r, k, pm, editable) {
   const tags = [];
   if (r.st === 'active') tags.push('<span class="tag live">now</span>');
   if (r.over > 0) tags.push(`<span class="tag warn">${fmtDur(r.over)} over</span>`);
-  if (r.clash) tags.push('<span class="tag warn">overlap</span>');
+  if (r.clash) {
+    const overlap = busyOf(k).find(b => r.pieces.some(([s, e]) => b.s < e && b.e > s));
+    const explanation = overlap ? 'Clashes with ' + overlap.title : 'Clashes with busy time';
+    tags.push(`<span class="tag warn" title="${esc(explanation)}">${esc(explanation)}</span>`);
+  }
   if (r.from) tags.push('<span class="tag brass">carried</span>');
-  if (r.pomo) tags.push(`<span class="tag">${esc(r.pomo)}</span>`);
+  if (r.pomo) {
+    const preset = parsePreset(r.pomo);
+    const label = preset ? preset.focus + '-minute focus, ' + preset.short + '-minute breaks' : 'Pomodoro preset';
+    tags.push(`<span class="tag" title="${esc(label)}" aria-label="${esc(label)}">${esc(r.pomo)} pomo</span>`);
+  }
   const live = r.st === 'open' || r.st === 'partial';
   const go = editable && live && pm.isToday ? `<button type="button" class="icon-btn blk-go" data-act="blk-start" data-id="${r.id}" aria-label="Start ${esc(a.name)} now">${icon('play')}</button>` : '';
   let acts = '';
@@ -1228,7 +1247,7 @@ function vBlk(r, k, pm, editable) {
     const b = [];
     if (pm.isToday && (live || r.st === 'done')) b.push(`<button type="button" class="btn sm lamp" data-act="blk-start" data-id="${r.id}">${icon('play')}Start</button>`);
     b.push(`<button type="button" class="btn sm" data-act="blk-min" data-id="${r.id}" data-d="-15">−15m</button><button type="button" class="btn sm" data-act="blk-min" data-id="${r.id}" data-d="15">+15m</button>`);
-    b.push(`<button type="button" class="btn sm" data-act="blk-move" data-id="${r.id}" data-d="-1" aria-label="Move up">${icon('up')}</button><button type="button" class="btn sm" data-act="blk-move" data-id="${r.id}" data-d="1" aria-label="Move down">${icon('down')}</button>`);
+    if (!r.at && r.remaining > 0) b.push(`<button type="button" class="btn sm" data-act="blk-move" data-id="${r.id}" data-d="-1" aria-label="Move up">${icon('up')}</button><button type="button" class="btn sm" data-act="blk-move" data-id="${r.id}" data-d="1" aria-label="Move down">${icon('down')}</button>`);
     if (live) b.push(`<button type="button" class="btn sm" data-act="blk-status" data-id="${r.id}" data-s="done">${icon('check')}Done</button><button type="button" class="btn sm" data-act="blk-status" data-id="${r.id}" data-s="skipped">${icon('skip')}Skip</button><button type="button" class="btn sm" data-act="blk-tomorrow" data-id="${r.id}">${icon('next')}Next day</button>`);
     else b.push(`<button type="button" class="btn sm" data-act="blk-status" data-id="${r.id}" data-s="open">Reopen</button>`);
     if (r.missed) b.push(`<button type="button" class="btn sm" data-act="blk-unfix" data-id="${r.id}">Do it later today</button>`);
@@ -1238,7 +1257,7 @@ function vBlk(r, k, pm, editable) {
   return `<li class="blk st-${r.st} ${r.over > 0 ? 'over' : ''} ${r.missed ? 'missed' : ''}" style="--c:${a.color}" data-key="${r.id}">
     <div class="blk-row"><button type="button" class="blk-main" ${editable ? `data-act="blk-toggle" data-id="${r.id}" aria-expanded="${open}"` : 'disabled'}>
       <span class="blk-time">${time}</span>
-      <span class="blk-body"><span class="blk-name"><i class="dot"></i><span class="nm">${esc(a.name)}</span>${tags.join('')}</span>${r.title ? `<span class="blk-title">${esc(r.title)}</span>` : ''}<span class="blk-bar"><i style="width:${pct.toFixed(1)}%"></i></span></span>
+      <span class="blk-body"><span class="blk-name"><i class="dot"></i><span class="nm">${esc(a.name)}</span>${tags.length ? `<span class="blk-tags">${tags.join('')}</span>` : ''}</span>${r.title ? `<span class="blk-title">${esc(r.title)}</span>` : ''}<span class="blk-bar"><i style="width:${pct.toFixed(1)}%"></i></span></span>
       <span class="blk-dur">${fmtDur(Math.min(r.done, r.target))}<small>of ${fmtDur(r.target)}</small></span>
     </button>${go}</div>${acts}</li>`;
 }

@@ -151,7 +151,7 @@ function planCompute(plan, k, entries, now, cur, busy) {
       else if (b.done > 0) st = 'partial';
     }
     const live = st === 'open' || st === 'partial' || st === 'active';
-    return Object.assign(b, { target, st, remaining: live ? Math.max(0, target - b.done) : 0, pieces: [], over: 0, missed: false, late: false, clash: false });
+    return Object.assign(b, { target, st, remaining: live ? Math.max(0, target - b.done) : 0, pieces: [], over: 0, missed: false, late: false, clash: false, clashWith: null });
   });
   const tk = dayKeyOf(now);
   const model = {
@@ -191,7 +191,8 @@ function projectPlan(model, now, cur, busy) {
   const fx = fixed.map(r => {
     const a = hmOnDay(k, r.at), b = a + r.remaining;
     r.pieces.push([a, b]);
-    if (bz.some(z => z[0] < b && z[1] > a)) r.clash = true;
+    const clashWith = bz.findIndex(z => z[0] < b && z[1] > a);
+    if (clashWith >= 0) { r.clash = true; r.clashWith = clashWith; }
     return [a, b];
   }).concat(bz.map(z => [z[0], z[1]])).sort((x, y) => x[0] - y[0]);
   const flow = (r, first) => {

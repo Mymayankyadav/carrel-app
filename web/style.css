@@ -218,6 +218,7 @@ textarea.inp{min-height:64px;resize:vertical;line-height:1.4}
 .p-prog i{display:block;height:100%}
 .p-sum{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--ink-2)}
 .p-sum b{color:var(--ink);font-weight:600}
+.busy-it{display:inline-block;max-width:100%;vertical-align:bottom;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .blocks{border-top:1px solid var(--rule)}
 .blk{border-bottom:1px solid var(--rule)}
 .blk-row{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:4px}
@@ -225,10 +226,12 @@ textarea.inp{min-height:64px;resize:vertical;line-height:1.4}
 .blk-time{font-family:var(--f-num);font-stretch:85%;font-size:12px;color:var(--ink-2);line-height:1.25}
 .blk-time small{display:block;font-size:10px;color:var(--ink-3)}
 .blk-body{display:grid;gap:2px;min-width:0}
-.blk-name{display:flex;align-items:center;gap:7px;font-weight:600;min-width:0}
+.blk-name{display:flex;align-items:center;flex-wrap:wrap;gap:4px 7px;font-weight:600;min-width:0}
 .blk-name .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
-.blk-name .nm{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}
-.blk-name .tag{flex:none}
+.blk-name .nm{min-width:0;overflow-wrap:anywhere;white-space:normal}
+.blk-tags{display:flex;flex-wrap:wrap;align-items:center;gap:4px;min-width:0}
+.blk-tags .tag{max-width:100%;white-space:normal;overflow-wrap:anywhere}
+@media (max-width:520px){.blk-tags{flex:1 0 100%;padding-left:15px}}
 .blk-title{font-size:13px;color:var(--ink-3);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .blk-bar{display:block;height:3px;margin-top:5px;border-radius:2px;background:var(--sunk);overflow:hidden}
 .blk-bar i{display:block;height:100%;background:var(--c)}
