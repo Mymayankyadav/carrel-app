@@ -29,7 +29,11 @@ function vMain() {
   const view=canonicalView(UI.view), f=VIEWS[view];
   if(!f){console.warn('Unknown view:',view);return '';}
   const wide=view==='plan'?' wide':'';
-  return '<div class="k-screen'+wide+'">'+(view==='today'?vSyncLine():'')+f()+'</div>';
+  const legacyStats=view==='stats' && typeof VIEWS.patterns==='function';
+  const tabs=legacyStats?kSeg({act:'r0-stats-pane',value:UI.statsPane||'week',
+    options:[{v:'week',label:'Week'},{v:'patterns',label:'Patterns'}]}):'';
+  const content=legacyStats && UI.statsPane==='patterns'?VIEWS.patterns():f();
+  return '<div class="k-screen'+wide+'">'+(view==='today'?vSyncLine():'')+tabs+content+'</div>';
 }
 function vSheet() {
   const sh=UI.sheet;
@@ -208,7 +212,11 @@ Object.assign(ACT, {
   'park-backlog'(el) { parkToBacklog(el.getAttribute('data-k'), el.getAttribute('data-id')); },
   'park-drop'(el) { const k = el.getAttribute('data-k'); commit('Dropped.', W().dis(k, el.getAttribute('data-id'), { dismissed: true }), { undo: true }); },
   noop() {},
-  view(el) { UI.view=canonicalView(el.getAttribute('data-v')); UI.pages=[];UI.planMenu=false; if(UI.view==='today')UI.date=null; if(UI.view==='plan')UI.cal.scrollTo=true; try{history.replaceState(null,'','#'+UI.view)}catch(e){} render();window.scrollTo(0,0); },
+  view(el) { const v=el.getAttribute('data-v'); if(v==='week'||v==='patterns')UI.statsPane=v;
+    UI.view=canonicalView(v); UI.pages=[];UI.planMenu=false; if(UI.view==='today')UI.date=null;
+    if(UI.view==='plan')UI.cal.scrollTo=true; try{history.replaceState(null,'','#'+UI.view)}catch(e){}
+    render();window.scrollTo(0,0); },
+  'r0-stats-pane'(el) { UI.statsPane=el.getAttribute('data-v')==='patterns'?'patterns':'week';render(); },
   setup() { openSheet({ type: 'setup' }); },
   'sheet-close'(el, e) { if (e && e.target !== el && el.classList.contains('scrim')) return; closeSheet(); },
   'day-prev'() { UI.date = addDaysKey(UI.date || todayKey(), -1); UI.openBlk = null; UI.planMenu = false; render(); },
@@ -457,13 +465,13 @@ document.addEventListener('keydown', e => {
   else if (lk === 'r') { if (!CUR) { const l = lastEntry(); if (l) startActivity(l.a); } }
   else if (lk === 'm') ACT['pomo-toggle']();
   else if (lk === 'd') { if (UI.desk) exitDesk(); else enterDesk(); }
-  else if (lk === 'n') { if (UI.view === 'calendar') ACT['cal-new'](); else openEntrySheet('add'); }
+  else if (lk === 'n') { if (UI.view === 'plan') ACT['cal-new'](); else openEntrySheet('add'); }
   else if (lk === 't') ACT.view({ getAttribute: () => 'today' });
   else if (lk === 'c') ACT.view({ getAttribute: () => 'calendar' });
   else if (lk === 'w') ACT.view({ getAttribute: () => 'week' });
   else if (lk === 'p') ACT.view({ getAttribute: () => 'patterns' });
-  else if (k === 'ArrowLeft') { if (UI.view === 'week') ACT['wk-prev'](); else if (UI.view === 'today') ACT['day-prev'](); else if (UI.view === 'calendar') ACT['cal-prev'](); else return; }
-  else if (k === 'ArrowRight') { if (UI.view === 'week') ACT['wk-next'](); else if (UI.view === 'today') ACT['day-next'](); else if (UI.view === 'calendar') ACT['cal-next'](); else return; }
+  else if (k === 'ArrowLeft') { if (UI.view === 'stats' && UI.statsPane !== 'patterns') ACT['wk-prev'](); else if (UI.view === 'today') ACT['day-prev'](); else if (UI.view === 'plan') ACT['cal-prev'](); else return; }
+  else if (k === 'ArrowRight') { if (UI.view === 'stats' && UI.statsPane !== 'patterns') ACT['wk-next'](); else if (UI.view === 'today') ACT['day-next'](); else if (UI.view === 'plan') ACT['cal-next'](); else return; }
   else return;
   e.preventDefault();
 });
@@ -475,16 +483,24 @@ window.addEventListener('pagehide', () => store.set('seen', Date.now()));
 window.addEventListener('online', () => pumpAll());
 window.addEventListener('hashchange', () => {
   const h = (location.hash || '').replace('#', '');
-  if (['today', 'calendar', 'week', 'patterns'].includes(h) && h !== UI.view) { UI.view = h; if (h === 'today') UI.date = null; if (h === 'calendar') UI.cal.scrollTo = true; render(); }
+  if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) {
+    const v=canonicalView(h);
+    if(h==='week'||h==='patterns')UI.statsPane=h;
+    if(v===UI.view)return;
+    UI.view=v;UI.pages=[];
+    if(v==='today')UI.date=null;
+    if(v==='plan')UI.cal.scrollTo=true;
+    render();
+  }
 });
 
 /* ---------- boot ---------- */
 async function boot(hot) {
   hot = hot || {};
-  if (hot.view) UI.view = hot.view;
+  if (hot.view) {if(hot.view==='week'||hot.view==='patterns')UI.statsPane=hot.view;UI.view=canonicalView(hot.view);}
   if (hot.date) UI.date = hot.date;
   const h = (location.hash || '').replace('#', '');
-  if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) UI.view = canonicalView(h);
+  if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) { if(h==='week'||h==='patterns')UI.statsPane=h;UI.view=canonicalView(h); }
   S.windowFrom = addDaysKey(keyOfDate(new Date()), -WINDOW_DAYS);
   restorePending();
   recompute();

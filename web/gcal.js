@@ -3,7 +3,7 @@ const GC = { server: 'Google Calendar', tool: 'list_events', status: 'off', even
 function gcRange() {
   const tk = todayKey();
   let lo = addDaysKey(weekStartKey(tk), -7), hi = addDaysKey(tk, 28);
-  if (UI.view === 'calendar') {
+  if (UI.view === 'plan') {
     const d = calDays();
     if (d[0] < lo) lo = weekStartKey(d[0]);
     if (d[d.length - 1] > hi) hi = addDaysKey(weekStartKey(d[d.length - 1]), 6);

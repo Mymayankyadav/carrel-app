@@ -340,7 +340,7 @@ function colAt(x, y) {
   return null;
 }
 document.addEventListener('pointerdown', e => {
-  if (DRAG || UI.view !== 'calendar' || UI.sheet) return;
+  if (DRAG || UI.view !== 'plan' || UI.sheet) return;
   if (e.pointerType === 'mouse' && e.button !== 0) return;
   const t = e.target;
   if (!t || !t.closest) return;
@@ -479,7 +479,7 @@ Object.assign(ACT, {
   'cal-next'() { calShift(1); },
   'cal-today'() { UI.cal.anchor = null; UI.cal.mm = null; UI.cal.scrollTo = true; render(); },
   'cal-pick'(el) { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) { UI.cal.anchor = el.value; UI.cal.mm = null; UI.cal.scrollTo = true; render(); } },
-  'cal-open'(el) { UI.cal.anchor = el.getAttribute('data-k'); UI.view = 'calendar'; UI.cal.mm = null; UI.cal.scrollTo = true; try { history.replaceState(null, '', '#calendar'); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
+  'cal-open'(el) { UI.cal.anchor = el.getAttribute('data-k'); UI.view = 'plan'; UI.cal.mm = null; UI.cal.scrollTo = true; try { history.replaceState(null, '', '#plan'); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
   'mm-day'(el) { UI.cal.anchor = el.getAttribute('data-k'); UI.cal.scrollTo = true; render(); },
   'mm-prev'() { UI.cal.mm = shiftMonth(mmBase(), -1); render(); },
   'mm-next'() { UI.cal.mm = shiftMonth(mmBase(), 1); render(); },
@@ -493,7 +493,7 @@ Object.assign(ACT, {
   'cal-busy'(el) { openBusySheet(el.getAttribute('data-k'), el.getAttribute('data-id'), el.getAttribute('data-rec') === '1'); },
   'cal-new'() {
     const tk = todayKey(), now = Date.now();
-    const days = UI.view === 'calendar' ? calDays() : [tk];
+    const days = UI.view === 'plan' ? calDays() : [tk];
     const k = days.includes(tk) || days[0] < tk ? tk : days[0];
     const ds = dayStartMs(k);
     const s = k === tk ? ds + Math.ceil((now - ds) / SNAP) * SNAP : hmOnDay(k, CFG.planStart);
