@@ -110,12 +110,17 @@ assert.equal(calls.at(-1)[0],'guard-seen');
 ACT['t2-edit-activities']();
 assert.deepEqual(calls.at(-1),['page','settings','settings.activities']);
 
+let focusPop = null;
+const focusHistory = [];
 const focusCtx={ UI, CUR:{activity:'math',start:now-HOUR}, Date,
   act:id=>ACTMAP[id], parseT:()=>now-HOUR, pomoState:()=>null,
   fmtClock:()=> '1:00:00', icon:name=>'<svg>'+name+'</svg>',
   esc, clamp:(x,a,b)=>Math.max(a,Math.min(b,x)), Math,
   lastEntry:()=>null, setInterval:()=>1, clearInterval:()=>{},
-  window:{matchMedia:()=>({matches:false})},
+  window:{matchMedia:()=>({matches:false}), addEventListener:(event,fn)=>{if(event==='popstate')focusPop=fn;}},
+  kHistoryPush:kind=>focusHistory.push(['push',kind]),
+  kHistoryConsume:kind=>focusHistory.push(['consume',kind]),
+  render:()=>{},
   document:{visibilityState:'visible'}, navigator:{}
 };
 vm.createContext(focusCtx);
@@ -131,4 +136,21 @@ UI.deskCtl=0;
 assert(focusCtx.vDesk().includes('desk-ctl hid'),'controls hide after inactivity');
 const focusCss=read('focus.css');
 assert(focusCss.includes('background:#000') && focusCss.includes('visibility:hidden'));
+focusCtx.CUR={activity:'break',start:now-HOUR,ret:null};
+focusCtx.pomoState=()=>null;
+const breakFocus=focusCtx.vDesk();
+assert(!breakFocus.includes('data-act="break"'),'break mode cannot offer another, inert Break action');
+assert(breakFocus.includes('data-act="stop"'));
+UI.desk=false;
+focusCtx.enterDesk();
+assert(UI.desk && focusHistory.at(-1)[0]==='push','focus adds a Back history layer');
+assert.equal(UI.deskCtl<=Date.now()+4000,true);
+focusCtx.exitDesk();
+assert(!UI.desk && focusHistory.at(-1)[0]==='consume','exit consumes its history layer');
+focusCtx.enterDesk();
+let stopped=false;
+assert.equal(typeof focusPop,'function');
+focusPop({stopImmediatePropagation:()=>{stopped=true;}});
+assert(stopped && !UI.desk && focusHistory.at(-1)[0]==='push',
+  'system Back closes focus without consuming history twice or navigating a tab');
 console.log('TODAY SHEETS / FOCUS TESTS PASSED');
