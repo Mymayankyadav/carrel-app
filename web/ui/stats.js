@@ -261,6 +261,30 @@ function vFocusHours(pm) {
 }
 
 
+function vTargetsPanel(now, tk) {
+  const anchor = UI.cal.anchor || tk, ws = weekStartKey(anchor), we = addDaysKey(ws, 6);
+  const agg = aggregate(ENTRIES, now, ws, we);
+  const logged = {}, planned = {};
+  Object.values(agg).forEach(d => { for (const id in d.acts) logged[id] = (logged[id] || 0) + d.acts[id]; });
+  for (let k = ws; k <= we; k = addDaysKey(k, 1)) {
+    if (k < tk) continue;
+    const pm = planModelFor(k, now);
+    if (pm) pm.rows.forEach(r => { if (r.remaining > 0) planned[r.activity] = (planned[r.activity] || 0) + r.remaining; });
+  }
+  const list = ACTS.filter(a => a.kind === 'study' && !a.archived && (a.goal || logged[a.id] || planned[a.id]));
+  const head = `<div class="sec-head"><h2 id="tg-h">Week targets</h2><span class="lbl">${esc(shortDay(ws))} – ${esc(shortDay(we))}</span></div>`;
+  if (!list.length) return `<section class="panel" aria-labelledby="tg-h">${head}<p class="cap">Give subjects a weekly goal in Setup to see whether this week’s plan gets you there.</p></section>`;
+  const rows = list.map(a => {
+    const g = (a.goal || 0) * MIN, L = logged[a.id] || 0, Pn = planned[a.id] || 0, tot = L + Pn;
+    const mx = Math.max(g, tot, 1);
+    const status = g ? (tot >= g ? (tot - g >= 30 * MIN ? fmtDur(tot - g) + ' over' : 'on track') : fmtDur(g - tot) + ' short') : fmtDur(tot);
+    return `<div class="tg-row" style="--c:${a.color}"><div class="top"><span class="nm"><i class="dot"></i>${esc(a.name)}</span><span class="${g && tot < g ? 'short' : ''}">${status}</span></div>
+      <div class="bar"><i style="width:${(L / mx * 100).toFixed(1)}%"></i><i class="pl" style="width:${(Pn / mx * 100).toFixed(1)}%"></i>${g ? `<b style="left:calc(${(g / mx * 100).toFixed(1)}% - 1px)"></b>` : ''}</div>
+      <small>${fmtDur(L)} logged · ${fmtDur(Pn)} planned${g ? ' · goal ' + fmtDur(g) : ''}</small></div>`;
+  }).join('');
+  return `<section class="panel" aria-labelledby="tg-h">${head}<div class="tg">${rows}</div></section>`;
+}
+
 VIEWS.stats = vWeek;
 VIEWS.week = vWeek;
 VIEWS.patterns = vPatterns;
