@@ -41,6 +41,8 @@ with sync_playwright() as p:
         page.locator('[data-act="p3-add"]').click()
         expect(page.locator('#sheet [role="dialog"]')).to_have_count(1)
         assert page.evaluate('UI.sheet.type')=='deadline'
+        page.wait_for_timeout(400)
+        expect(page.locator('#sheet .k-sheet')).to_be_visible()
         capture('deadline-editor')
         page.keyboard.press('Escape')
         assert page.evaluate('UI.sheet') is None
@@ -49,6 +51,8 @@ with sync_playwright() as p:
         capture('backlog')
         page.locator('[data-act="p3-add"]').click()
         assert page.evaluate('UI.sheet.type')=='task'
+        page.wait_for_timeout(400)
+        expect(page.locator('#sheet .k-sheet')).to_be_visible()
         capture('task-editor')
         page.locator('#tk-title').fill('P3 browser regression task')
         page.locator('#sheet [data-act="task-save"]').click()
@@ -59,6 +63,8 @@ with sync_playwright() as p:
         capture('weekly')
         page.locator('[data-act="p3-add"]').click()
         assert page.evaluate('UI.sheet.type')=='busy'
+        page.wait_for_timeout(400)
+        expect(page.locator('#sheet .k-sheet')).to_be_visible()
         capture('weekly-editor')
         page.locator('#bz-title').fill('P3 browser test weekly')
         page.locator('#sheet [data-act="busy-save"]').click()
