@@ -1306,6 +1306,17 @@ function vLog(k, now, pm) {
 }
 function vTimeline(k, ents, now, ds, de, isToday, pm) {
   const PX = 1.1;
+  // Overnight sleep gets a compact, editable summary instead of consuming
+  // several screens of hour-grid space. Don't collapse a running sleep or
+  // sleep that overlaps other logged activities.
+  const first = ents.slice().sort((a, b) => a.s - b.s)[0];
+  const sleepEnd = first ? entryEnd(first, now) : 0;
+  const leadSleep = first && !first.running && act(first.a).role === 'sleep' &&
+    sleepEnd > ds && !ents.some(en => en !== first && en.s < sleepEnd &&
+      entryEnd(en, now) > Math.max(first.s, ds)) ? first : null;
+  const sleepBand = leadSleep
+    ? `<button type="button" class="tl-sleep-summary" style="--c:${act(leadSleep.a).color}" data-act="edit-entry" data-id="${esc(leadSleep.id)}" data-key="${esc(leadSleep.id)}" aria-label="Edit ${esc(act(leadSleep.a).name)}, ${fmtT(leadSleep.s)} to ${fmtT(sleepEnd)}"><span>${esc(act(leadSleep.a).name)}</span><span>${fmtT(leadSleep.s)}–${fmtT(sleepEnd)} · ${fmtDur(sleepEnd - leadSleep.s)}</span></button>`
+    : '';
   let lo = Infinity, hi = -Infinity;
   for (const en of ents) { lo = Math.min(lo, Math.max(en.s, ds)); hi = Math.max(hi, Math.min(entryEnd(en, now), de)); }
   const pieces = [];
@@ -1314,6 +1325,7 @@ function vTimeline(k, ents, now, ds, de, isToday, pm) {
   pieces.forEach(p => { lo = Math.min(lo, p.a); hi = Math.max(hi, p.b); });
   if (isToday) { lo = Math.min(lo, now - 30 * MIN); hi = Math.max(hi, now + 30 * MIN); }
   if (pm && (pm.isToday || pm.isFuture) && pm.rows.length) hi = Math.max(hi, Math.min(pm.endMs, de));
+  if (leadSleep) lo = Math.max(lo, floorLocal(sleepEnd, HOUR));
   lo = Math.max(ds, floorLocal(lo, HOUR));
   hi = Math.min(de, ceilLocal(hi, HOUR));
   if (hi - lo < 5 * HOUR) hi = Math.min(de, lo + 5 * HOUR);
@@ -1327,6 +1339,7 @@ function vTimeline(k, ents, now, ds, de, isToday, pm) {
     grid.push(`<i class="tl-grid" style="top:${y(t).toFixed(1)}px"></i>`);
   }
   const blocks = ents.map(en => {
+    if (en === leadSleep) return '';
     const a = act(en.a), s = Math.max(en.s, lo), e = Math.min(entryEnd(en, now), hi);
     if (e <= s) return '';
     const top = y(s), h = Math.max(6, y(e) - top - 1);
@@ -1334,8 +1347,8 @@ function vTimeline(k, ents, now, ds, de, isToday, pm) {
     const attrs = en.running ? 'data-act="edit-running"' : `data-act="edit-entry" data-id="${esc(en.id)}"`;
     return `<button type="button" class="tl-e ${cls}" style="top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;--c:${a.color}" ${attrs} data-key="${esc(en.id)}" aria-label="${esc(a.name)}, ${fmtT(en.s)} to ${en.running ? 'now' : fmtT(en.e)}"><span class="n">${esc(a.name)}${en.note && h >= 34 ? ' · <span class="muted">' + esc(en.note) + '</span>' : ''}</span>${h >= 30 ? `<span class="d">${fmtT(en.s)}–${en.running ? 'now' : fmtT(en.e)} · ${fmtDur(entryEnd(en, now) - en.s)}</span>` : ''}</button>`;
   }).join('');
-  const gaps = gapsOf(ents, now, ds, de, isToday).map(([a, b]) => {
-    const top = y(a), h = Math.max(10, y(b) - top - 2);
+  const gaps = gapsOf(ents, now, ds, de, isToday).filter(([a, b]) => b > lo && a < hi).map(([a, b]) => {
+    const top = y(Math.max(a, lo)), h = Math.max(10, y(Math.min(b, hi)) - top - 2);
     return `<button type="button" class="tl-gap" style="top:${(top + 1).toFixed(1)}px;height:${h.toFixed(1)}px" data-act="fill" data-s="${a}" data-e="${b === now ? 'now' : b}" aria-label="Untracked ${fmtDur(b - a)}, ${fmtT(a)} to ${fmtT(b)}">${h >= 16 ? `<span>+ ${fmtDur(b - a)}</span>` : ''}</button>`;
   }).join('');
   const plan = pieces.filter(p => p.b > lo && p.a < hi).map(p => {
@@ -1345,7 +1358,7 @@ function vTimeline(k, ents, now, ds, de, isToday, pm) {
   }).join('');
   const nowLine = isToday && now >= lo && now <= hi ? `<i class="tl-now" style="top:${y(now).toFixed(1)}px"></i>` : '';
   const endLine = pm && (pm.isToday || pm.isFuture) && pm.rows.length && pm.endMs > lo && pm.endMs < hi ? `<div class="tl-end" style="top:${y(pm.endMs).toFixed(1)}px"><span>plan ends</span></div>` : '';
-  return `<div class="tl-heads"><span></span><span>Logged</span><span>Plan ahead</span></div>
+  return sleepBand + `<div class="tl-heads"><span></span><span>Logged</span><span>Plan ahead</span></div>
     <div class="tl" style="height:${H}px">${grid.join('')}<div class="tl-axis">${axis.join('')}</div><div class="tl-lane">${gaps}${blocks}</div><div class="tl-lane plan">${plan}</div>${endLine}${nowLine}</div>`;
 }
 function vList(ents, now, ds, de, isToday) {
