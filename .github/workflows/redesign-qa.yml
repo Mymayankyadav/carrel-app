@@ -20,7 +20,15 @@ jobs:
         with: { python-version: '3.12' }
       - run: npm ci --no-audit --no-fund
       - run: python3 -m pip install playwright==1.56.0
-      - run: python3 -m playwright install --with-deps chromium
+      - name: Select runner browser
+        run: |
+          CHROME=$(command -v google-chrome || command -v chromium || true)
+          if [ -n "$CHROME" ]; then
+            "$CHROME" --version
+            echo "CARREL_CHROMIUM=$CHROME" >> "$GITHUB_ENV"
+          else
+            python3 -m playwright install chromium
+          fi
       - run: npm run build:web
       - name: All JavaScript suites
         run: |
