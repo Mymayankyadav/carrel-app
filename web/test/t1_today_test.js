@@ -34,6 +34,9 @@ const base={
   noticeOpen:()=>false,parkedItems:()=>[],
   w1NeedsSetup:()=>false,w1FirstRun:()=>'<main>First run</main>',
   pushPage:(id,params)=>calls.push(['page',id,params]),
+  W:()=>({day:(k,v)=>calls.push(['day',k,v])}),
+  commit:()=>calls.push('commit'),
+  setTimeout:()=>{},render:()=>{},
   planFocus:(k,id)=>calls.push(['plan',k,id]),
   openSheet:sh=>calls.push(['sheet',sh]),
   msToHm:()=> '14:00',clamp:(x,a,b)=>Math.max(a,Math.min(b,x))
@@ -74,6 +77,13 @@ base.guardInfo=()=>({ran:4*HOUR});
 html=VIEWS.today();
 assert(html.includes('Still going')&&html.includes('data-act="t1-fixstop"'));
 ACT['t1-fixstop']();assert.equal(calls.at(-1)[1].type,'fixstop');
+base.CUR=null;base.guardInfo=()=>null;UI.lastRate={day:'2026-10-27',id:'focus1'};
+html=VIEWS.today();
+assert(html.includes('Focus?') && html.includes('aria-label="Scattered"') &&
+  html.includes('aria-label="Deep"'),'quick focus rating appears after stopping');
+ACT['t1-rate']({getAttribute:()=> '3'});
+assert(calls.some(x=>Array.isArray(x)&&x[0]==='day'&&x[2].focus1.focus===3));
+assert(UI.lastRate===null && UI.t1RateDoneUntil>0,'rating is one tap and closes prompt');
 assert(css.includes('.t1-today')&&css.includes('.t1-tiles')&&css.includes('.t1-next-row'));
 assert(css.includes('min-height:44px')&&css.includes('var(--surface)'));
 console.log('T1 TODAY TESTS PASSED');
