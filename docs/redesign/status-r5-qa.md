@@ -1,28 +1,32 @@
-# R5 QA — independent verification lane
+# R5 Android redesign — integration onto current main
 
-**Base:** `redesign/r5-android` (another agent owns implementation). This branch changes only *new tests, workflow and this handoff document*.
+PR: [#25](https://github.com/Mymayankyadav/carrel-app/pull/25)  
+Branch: `redesign/r5-main-integration` based on current `main`.  
+Date: 28 October 2026.
 
-## Work completed
-- Pure JVM regression suite for native notification state (idle, elapsed, focus, due, break, countdown boundaries, privacy-safe absence of feedback/tally, and vibration deadline/DND).
-- Node VM test for native/web bridge registry, Android-only Notifications page, five settings toggles, persisted `notifDistractions` default off, optimistic save rollback, unknown-key rejection, and no explanatory paragraphs.
-- Standalone GitHub Actions unsigned Android workflow that does not use the release signing secrets: dependency installation, bridge tests, Capacitor sync, patches, `testDebugUnitTest`, `assembleDebug`, upload of a debug APK.
+## Why a new integration branch
 
-## Integration rules
-- Do not self-merge.
-- Let R5 own `android/**` and `web/native.js`; this branch does not edit them.
-- Merge this PR **into `redesign/r5-android`** for agent-owned code coverage, then integrate R0b → R0a → R5 to main per the plan.
-- The earlier draft #10 separately attempted notification implementation. Its overlapping code is superseded by R5 owner's branch; carry forward only this independent test/CI lane.
-- Debug APK is unsigned as a *release* but debug-signed by Android tooling; it may not install over an existing signed Carrel release.
-- Passing tests do not prove real device notification shade, lock screen privacy, haptics, background stop or edge-to-edge status bar behavior.
+Phase-2 redesign work had already landed on main, but main still shipped the legacy custom Android notification. The previous `redesign/r5-android` branch diverged by more than 150 commits and had no PR to main. Port its R5-owned files and the green `redesign/r5-qa-astra` tests onto **current main**, leaving unrelated web screens unchanged.
 
-## Validation
-- [x] Bridge checks green — [Android QA run 40527422756](https://github.com/Mymayankyadav/carrel-app/actions/runs/40527422756).
-- [x] Gradle `testDebugUnitTest` and `assembleDebug` green in the same run.
-- [x] Debug APK artifact `Carrel-R5-QA-debug` (artifact ID 12744067982; 5.85 MB).
-- [ ] Android device/manual screenshot checks (native owner).
-- [x] No source implementation files touched; no Supabase or production app mutations.
-- [x] Web CI green — [run 40527423063](https://github.com/Mymayankyadav/carrel-app/actions/runs/40527423063).
+## Implemented
 
-## Requests
-- R5 owner: use unsigned QA artifact and run device checks before requesting integration; keep it draft if tests fail.
-- Integrator: merge R0b/R0a before any R5 native release; coordinate signed release separately.
+- System-drawn Android `NotificationCompat` UI; removed custom expanded `RemoteViews`, large activity dot, subtext, distraction tally and obsolete `notification_expanded.xml` / `notification_chip.xml`.
+- Timer states: running, focus countdown, break due, break, privacy-safe lock-screen and 10-second Undo. Stop remains the core action; Break appears when due. Native Resume is intentionally not exposed without a server-backed resume implementation.
+- `notifDistractions` defaults false; persisted by `Store` and `CarrelLivePlugin`, opt-in via Notifications Settings. Removed helper copy and hid secondary controls inside Troubleshoot.
+- Android MainActivity edge-to-edge with theme-aware system bars; DayNight dialog; daylight/night splash colors; Back/minimize handling and optional update restart.
+- `tools/patch_android.py` now retains light/night launch colors after `cap sync`.
+- Model JVM tests, JS native bridge tests, and an explicit source-level guard preventing legacy custom notification resources or builder methods from returning.
+
+## Verification
+
+- [x] Existing R5 QA branch previously passed web and Android JVM/debug build: runs 40527423063 / 40527422756.
+- [x] Current-main integration passed its initial web CI (run 40563816670) and Android debug/JVM CI (run 40563816642).
+- [ ] Recheck final source-regression-guard commit CI: [web run 40564097089](https://github.com/Mymayankyadav/carrel-app/actions/runs/40564097089), [Android run 40564097082](https://github.com/Mymayankyadav/carrel-app/actions/runs/40564097082).
+- [ ] Device verification: native notification shade in collapsed/expanded states, STOP and BREAK background actions, privacy lock screen, battery optimization, DND vibration, edge-to-edge/insets, dark launch.
+- [ ] Signed release APK with existing signing key, followed by install-on-device check.
+
+## Integration and safety
+
+**Do not self-merge or publish a signed APK until approved.** This PR targets main directly, superseding the old diverged R5 implementation branch. Production database/state shapes are untouched. The unsigned-release-independent debug APK generated by CI is **debug-signed**: it does not install over an existing release-signed app without uninstalling and potentially losing app data. After approval, use the release workflow and existing signing credentials to produce a compatible update.
+
+An installed APK will keep the old native notification until replaced by a newer **signed APK**; live web updates alone cannot update native Kotlin or Android resources.
