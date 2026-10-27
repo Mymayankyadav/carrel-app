@@ -81,7 +81,7 @@ assert(!makeHead(40*MIN,60*MIN).includes('21m over'),'free day is not styled as 
 const now=Date.parse('2026-10-27T17:00:00+05:30');
 function panel(ageMin,status='ok'){
   const GC={status,at:now-ageMin*MIN,events:[],msg:''};
-  return func(gcal,'vGcalPanel','Object.assign(ACT','vGcalPanel',{
+  return vm.runInNewContext(between(gcal,'function vGcalPanel(', 'Object.assign(ACT,')+'\nvGcalPanel',{
     S:{mcp:{}},GC,MIN,Date:{now:()=>now},fmtT:()=> '4:30 pm',
     todayKey:()=> '2026-10-27',esc
   })();
