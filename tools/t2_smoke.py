@@ -79,7 +79,7 @@ with sync_playwright() as p:
 
         # Fix stop sheet is visualized without changing the running timer.
         page.evaluate("UI.guardTime=msToHm(Date.now()-5*MIN);openSheet({type:'fixstop'})")
-        expect(page.locator('#sheet [data-act="guard-save"]')).to_be_visible()
+        expect(page.locator('#sheet [data-act="t2-stop-save"]')).to_be_visible()
         capture('fix-stop')
         page.keyboard.press('Escape')
         assert page.evaluate('UI.sheet') is None
