@@ -54,5 +54,5 @@ state.UI.view='settings';assert.equal(run("goBack()"),true);assert.equal(state.U
 assert.equal(run("goBack()"),false);
 const switchEl={getAttribute:k=>({'data-bind-to':'sheet.enabled','data-v':'true'}[k]||null)};
 state.ACT['k-set'](switchEl);
-assert.deepEqual(state.calls.at(-2),['bind','sheet.enabled',true]);
+assert.equal(JSON.stringify(state.calls.at(-2)),JSON.stringify(['bind','sheet.enabled',true]));
 console.log('KIT TESTS PASSED');
