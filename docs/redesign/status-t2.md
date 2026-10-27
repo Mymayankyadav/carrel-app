@@ -17,8 +17,8 @@ Additional fixes in the resumed branch:
 
 - Activity totals aggregate **once per sheet render** rather than twice per activity row.
 - Hidden focus actions are also `visibility:hidden`, keeping visually concealed actions out of keyboard focus order.
-- Focus mode pushes one browser-history entry and consumes it when exited. A Back/popstate handler registered ahead of the shell closes focus without accidentally changing tabs. Focus controls hide after 4s. A break without a return target cannot show an inert Break button.
-- `web/test/today_sheets_test.js` covers sheet registration, Start offsets/presets and off override, archived exclusions, parking, undoable action routing, guard-stop shortcuts, focus view states, hidden controls, history push/consume and Back dismissal.
+- Focus mode pushes one browser-history entry and consumes it when exited. Back/popstate and Escape handlers registered ahead of the shell close focus without accidentally changing tabs. Initial Focus controls hide after 4s (shell's tap-to-reveal duration remains 6s pending T1 integration). A break without a return target cannot show an inert Break button.
+- `web/test/today_sheets_test.js` covers sheet registration, Start offsets/presets and off override, archived exclusions, parking, undoable action routing, guard-stop shortcuts, focus view states, hidden controls, history push/consume, Back dismissal and Escape-key precedence.
 
 ## Integration ownership
 
@@ -29,9 +29,9 @@ Only T2-owned `web/ui/today-sheets.{js,css}`, `web/ui/focus.{js,css}`, its test 
 ## Verification
 
 - [x] Source checked against existing `startActivity`, `parkAdd`, `parkToBacklog`, `guard-save`, `guard-seen`, shell routing and kit contracts.
-- [x] Focus keyboard-hidden and browser/Android Back regressions addressed.
+- [x] Focus keyboard-hidden, browser Back and Escape regressions addressed (device Back still requires hardware acceptance).
 - [x] T2-focused Node unit test added.
-- [ ] Complete web/Node CI run on this branch.
+- [x] Full web build and Node suite passed at [GitHub Actions #40555713218](https://github.com/Mymayankyadav/carrel-app/actions/runs/40555713218) on final tested feature commit `2043425`.
 - [ ] 390px light/dark and desktop Chromium screenshots / tap, long-press and sheet actions.
 - [ ] Physical Android wake lock, Back, keyboard, touch and notification interactions.
 
