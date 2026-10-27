@@ -154,3 +154,9 @@
 .t1-chip{display:inline-flex;align-items:center;gap:6px;flex:none;max-width:200px;min-height:44px;padding:0 12px;border-radius:999px;border:1px solid var(--line);background:var(--surface);color:var(--text);font-size:var(--t-sm)}
 .t1-switch .k-icon{width:44px;height:44px;flex:none}
 @media(max-width:350px){.t1-actions{gap:6px}.t1-timer{padding:12px}.t1-tile{padding:6px 8px}}
+
+.t1-rating{display:flex;align-items:center;gap:8px;min-height:44px;font-size:var(--t-sm);color:var(--text-2)}
+.t1-rating>span{margin-right:auto}
+.t1-rating .k-icon{min-width:44px;min-height:44px}
+.t1-rated{color:var(--accent);min-height:44px;display:flex;align-items:center}
+.t1-rated .i{width:20px;height:20px}
