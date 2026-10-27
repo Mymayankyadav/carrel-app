@@ -136,7 +136,7 @@ assert.equal(UI.sheet,null);
 
 ACT['p2-plan-menu']({getAttribute:k=>k==='data-k'?'2026-10-27':null});
 assert(events.includes('menu'));
-assert.deepStrictEqual(ctx.items.map(x=>x.label),['Copy to tomorrow','Wrap up','Plan ends at…','Clear plan']);
+assert.deepStrictEqual(Array.from(ctx.items,x=>x.label),['Copy to tomorrow','Wrap up','Plan ends at…','Clear plan']);
 ACT['p2-menu-clear']({getAttribute:k=>k==='data-k'?'2026-10-27':null});
 assert.deepStrictEqual(writes.at(-1).slice(0,2),['set','plans/2026-10-27']);
 assert.equal(commits.at(-1),'Cleared plan.');
