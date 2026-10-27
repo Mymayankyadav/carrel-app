@@ -24,9 +24,9 @@ vm.createContext(state);
 vm.runInContext([
   "const UI=globalThis.UI, ACT=globalThis.ACT, PAGES=globalThis.PAGES, P=globalThis.P, ACTS=globalThis.ACTS;",
   "const esc=globalThis.esc;",
-  "function render(){globalThis.render.call(globalThis)}",
-  "function closeSheet(){globalThis.closeSheet.call(globalThis)}",
-  "function setBind(k,v){globalThis.setBind.call(globalThis,k,v)}",
+  "const render=()=>globalThis.calls.push(\'render\');",
+  "const closeSheet=()=>{globalThis.UI.sheet=null;globalThis.calls.push(\'close-sheet\')};",
+  "const setBind=(k,v)=>globalThis.calls.push([\'bind\',k,v]);",
   "const icon=name=>'<svg>'+(P[name]||'')+'</svg>';",
 ].join(String.fromCharCode(10)),state);
 vm.runInContext(icons,state);
