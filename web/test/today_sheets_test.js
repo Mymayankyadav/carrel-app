@@ -110,7 +110,7 @@ assert.equal(calls.at(-1)[0],'guard-seen');
 ACT['t2-edit-activities']();
 assert.deepEqual(calls.at(-1),['page','settings','settings.activities']);
 
-let focusPop = null;
+let focusPop = null, focusEscape = null;
 const focusHistory = [];
 const focusCtx={ UI, CUR:{activity:'math',start:now-HOUR}, Date,
   act:id=>ACTMAP[id], parseT:()=>now-HOUR, pomoState:()=>null,
@@ -121,7 +121,7 @@ const focusCtx={ UI, CUR:{activity:'math',start:now-HOUR}, Date,
   kHistoryPush:kind=>focusHistory.push(['push',kind]),
   kHistoryConsume:kind=>focusHistory.push(['consume',kind]),
   render:()=>{},
-  document:{visibilityState:'visible'}, navigator:{}
+  document:{visibilityState:'visible',addEventListener:(event,fn)=>{if(event==='keydown')focusEscape=fn;}}, navigator:{}
 };
 vm.createContext(focusCtx);
 vm.runInContext(read('focus.js'),focusCtx,{filename:'focus.js'});
@@ -153,4 +153,11 @@ assert.equal(typeof focusPop,'function');
 focusPop({stopImmediatePropagation:()=>{stopped=true;}});
 assert(stopped && !UI.desk && focusHistory.at(-1)[0]==='push',
   'system Back closes focus without consuming history twice or navigating a tab');
+focusCtx.enterDesk();
+let prevented=false, intercepted=false;
+assert.equal(typeof focusEscape,'function');
+focusEscape({key:'Escape',preventDefault:()=>{prevented=true;},
+  stopImmediatePropagation:()=>{intercepted=true;}});
+assert(prevented && intercepted && !UI.desk && focusHistory.at(-1)[0]==='consume',
+  'Escape dismisses focus before generic page navigation');
 console.log('TODAY SHEETS / FOCUS TESTS PASSED');
