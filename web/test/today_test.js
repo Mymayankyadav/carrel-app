@@ -94,7 +94,7 @@ const vToday = vm.runInNewContext(fn('vToday','vNoActs') + '\nvToday',{
   vOnboard:()=> '',vTimer:()=>'<div>timer</div>',vParking:()=>'',vSwitcher:()=>'',vPlan:()=>'',vLog:()=>'<section>log</section>',
   vBreakdown:()=>'<section>breakdown</section>',vDeadlineChips:()=>'<div class="dlc">deadlines</div>',
   todayFold:fold
-})();
+});
 const todayHtml=vToday();
 assert(todayHtml.includes('data-fold="log"') && todayHtml.includes('data-fold="breakdown"'), 'Today wraps both lower sections');
 assert(todayHtml.includes('<div class="dlc">deadlines</div>'), 'deadline strip retained');
