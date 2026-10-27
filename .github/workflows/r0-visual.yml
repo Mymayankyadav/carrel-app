@@ -26,6 +26,8 @@ jobs:
           python3 -m playwright install --with-deps chromium
       - name: Build with mock data (no production credentials)
         run: npm run build:web
+      - name: Browser navigation, modals and Back interactions
+        run: python3 tools/r0_smoke.py
       - name: Four-tab phone and desktop screenshots
         run: |
           python3 tools/shots.py screenshots/mobile-light
