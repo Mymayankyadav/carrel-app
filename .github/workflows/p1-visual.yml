@@ -1,0 +1,32 @@
+name: P1 Plan browser QA
+on:
+  push:
+    branches: [redesign/p1-visual-qa]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install browser
+        run: |
+          npm install --no-audit --no-fund
+          python3 -m pip install --break-system-packages playwright pillow
+          python3 -m playwright install --with-deps chromium
+      - name: Build mock
+        run: npm run build:web
+      - name: Plan interactions and screenshots
+        run: python3 tools/p1_smoke.py
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p1-plan-light-dark
+          path: p1-screens/
+          if-no-files-found: ignore
+          retention-days: 7
