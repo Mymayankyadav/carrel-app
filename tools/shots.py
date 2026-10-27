@@ -1,43 +1,87 @@
-"""Phone-width screenshots of every Carrel view from the mock build, plus console errors and overflow checks.
+"""Capture Carrel's four tabs and optional UI states from the mock web build.
 
-Usage (from the repo root):
-    python3 web/build.py
-    python3 tools/shots.py OUT_DIR [--dark]
-
-Writes OUT_DIR/{today,calendar,week,patterns,setup}.png (390px wide, cropped to 2400px tall)
-and prints console errors, page errors and horizontal-overflow warnings.
-The font-loading ERR_TUNNEL_CONNECTION_FAILED error is expected offline; ignore it.
+Usage: python3 tools/shots.py OUT [--dark] [--width 1280] [--js "openPage('settings','kit')"]
+Requires Playwright and its Chromium browser. Prints OK only if there are no page errors,
+console errors or horizontal-overflow failures. The mock never writes to production.
 """
-import pathlib, sys
+import argparse
+import pathlib
+import sys
+
 from playwright.sync_api import sync_playwright
 
-out = pathlib.Path(sys.argv[1]); out.mkdir(parents=True, exist_ok=True)
-dark = '--dark' in sys.argv
-page_path = pathlib.Path(__file__).resolve().parent.parent / 'web' / 'test' / 'carrel-test.html'
-W, MAXH = 390, 2400
-errs = []
 
-def crop(p):
-    try:
-        from PIL import Image
-        im = Image.open(p)
-        if im.size[1] > MAXH: im.crop((0, 0, W, MAXH)).save(p)
-    except ImportError:
-        pass
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("out", type=pathlib.Path)
+    parser.add_argument("--dark", action="store_true")
+    parser.add_argument("--width", type=int, default=390)
+    parser.add_argument("--js", action="append", default=[], help="JavaScript to run before capturing js-N.png")
+    args = parser.parse_args()
+    if args.width < 320:
+        parser.error("--width must be at least 320")
+    args.out.mkdir(parents=True, exist_ok=True)
+    test_page = pathlib.Path(__file__).resolve().parent.parent / "web" / "test" / "carrel-test.html"
+    if not test_page.exists():
+        parser.error("Build the mock page first: python3 web/build.py")
 
-with sync_playwright() as p:
-    b = p.chromium.launch()
-    pg = b.new_page(viewport={'width': W, 'height': 844}, device_scale_factor=1,
-                    color_scheme='dark' if dark else 'light', has_touch=True, is_mobile=True)
-    pg.on('console', lambda m: errs.append(m.type + ': ' + m.text) if m.type in ('error', 'warning') and 'TUNNEL' not in m.text else None)
-    pg.on('pageerror', lambda e: errs.append('PAGEERROR: ' + str(e)))
-    pg.goto('file://' + str(page_path)); pg.wait_for_timeout(1500)
-    for v in ['today', 'calendar', 'week', 'patterns']:
-        pg.click(f'#nav [data-v="{v}"]'); pg.wait_for_timeout(600)
-        sw = pg.evaluate('document.documentElement.scrollWidth')
-        if sw > W: errs.append(f'H-OVERFLOW on {v}: page is {sw}px wide')
-        f = out / f'{v}.png'; pg.screenshot(path=str(f), full_page=True); crop(f)
-    pg.click('#nav [data-act="setup"]'); pg.wait_for_timeout(600)
-    pg.screenshot(path=str(out / 'setup.png'))
-    b.close()
-print('\n'.join(errs) or 'OK: no console errors, no horizontal overflow')
+    errors = []
+    with sync_playwright() as p:
+        browser = p.chromium.launch()
+        is_phone = args.width < 960
+        page = browser.new_page(
+            viewport={"width": args.width, "height": 844},
+            device_scale_factor=1,
+            color_scheme="dark" if args.dark else "light",
+            has_touch=is_phone,
+            is_mobile=is_phone,
+        )
+        page.on("pageerror", lambda error: errors.append("PAGEERROR: " + str(error)))
+        page.on("console", lambda message: errors.append("CONSOLE: " + message.text)
+                if message.type == "error" else None)
+        page.goto(test_page.as_uri())
+        page.wait_for_timeout(700)
+
+        def capture(name):
+            # The document may use a wide Plan workspace, but must not overflow the viewport.
+            actual = page.evaluate(
+                "() => Math.max(document.documentElement.scrollWidth, document.body.scrollWidth)"
+            )
+            if actual > args.width + 1:
+                errors.append(f"H-OVERFLOW on {name}: {actual}px > {args.width}px")
+            path = args.out / f"{name}.png"
+            page.screenshot(path=str(path), full_page=True)
+            try:
+                from PIL import Image
+                with Image.open(path) as shot:
+                    if shot.height > 2400:
+                        shot.crop((0, 0, shot.width, 2400)).save(path)
+            except ImportError:
+                pass
+
+        for view in ("today", "plan", "stats", "settings"):
+            try:
+                page.locator(f'#nav [data-v="{view}"]').click(timeout=5000)
+                page.wait_for_timeout(250)
+                capture(view)
+            except Exception as exc:
+                errors.append(f"{view}: {exc}")
+        for index, script in enumerate(args.js, 1):
+            try:
+                page.locator('#nav [data-v="today"]').click(timeout=5000)
+                page.evaluate(script)
+                page.wait_for_timeout(250)
+                capture(f"js-{index}")
+            except Exception as exc:
+                errors.append(f"js-{index}: {exc}")
+        browser.close()
+
+    if errors:
+        print("\n".join(errors), file=sys.stderr)
+        return 1
+    print("OK: no console or page errors, no horizontal overflow")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
