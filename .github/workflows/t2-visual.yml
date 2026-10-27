@@ -1,0 +1,34 @@
+name: T2 Today sheets visual QA
+on:
+  push:
+    branches: [redesign/t2-visual-qa]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Browser prerequisites
+        run: |
+          npm install --no-audit --no-fund
+          python3 -m pip install --break-system-packages playwright pillow
+          python3 -m playwright install --with-deps chromium
+      - name: Build and Node regressions
+        run: |
+          npm run build:web
+          for f in web/test/*_test.js; do TZ=Asia/Kolkata node "$f"; done
+      - name: T2 browser interactions and screenshots
+        run: TZ=Asia/Kolkata python3 tools/t2_smoke.py
+      - name: Upload mobile and desktop screenshot evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t2-sheets-focus-390-1280-light-dark
+          path: t2-screens/
+          if-no-files-found: ignore
+          retention-days: 7
