@@ -63,6 +63,7 @@ assert.equal(UI.sheet.type,'start');
 assert.equal(UI.sheet.pomo,true,'respects timer default');
 let options = SHEETS.start(UI.sheet);
 assert(options.includes('After last') && options.includes('data-act="t2-confirm-start"'));
+assert.equal((options.match(/Math &lt;proofs&gt;/g)||[]).length,1,'Start sheet title is not repeated');
 assert(options.includes('50/10') && !options.includes('Cancel'));
 ACT['t2-from']({getAttribute:()=> 'last'});
 assert.equal(UI.sheet.from,'last');
@@ -148,6 +149,8 @@ UI.deskCtl=0;
 assert(focusCtx.vDesk().includes('desk-ctl hid'),'controls hide after inactivity');
 const focusCss=read('focus.css');
 assert(focusCss.includes('background:#000') && focusCss.includes('visibility:hidden'));
+assert(read('today-sheets.css').includes('body:has(#sheet .t2-sheet) #toast'),
+  'a pending snackbar must not obscure a modal editor');
 focusCtx.CUR={activity:'break',start:now-HOUR,ret:null};
 focusCtx.pomoState=()=>null;
 const breakFocus=focusCtx.vDesk();
