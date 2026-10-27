@@ -18,7 +18,7 @@ const ACTMAP = { math: { id:'math', name:'Math <proofs>', color:'#3D7EA6', kind:
   break: { id:'break', name:'Break', color:'#4E5A86', kind:'life', role:'break' },
   archived: { id:'archived', name:'Hidden', color:'#333333', kind:'study', archived:true } };
 const kButton = (label, attrs='') => '<button '+attrs+'>'+label+'</button>';
-const ctx = { ACT, SHEETS, UI, CUR:{activity:'math',start:now-HOUR}, DAY, ACTMAP, ACTS: Object.values(ACTMAP), ENTRIES:[],
+const ctx = { ACT, SHEETS, UI, CUR:null, DAY, ACTMAP, ACTS: Object.values(ACTMAP), ENTRIES:[],
   MIN, HOUR, PRESETS: {'25/5':{},'50/10':{},'90/20':{}},
   CFG: { pomodoro: { focus:25,short:5 } },
   aggregate: () => { aggregates++; return { '2026-10-27':{acts:{ math:90*MIN, break:20*MIN }} }; },
@@ -104,6 +104,7 @@ assert(calls.includes('backlog') && calls.includes('close'),'sheet closes on las
 parked=[{ id:'p2',text:'Try a lemma'}]; UI.sheet={type:'parked',k:'2026-10-27'};
 ACT['t2-park-drop']({getAttribute: k=>k==='data-k'?'2026-10-27':'p2'});
 assert(calls.includes('drop') && UI.sheet===null);
+ctx.CUR={activity:'math',start:now-HOUR};
 const fixed=SHEETS.fixstop();
 assert(fixed.includes('data-act="t2-stop-save"') && fixed.includes('Last open'));
 UI.sheet={type:'fixstop'};
