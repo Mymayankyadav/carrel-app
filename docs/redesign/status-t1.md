@@ -22,7 +22,7 @@ Branch: `redesign/t1-today`, stacked on T2 PR #21.
 ## Checks
 - [x] Initial implementation and unit assertions committed.
 - [x] Full web build and Node tests passed at [CI #40558843115](https://github.com/Mymayankyadav/carrel-app/actions/runs/40558843115), including the rewritten Today regression suite.
-- [ ] Four viewport browser screenshots, interaction and accessibility checks ([QA-only PR #24](https://github.com/Mymayankyadav/carrel-app/pull/24)).
+- [x] Chromium browser interactions passed at [run #40559015243](https://github.com/Mymayankyadav/carrel-app/actions/runs/40559015243) across 390px/1280px light/dark. Screenshots (24 images) uploaded in artifact [#12757618637](https://github.com/Mymayankyadav/carrel-app/actions/runs/40559015243/artifacts/12757618637). Manually inspected phone and desktop running/idle and Activities compositions; no horizontal overflow, page errors or icon misalignment observed. Browser tests are mock-only; hardware interaction remains pending.
 - [ ] Physical Android notification, system Back, keyboard, Wake Lock and long press acceptance.
 
 **Do not merge/deploy** until upstream PRs land in the required order and T1 acceptance is complete.
