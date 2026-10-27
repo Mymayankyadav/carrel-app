@@ -49,7 +49,7 @@ let toastT = 0;
 function toast(msg, o) {
   o=o||{};
   UI.lastRate=o.rate||null;
-  UI.toast={msg,undo:!!o.undo,rate:o.rate||null};
+  UI.toast={msg,undo:!!o.undo,rate:o.rate||null,action:o.undo?null:(o.action||null)};
   renderToast();
   clearTimeout(toastT);
   if(!o.persist) toastT=setTimeout(()=>{UI.toast=null;renderToast();},o.undo?8000:4000);
