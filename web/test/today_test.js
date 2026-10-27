@@ -87,7 +87,7 @@ assert(sw.includes('data-id="sleep" aria-pressed="false"'), 'other activity expl
 
 const vToday = vm.runInNewContext(fn('vToday','vNoActs') + '\nvToday',{
   Date:{now:()=>5000}, UI:{date:null},
-  S:{loaded:{activities:true}}, ACTS:[{id:'math'}], todayKey:()=> '2026-10-27',
+  S:{loaded:{activities:true}}, ACTS:[{id:'math'}], ENTRIES:[], todayKey:()=> '2026-10-27',
   aggregate:()=>({ '2026-10-27':{acts:{},study:0,all:0} }),
   planModelFor:()=>null, pomodoroByDay:()=>({}),fmtDur:()=> '0m',
   stampText:()=> 'Oct 27',icon:()=> '',esc:clean,
