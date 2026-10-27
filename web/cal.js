@@ -33,7 +33,12 @@ function nextBacklogOrder() { let m = 0; const b = backlogMap(); for (const id i
 
 /* ---------- calendar range ---------- */
 function calView() {
-  if (!UI.cal.view) UI.cal.view = window.matchMedia && window.matchMedia('(min-width: 860px)').matches ? 'week' : '3day';
+  // An explicit choice is persisted by cal-view and restored in UI.cal.view.
+  // Only the first visit gets a responsive default.
+  if (!UI.cal.view) {
+    const width = window.innerWidth;
+    UI.cal.view = width < 480 ? 'day' : width >= 860 ? 'week' : '3day';
+  }
   return UI.cal.view;
 }
 function calDays() {
