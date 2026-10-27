@@ -1,0 +1,32 @@
+name: P2 Plan sheets browser QA
+on:
+  push:
+    branches: [redesign/p2-visual-qa]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Chromium
+        run: |
+          npm install --no-audit --no-fund
+          python3 -m pip install --break-system-packages playwright pillow
+          python3 -m playwright install --with-deps chromium
+      - name: Build test-only mock
+        run: npm run build:web
+      - name: P2 browser actions and screenshots
+        run: python3 tools/p2_smoke.py
+      - name: Upload screenshots and evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p2-plan-sheets-light-dark
+          path: p2-screens/
+          retention-days: 7
+          if-no-files-found: ignore
