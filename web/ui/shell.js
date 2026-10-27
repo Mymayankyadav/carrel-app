@@ -1,49 +1,44 @@
 /* ---------- views: shell ---------- */
-function vHeader() {
-  const st = syncState(), pend = S.pending.length;
-  const lbl = { live: 'Saved', saving: 'Saving…', offline: 'Offline · ' + pend + ' waiting', readonly: 'View only', none: 'Signed out', connecting: 'Connecting…' }[st];
-  const tabs = [['today', 'Today'], ['calendar', 'Calendar'], ['week', 'Week'], ['patterns', 'Patterns']].map(([v, t]) =>
-    `<button type="button" class="tt ${UI.view === v ? 'on' : ''}" data-act="view" data-v="${v}"${UI.view === v ? ' aria-current="page"' : ''}>${t}</button>`).join('');
-  let pill = '';
-  if (CUR && (UI.view !== 'today' || (UI.date && UI.date !== todayKey()))) {
-    const a = act(CUR.activity), s = parseT(CUR.start);
-    pill = `<span class="runpill" style="--c:${a.color}"><i class="dot"></i><span class="rp-name">${esc(a.name)}</span><span class="num" data-tk="elx" data-s="${s}">${fmtEl(Date.now() - s)}</span><button type="button" class="icon-btn" data-act="stop" aria-label="Stop ${esc(a.name)}">${icon('stop')}</button></span>`;
-  }
-  return `<div class="wrap bar-in ${UI.view === 'calendar' ? 'wide' : ''}"><div class="brand"><i class="lampdot" aria-hidden="true"></i>Carrel</div><nav class="tabs-top" aria-label="Views">${tabs}</nav><div class="bar-right">${pill}<span class="sync s-${st}${pill && st === 'live' ? ' a6-dot-only' : ''}" role="status"><span>${lbl}</span></span><button type="button" class="icon-btn hide-sm" data-act="setup" aria-label="Setup">${icon('sliders')}</button></div></div>`;
-}
-function vNav() {
-  const items = [['today', 'Today', 'clock'], ['calendar', 'Calendar', 'cal'], ['week', 'Week', 'bars'], ['patterns', 'Patterns', 'grid']];
-  return `<div class="tb-in">${items.map(([v, t, ic]) => `<button type="button" class="tb ${UI.view === v ? 'on' : ''}" data-act="view" data-v="${v}"${UI.view === v ? ' aria-current="page"' : ''}>${icon(ic)}<span>${t}</span></button>`).join('')}<button type="button" class="tb" data-act="setup">${icon('sliders')}<span>Setup</span></button></div>`;
-}
+/* R0a: global top bar removed; each screen now owns its header. */
+function vNav() { return kNav(UI.view); }
 function vNotices() {
   if (S.conn === 'none') return `<div class="banner" style="margin-bottom:22px"><h3>Sign in to Carrel</h3><p>Your timers and log are saved to your own account so they follow you across devices.</p><div class="row"><button type="button" class="btn lamp" data-act="signin">Sign in with Google</button></div></div>`;
   if (!S.owner) return `<div class="banner" style="margin-bottom:22px"><h3>This tracker is private</h3><p>Only the person who owns it can see or change its log.</p></div>`;
   if (S.conn === 'readonly') return `<div class="banner warn" style="margin-bottom:22px"><h3>View only</h3><p>Can't save right now. Carrel will retry automatically.</p><div class="row"><button type="button" class="btn sm" data-act="a1-reconnect">Try again</button></div></div>`;
   return '';
 }
-function vMain() {
-  const n = vNotices();
-  if (S.conn === 'none' || !S.owner) return `<div class="wrap">${n}</div>`;
-  if (UI.view === 'calendar') return `<div class="wrap wide">${n}${vCalendar()}</div>`;
-  if (UI.view === 'week') return `<div class="wrap">${n}${vWeek()}</div>`;
-  if (UI.view === 'patterns') return `<div class="wrap">${n}${vPatterns()}</div>`;
-  return `<div class="wrap">${n}${vToday()}</div>`;
+function canonicalView(v) {
+  return ({calendar:'plan',week:'stats',patterns:'stats'})[v] || v || 'today';
 }
-
+function vSyncLine() {
+  const status = syncState(), count = S.pending.length;
+  if (status === 'offline' && count) return '<div class="r0-sync" role="status">'+icon('offline')+'Offline · '+count+' waiting</div>';
+  if (status === 'readonly') return '<div class="r0-sync error" role="alert">'+icon('warn')+"Can't save"+kBtn('Retry','data-act="a1-reconnect"',{kind:'text'})+'</div>';
+  return '';
+}
+function vMain() {
+  const stack=UI.pages||[];
+  if (S.conn === 'none' || !S.owner) return '<div class="k-screen">'+(VIEWS.welcome ? VIEWS.welcome() : vNotices())+'</div>';
+  if (stack.length) {
+    const top=stack[stack.length-1], page=PAGES[top.id];
+    if(!page){console.warn('Unknown page:',top.id);return '';}
+    const params=top.params||{};
+    return '<div class="k-screen k-page">'+kPageHead(typeof page.title==='function'?page.title(params):page.title||top.id,typeof page.actions==='function'?page.actions(params):'')+
+      (typeof page.render==='function'?page.render(params):'')+'</div>';
+  }
+  const view=canonicalView(UI.view), f=VIEWS[view];
+  if(!f){console.warn('Unknown view:',view);return '';}
+  const wide=view==='plan'?' wide':'';
+  return '<div class="k-screen'+wide+'">'+(view==='today'?vSyncLine():'')+f()+'</div>';
+}
 function vSheet() {
-  const sh = UI.sheet;
-  if (!sh) return '';
-  let inner = '';
-  if (sh.type === 'entry') inner = sEntry(sh);
-  else if (sh.type === 'split') inner = sSplit(sh);
-  else if (sh.type === 'block') inner = sBlock(sh);
-  else if (sh.type === 'wrap') inner = sWrap(sh);
-  else if (sh.type === 'setup') inner = sSetup(sh);
-  else if (sh.type === 'qnew') inner = sQnew(sh);
-  else if (sh.type === 'busy') inner = sBusy(sh);
-  else if (sh.type === 'deadline') inner = sDeadline(sh);
-  else if (sh.type === 'task') inner = sTask(sh);
-  return `<div class="scrim" data-act="sheet-close"><div class="sheet ${sh.type === 'setup' ? 'wide' : ''}" role="dialog" aria-modal="true" aria-labelledby="sh-title" data-act="noop">${inner}</div></div>`;
+  const sh=UI.sheet;
+  if(!sh)return '';
+  const f=SHEETS[sh.type];
+  if(!f){console.warn('Unknown sheet:',sh.type);return '';}
+  const body=f(sh);
+  return '<div class="scrim k-sheet-bg" data-act="sheet-close"><div class="sheet k-sheet'+(sh.type==='setup'?' wide':'')+
+    '" role="dialog" aria-modal="true" aria-labelledby="sh-title" data-act="noop">'+body+'</div></div>';
 }
 function actPick(sel, bind) {
   const list = ACTS.filter(a => !a.archived || a.id === sel);
@@ -52,17 +47,20 @@ function actPick(sel, bind) {
 /* ---------- toast ---------- */
 let toastT = 0;
 function toast(msg, o) {
-  o = o || {};
-  UI.toast = { msg, undo: !!o.undo, rate: o.rate || null };
+  o=o||{};
+  UI.lastRate=o.rate||null;
+  UI.toast={msg,undo:!!o.undo,rate:o.rate||null};
   renderToast();
   clearTimeout(toastT);
-  toastT = setTimeout(() => { UI.toast = null; renderToast(); }, o.rate ? 9000 : 5500);
+  if(!o.persist) toastT=setTimeout(()=>{UI.toast=null;renderToast();},o.undo?8000:4000);
 }
 function renderToast() {
-  const el = document.getElementById('toast');
-  if (!el) return;
-  const t = UI.toast;
-  morphInto(el, t ? `<div class="toast" role="status">${esc(t.msg)}${t.rate ? `<span class="rate" role="group" aria-label="Rate your focus"><button type="button" data-act="rate" data-v="3">Deep</button><button type="button" data-act="rate" data-v="2">Okay</button><button type="button" data-act="rate" data-v="1">Scattered</button></span>` : ''}${t.undo ? `<button type="button" class="tbtn" data-act="undo">Undo</button>` : ''}</div>` : '');
+  const el=document.getElementById('toast');
+  if(!el)return;
+  const t=UI.toast;
+  morphInto(el,t?'<div class="k-toast" role="status">'+esc(t.msg)+
+    (t.undo?kBtn('Undo','data-act="undo"',{kind:'text'}):'')+
+    (t.action?kBtn(t.action.label,'data-act="'+esc(t.action.act)+'"',{kind:'text'}):'')+'</div>':'');
 }
 
 /* ---------- rendering: DOM morphing keeps focus and scroll while live data arrives ---------- */
@@ -120,10 +118,10 @@ function render() {
   if (DRAG && DRAG.started) { DRAG.pending = true; return; }
   const app = document.getElementById('app');
   if (!app) return;
+  UI.view = canonicalView(UI.view);
   lastFull = Date.now();
   applyPhoneDrifts();
   computeNextDue();
-  morphInto(document.getElementById('hdr'), vHeader());
   morphInto(document.getElementById('main'), vMain());
   morphInto(document.getElementById('nav'), vNav());
   morphInto(document.getElementById('sheet'), UI.sheet ? vSheet() : '');
@@ -131,7 +129,7 @@ function render() {
   document.documentElement.style.overflow = UI.sheet || UI.desk ? 'hidden' : '';
   if (S.mcp) gcWatch();
   nativeSync();
-  if (UI.view === 'calendar' && UI.cal.scrollTo) { const sc = document.getElementById('cv-scroll'); if (sc) { UI.cal.scrollTo = false; sc.scrollTop = calScrollTarget(); } }
+  if (UI.view === 'plan' && UI.cal.scrollTo) { const sc = document.getElementById('cv-scroll'); if (sc) { UI.cal.scrollTo = false; sc.scrollTop = calScrollTarget(); } }
   tick(true);
 }
 function renderSheet() { morphInto(document.getElementById('sheet'), UI.sheet ? vSheet() : ''); }
@@ -186,7 +184,12 @@ document.addEventListener('keydown', e => {
     e.preventDefault(); first.focus({ preventScroll: true });
   }
 }, true);
-function openSheet(s) { sheetOpener = document.activeElement; UI.sheet = s; render(); focusSheet(); }
+function openSheet(s) {
+  if (!s || !s.type || !SHEETS[s.type]) { console.warn('Unknown sheet:',s&&s.type);return; }
+  sheetOpener=document.activeElement; UI.sheet=s;
+  try {history.pushState({carrelSheet:true},'');}catch(e){/* file URL or native */}
+  render();focusSheet();
+}
 function closeSheet(silent) {
   UI.sheet = null;
   if (!silent) render();
@@ -201,7 +204,7 @@ Object.assign(ACT, {
   'park-backlog'(el) { parkToBacklog(el.getAttribute('data-k'), el.getAttribute('data-id')); },
   'park-drop'(el) { const k = el.getAttribute('data-k'); commit('Dropped.', W().dis(k, el.getAttribute('data-id'), { dismissed: true }), { undo: true }); },
   noop() {},
-  view(el) { UI.view = el.getAttribute('data-v'); UI.planMenu = false; if (UI.view === 'today') UI.date = null; if (UI.view === 'calendar') UI.cal.scrollTo = true; try { history.replaceState(null, '', '#' + UI.view); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
+  view(el) { UI.view=canonicalView(el.getAttribute('data-v')); UI.pages=[];UI.planMenu=false; if(UI.view==='today')UI.date=null; if(UI.view==='plan')UI.cal.scrollTo=true; try{history.replaceState(null,'','#'+UI.view)}catch(e){} render();window.scrollTo(0,0); },
   setup() { openSheet({ type: 'setup' }); },
   'sheet-close'(el, e) { if (e && e.target !== el && el.classList.contains('scrim')) return; closeSheet(); },
   'day-prev'() { UI.date = addDaysKey(UI.date || todayKey(), -1); UI.openBlk = null; UI.planMenu = false; render(); },
@@ -477,7 +480,7 @@ async function boot(hot) {
   if (hot.view) UI.view = hot.view;
   if (hot.date) UI.date = hot.date;
   const h = (location.hash || '').replace('#', '');
-  if (['today', 'calendar', 'week', 'patterns'].includes(h)) UI.view = h;
+  if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) UI.view = canonicalView(h);
   S.windowFrom = addDaysKey(keyOfDate(new Date()), -WINDOW_DAYS);
   restorePending();
   recompute();
@@ -486,3 +489,9 @@ async function boot(hot) {
   setInterval(() => { tick(false); const n = Date.now(); if (document.visibilityState === 'visible' && n - seenW > 30000) { seenW = n; store.set('seen', n); } }, 1000);
   await startSession();
 }
+
+/* R0a: registry bridge until the Phase-2 owners replace legacy sheets. */
+Object.assign(SHEETS,{qnew:sQnew,busy:sBusy,deadline:sDeadline,task:sTask});
+VIEWS.calendar=VIEWS.plan;
+document.addEventListener('keydown', e=>{if(e.key==='Escape'&&!e.defaultPrevented){if(goBack()){e.preventDefault();e.stopPropagation();}}},true);
+window.addEventListener('popstate',()=>{goBack();});

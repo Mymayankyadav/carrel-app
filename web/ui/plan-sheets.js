@@ -30,3 +30,5 @@ function sWrap(sh) {
 
 SHEETS.block = sBlock;
 SHEETS.wrap = sWrap;
+
+SHEETS.qnew = sQnew;

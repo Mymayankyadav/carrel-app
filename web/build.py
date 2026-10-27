@@ -16,7 +16,7 @@ head = """<meta name="description" content="Carrel: personal study time tracker 
 
 shell = """<div id="app">
   <main id="main"></main>
-  <nav id="nav" class="tabs-bot" aria-label="Views"></nav>
+  <div id="nav"></div>
   <div id="sheet"></div>
   <div id="desk"></div>
   <div id="toast" aria-live="polite"></div>
@@ -26,7 +26,7 @@ shell = """<div id="app">
 """
 
 # Keep Android's status bar in step with the system theme, even before JS boots.
-paper_colors = re.findall(r'--paper:\s*(#[0-9A-Fa-f]{6})', css)
+paper_colors = re.findall(r'--bg:\s*(#[0-9A-Fa-f]{6})', css)
 if len(paper_colors) < 2:
     raise ValueError('Expected light and dark --bg colours in kit CSS')
 paper, dark_paper = paper_colors[:2]

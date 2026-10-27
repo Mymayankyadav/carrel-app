@@ -1,44 +1,7 @@
-/* Layout: reading-room ledger. One quiet column on phones; on wide screens the timer, switcher
-   and plan sit beside the day's log. Lamp green is the one accent; brass marks breaks and
-   pomodoro turns; rust marks "now" and anything that needs fixing. */
-:root{
-  --paper:#ECEFEA; --surface:#F6F8F4; --raised:#FCFDFB; --sunk:#E1E6DF;
-  --ink:#141C18; --ink-2:#47534C; --ink-3:#717E76; --rule:#D3DAD0; --rule-2:#BCC6BA; --hatch:#C6CFC3;
-  --lamp:#1C6A4E; --lamp-strong:#14553E; --on-lamp:#F1FAF5;
-  --brass:#8C5E14; --rust:#B0412C;
-  --scrim:rgba(10,16,13,.42);
-  --shadow:0 1px 0 rgba(20,28,24,.05), 0 10px 28px -14px rgba(20,28,24,.22);
-  --f-display:"Newsreader","Iowan Old Style","Palatino Linotype",Georgia,serif;
-  --f-ui:"Schibsted Grotesk","Segoe UI",system-ui,-apple-system,"Helvetica Neue",Arial,sans-serif;
-  --f-num:"Martian Mono",ui-monospace,"SF Mono",Menlo,Consolas,"Liberation Mono",monospace;
-  --r-card:10px; --r-ctl:8px;
-  color-scheme:light;
-}
-@media (prefers-color-scheme: dark){
-  :root:not([data-theme="light"]){
-    --paper:#0B110E; --surface:#111916; --raised:#16201C; --sunk:#0A0F0D;
-    --ink:#E2E8E3; --ink-2:#A9B5AD; --ink-3:#7D8B83; --rule:#222E28; --rule-2:#304038; --hatch:#2A3831;
-    --lamp:#66C29B; --lamp-strong:#8AD5B4; --on-lamp:#04130C;
-    --brass:#D8A34B; --rust:#E27A62;
-    --scrim:rgba(0,0,0,.62);
-    --shadow:0 1px 0 rgba(0,0,0,.35), 0 14px 34px -18px rgba(0,0,0,.75);
-    color-scheme:dark;
-  }
-}
-:root[data-theme="dark"]{
-  --paper:#0B110E; --surface:#111916; --raised:#16201C; --sunk:#0A0F0D;
-  --ink:#E2E8E3; --ink-2:#A9B5AD; --ink-3:#7D8B83; --rule:#222E28; --rule-2:#304038; --hatch:#2A3831;
-  --lamp:#66C29B; --lamp-strong:#8AD5B4; --on-lamp:#04130C;
-  --brass:#D8A34B; --rust:#E27A62;
-  --scrim:rgba(0,0,0,.62);
-  --shadow:0 1px 0 rgba(0,0,0,.35), 0 14px 34px -18px rgba(0,0,0,.75);
-  color-scheme:dark;
-}
-
+/* R0a: keep original layout rules, but delegate all theme tokens to kit.css. */
 *,*::before,*::after{box-sizing:border-box}
 html{-webkit-text-size-adjust:100%;background:var(--paper)}
 body{margin:0;background:var(--paper);color:var(--ink);font:400 15px/1.45 var(--f-ui);-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
-body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--paper)}
 button,input,select,textarea{font:inherit;color:inherit}
 button{cursor:pointer;-webkit-tap-highlight-color:transparent}
 button:disabled{cursor:default;opacity:.5}
