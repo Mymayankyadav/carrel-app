@@ -18,6 +18,7 @@ const state={
   setBind(k,v){this.calls.push(['bind',k,v]);},
   esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');},
   console,
+  history:{state:null,pushed:[],backCount:0,pushState(value){this.state=value;this.pushed.push(value);},back(){this.backCount++;}},
   setTimeout,clearTimeout,
 };
 vm.createContext(state);
@@ -46,10 +47,15 @@ assert.ok(state.PAGES.kit,'kit gallery is registered');
 assert.equal(run("pushPage('missing')"),false);
 assert.equal(run("pushPage('kit',{demo:1})"),true);
 assert.equal(state.UI.pages.length,1);
+assert.equal(state.history.state.carrelNav,'page','subscreen creates a browser history entry');
 state.UI.kMenu={items:[]};
 assert.equal(run("goBack()"),true); assert.equal(state.UI.kMenu,null);
 state.UI.sheet={type:'entry'};assert.equal(run("goBack()"),true);assert.equal(state.UI.sheet,null);
 assert.equal(run("goBack()"),true);assert.equal(state.UI.pages.length,0);
+assert.equal(state.history.backCount,1,'in-app Back consumes its page history entry');
+assert.equal(run("pushPage('kit')"),true);
+assert.equal(run("goBack(true)"),true);
+assert.equal(state.history.backCount,1,'browser Back does not call history.back again');
 state.UI.view='settings';assert.equal(run("goBack()"),true);assert.equal(state.UI.view,'today');
 assert.equal(run("goBack()"),false);
 const switchEl={getAttribute:k=>({'data-bind-to':'sheet.enabled','data-v':'true'}[k]||null)};
