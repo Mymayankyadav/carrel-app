@@ -186,12 +186,16 @@ document.addEventListener('keydown', e => {
 }, true);
 function openSheet(s) {
   if (!s || !s.type || !SHEETS[s.type]) { console.warn('Unknown sheet:',s&&s.type);return; }
+  const replacing = !!UI.sheet;
   sheetOpener=document.activeElement; UI.sheet=s;
-  try {history.pushState({carrelSheet:true},'');}catch(e){/* file URL or native */}
+  // Replacing a sheet is not another back-stack level; the old sheet is gone.
+  if (!replacing) kHistoryPush('sheet');
   render();focusSheet();
 }
-function closeSheet(silent) {
+function closeSheet(silent, fromHistory) {
+  const hadSheet=!!UI.sheet;
   UI.sheet = null;
+  if (hadSheet && !fromHistory) kHistoryConsume('sheet');
   if (!silent) render();
   if (sheetOpener && sheetOpener.isConnected) { try { sheetOpener.focus({ preventScroll: true }); } catch (e) { /* ignore */ } }
   sheetOpener = null;
@@ -494,4 +498,4 @@ async function boot(hot) {
 Object.assign(SHEETS,{qnew:sQnew,busy:sBusy,deadline:sDeadline,task:sTask});
 VIEWS.calendar=VIEWS.plan;
 document.addEventListener('keydown', e=>{if(e.key==='Escape'&&!e.defaultPrevented){if(goBack()){e.preventDefault();e.stopPropagation();}}},true);
-window.addEventListener('popstate',()=>{goBack();});
+window.addEventListener('popstate',()=>{if(kIgnorePopstate){kIgnorePopstate--;return;}goBack(true);});
