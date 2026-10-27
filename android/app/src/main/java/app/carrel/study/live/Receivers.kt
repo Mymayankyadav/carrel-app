@@ -41,7 +41,7 @@ class DriftActivity : Activity() {
         val at = savedInstanceState?.getLong("at") ?: System.currentTimeMillis()
         tapAt = at
         val minutes = intArrayOf(1, 5, 15)
-        AlertDialog.Builder(this).setTitle("Drifted for…")
+        AlertDialog.Builder(this).setTitle("Drifted for")
             .setItems(arrayOf("1 min", "5 min", "15 min")) { _, i ->
                 val live = applicationContext.live
                 live.io.execute { live.engine.act("drift", at, minutes[i]) }
