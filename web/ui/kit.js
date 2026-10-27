@@ -210,7 +210,7 @@ Object.assign(ACT, {
       const target=holder.firstChild||fake; ACT[item.act](target);}
   },
   'k-dialog-cancel'(_el,e){
-    if(e&&e.target.closest('.k-dialog')&&e.target.classList.contains('k-dialog-bg'))return;
+    if(e&&e.target.closest('.k-dialog')&&!e.target.closest('.k-dialog [data-act="k-dialog-cancel"]'))return;
     const d=UI.kDialog;UI.kDialog=null;kRenderPop();if(d)d.resolve(false);
   },
   'k-dialog-ok'(){
