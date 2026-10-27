@@ -48,7 +48,10 @@ assert.equal(typeof VIEWS.today,'function');
 let html=VIEWS.today();
 assert(html.includes('t1-today')&&html.includes('90m')&&html.includes('t1-timer'));
 assert(html.includes('Not tracking')&&html.includes('Resume Mathematics'));
-assert.equal((html.match(/data-id="maths"/g)||[]).length,1,'idle study appears once, in its tile');
+assert.equal((html.match(/class="t1-chip"[^>]*data-id="maths"/g)||[]).length,0,
+  'idle study has no duplicate switch chip');
+assert.equal((html.match(/class="t1-tile"[^>]*data-id="maths"/g)||[]).length,1,
+  'idle study has one large start tile');
 assert(html.includes('data-act="t1-resume-study"'));
 ACT['t1-resume-study']({getAttribute:()=> 'maths'});
 assert.equal(calls.at(-1)[0],'resume');
