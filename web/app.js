@@ -1489,6 +1489,7 @@ function vWeekBars(keys, agg, tk, goal) {
   }).join('');
   const goalLine = goal && goal <= max ? `<i class="goal" style="bottom:${(goal / max * 100).toFixed(2)}%"><span>goal ${fmtDur(goal)}</span></i>` : '';
   return `<section class="panel" aria-labelledby="wb-h"><div class="sec-head"><h2 id="wb-h">Study by day</h2></div>
+    <div class="a5-chart-summary" role="img" aria-label="${esc('Study by day: ' + keys.map((k, i) => wdName(dateOfKey(k)) + ' ' + fmtDur(vals[i])).join(', '))}"></div>
     <div class="chart"><div class="ch-y" style="height:${Hpx}px">${yl.join('')}</div><div class="ch-plot" style="height:${Hpx}px">${gl.join('')}${goalLine}<div class="ch-bars">${cols}</div></div>
     <div class="ch-x">${keys.map(k => `<span><b>${esc(wdName(dateOfKey(k)))}</b>${dateOfKey(k).getDate()}</span>`).join('')}</div></div>
     ${order.length ? `<div class="legend">${order.map(id => `<span><i style="--c:${act(id).color}"></i>${esc(act(id).name)}</span>`).join('')}</div>` : ''}
@@ -1504,6 +1505,7 @@ function vWeekRibbons(keys, entries, now, tk) {
   keys.forEach(k => { const ds = dayStartMs(k), de = dayEndMs(k); entries.forEach(en => { if (en.s < de && entryEnd(en, now) > ds) used.add(en.a); }); });
   const leg = Array.from(used).sort((a, b) => (isStudyId(a) === isStudyId(b) ? 0 : isStudyId(a) ? -1 : 1) || (act(a).order || 0) - (act(b).order || 0));
   return `<section class="panel" aria-labelledby="wr-h"><div class="sec-head"><h2 id="wr-h">Every hour of the week</h2></div>
+    <div class="a5-chart-summary" role="img" aria-label="${esc('Activity timing across the week, ' + keys.map(k => wdName(dateOfKey(k)) + ' ' + fmtDur(entries.filter(en => en.s < dayEndMs(k) && entryEnd(en, now) > dayStartMs(k)).reduce((total, en) => total + Math.min(entryEnd(en, now), dayEndMs(k)) - Math.max(en.s, dayStartMs(k)), 0))).join(', '))}"></div>
     <div class="wrib">${rows}<div class="wrib-ax"><span></span><div class="rib-ax">${ribbonAxis(dayStartMs(keys[0]))}</div></div></div>
     <div class="legend">${leg.map(id => `<span><i style="--c:${act(id).color}"></i>${esc(act(id).name)}</span>`).join('')}<span><i class="hatch"></i>untracked</span></div>
   </section>`;
@@ -1552,6 +1554,11 @@ function vReview(ws, ex) {
 }
 
 /* ---------- views: Patterns ---------- */
+function patternsPending(pm, title) {
+  if (pm.studyDays >= 7) return '';
+  const needed = 7 - pm.studyDays;
+  return `<section class="panel" aria-label="${esc(title)}"><div class="sec-head"><h2>${esc(title)}</h2></div><p class="cap">Needs ${needed} more day${needed === 1 ? '' : 's'} of study logs to show a reliable pattern (${pm.studyDays} of 7).</p></section>`;
+}
 function heatColor(f) { return f <= 0 ? 'var(--sunk)' : `color-mix(in oklab, var(--lamp) ${Math.round(18 + f * 82)}%, var(--surface))`; }
 function vPatterns() {
   const now = Date.now(), tk = todayKey();
@@ -1576,15 +1583,17 @@ function vPatterns() {
   </div>`;
 }
 function vHeat(pm) {
+  if (pm.studyDays < 7) return patternsPending(pm, 'When you study');
   let mx = 0;
   const avg = pm.heat.map((r, i) => r.map(v => { const a = pm.wdCount[i] ? v / pm.wdCount[i] : 0; mx = Math.max(mx, a); return a; }));
   const rows = avg.map((r, i) => `<div class="heat-row"><span>${esc(rowWeekday(i))}</span>${r.map((v, c) => `<i style="background:${heatColor(mx ? v / mx : 0)}" title="${esc(rowWeekday(i))} ${fmtHourL(pm.dsh + c)}: ${fmtDur(v)} on average"></i>`).join('')}</div>`).join('');
   const xs = `<div class="heat-row heat-x"><span></span>${Array.from({ length: 24 }, (_, c) => `<span>${c % 3 === 0 ? fmtHourS(pm.dsh + c) : ''}</span>`).join('')}</div>`;
   return `<section class="panel" aria-labelledby="ht-h"><div class="sec-head"><h2 id="ht-h">When you study</h2></div><p class="cap">Average study minutes in each hour, by weekday. Late-night hours sit on the day they belong to.</p>
-    <div class="heat" role="img" aria-label="Study by hour and weekday">${rows}${xs}</div>
+    <div class="heat" role="img" aria-label="Average study by weekday and hour, with the busiest three-hour period starting at ${esc(fmtHourL(pm.dsh + pm.bestCol))}.">${rows}${xs}</div>
     <div class="scale"><span>less</span>${[0, .25, .5, .75, 1].map(f => `<i style="background:${heatColor(f)}"></i>`).join('')}<span>more</span>${mx ? `<span style="margin-left:auto">darkest = ${fmtDur(mx)}</span>` : ''}</div></section>`;
 }
 function vCal(pm, tk) {
+  if (pm.studyDays < 7) return patternsPending(pm, 'Consistency');
   const cells = [];
   let mx = 0;
   for (let k = pm.calFrom; k <= tk; k = addDaysKey(k, 1)) mx = Math.max(mx, (pm.cal[k] && pm.cal[k].study) || 0);
@@ -1598,16 +1607,18 @@ function vCal(pm, tk) {
   const lbls = Array.from({ length: 7 }, (_, i) => `<span>${i % 2 === 0 ? esc(rowWeekday(i)) : ''}</span>`).join('');
   return `<section class="panel" aria-labelledby="cl-h"><div class="sec-head"><h2 id="cl-h">Consistency</h2><span class="lbl">16 weeks</span></div>
     <p class="cap">Current streak <b class="num">${pm.streak}</b> day${pm.streak === 1 ? '' : 's'} · best <b class="num">${pm.bestStreak}</b> · a streak day means at least ${fmtDur(pm.goal)} of study (outlined squares).</p>
-    <div class="cal"><div class="cal-lbls">${lbls}</div><div class="cal-grid" role="img" aria-label="Study per day for 16 weeks">${cells.join('')}</div></div></section>`;
+    <div class="cal"><div class="cal-lbls">${lbls}</div><div class="cal-grid" role="img" aria-label="Study by date for 16 weeks: current streak ${pm.streak} days, best streak ${pm.bestStreak} days; a filled square represents study time.">${cells.join('')}</div></div></section>`;
 }
 function vHist(pm) {
+  if (pm.studyDays < 7) return patternsPending(pm, 'How long you stay with it');
   const mx = Math.max(1, ...pm.buckets.map(b => b.n));
   const names = ['<15m', '15–30', '30–45', '45–60', '1–1.5h', '1.5–2h', '2h+'];
   return `<section class="panel" aria-labelledby="hs-h"><div class="sec-head"><h2 id="hs-h">How long you stay with it</h2></div><p class="cap">Unbroken study stretches (pauses under five minutes don’t break one). Typical stretch: <b class="num">${pm.lens.length ? fmtDur(pm.median * MIN) : '–'}</b>.</p>
-    <div class="hist">${pm.buckets.map(b => `<div><span>${b.n || ''}</span><i style="height:${(b.n / mx * 100).toFixed(1)}%"></i></div>`).join('')}</div>
+    <div class="hist" role="img" aria-label="Unbroken study session durations: ${pm.lens.length} sessions, median ${esc(fmtDur(pm.median * MIN))}; seven bins from under 15 minutes to two hours or longer.">${pm.buckets.map(b => `<div><span>${b.n || ''}</span><i style="height:${(b.n / mx * 100).toFixed(1)}%"></i></div>`).join('')}</div>
     <div class="hist-x">${names.map(n => `<span>${n}</span>`).join('')}</div></section>`;
 }
 function vMix(pm) {
+  if (pm.studyDays < 7) return patternsPending(pm, 'Subjects by week');
   const mx = Math.max(1, ...pm.mix.map(w => w.total));
   const mixL = pm.mix.slice(-12);
   const i0 = mixL.findIndex(w => w.total > 0);
@@ -1619,10 +1630,11 @@ function vMix(pm) {
   }).join('');
   const used = new Set();
   pm.mix.forEach(w => Object.keys(w.acts).forEach(id => used.add(id)));
-  return `<section class="panel" aria-labelledby="mx-h"><div class="sec-head"><h2 id="mx-h">Subjects by week</h2></div><div class="mix">${rows}</div>
+  return `<section class="panel" aria-labelledby="mx-h"><div class="sec-head"><h2 id="mx-h">Subjects by week</h2></div><div class="mix" role="img" aria-label="${esc('Weekly subject mix: ' + mixL.slice(i0).map(w => w.w + ', ' + fmtDur(w.total)).join('; '))}">${rows}</div>
     <div class="legend">${Array.from(used).map(id => `<span><i style="--c:${act(id).color}"></i>${esc(act(id).name)}</span>`).join('')}</div></section>`;
 }
 function vSpans(pm) {
+  if (pm.studyDays < 7) return patternsPending(pm, 'Study hours of each day');
   if (!pm.spans.length) return `<section class="panel"><div class="sec-head"><h2>Study hours of each day</h2></div><p class="cap">Shows when your first and last study of each day happened.</p></section>`;
   const lo = Math.max(0, Math.floor(Math.min(...pm.spans.map(s => s.first)) / 60) * 60);
   const hi = Math.min(1440, Math.ceil(Math.max(...pm.spans.map(s => s.last)) / 60) * 60);
@@ -1634,13 +1646,14 @@ function vSpans(pm) {
   const ys = [];
   for (let m = lo; m <= hi; m += step) ys.push(`<span style="top:${((m - lo) / span * 100).toFixed(2)}%">${fmtMinOfDay(m)}</span>`);
   return `<section class="panel" aria-labelledby="sp-h"><div class="sec-head"><h2 id="sp-h">Study hours of each day</h2></div><p class="cap">Each bar runs from your first study to your last, oldest day on the left.</p>
-    <div class="spans-wrap"><div class="spans-y">${ys.join('')}</div><div class="spans">${cols}</div></div></section>`;
+    <div class="spans-wrap"><div class="spans-y">${ys.join('')}</div><div class="spans" role="img" aria-label="${esc('First and last study of ' + pm.spans.length + ' logged study days, ordered oldest to newest.')}">${cols}</div></div></section>`;
 }
 function vFocusHours(pm) {
+  if (pm.studyDays < 7) return patternsPending(pm, 'Focus by hour');
   if (pm.rated < 8) return `<section class="panel" aria-labelledby="fq-h"><div class="sec-head"><h2 id="fq-h">Focus by hour</h2></div><p class="cap">After you stop a study timer, rate it Deep, Okay or Scattered in the message that appears. After eight ratings this shows when your best focus happens.</p></section>`;
   const cols = pm.fh.map((x, i) => ({ i, v: x.w ? x.v / x.w : 0, w: x.w })).filter(x => x.w > 0);
   return `<section class="panel" aria-labelledby="fq-h"><div class="sec-head"><h2 id="fq-h">Focus by hour</h2></div><p class="cap">Average rating of sessions started in each hour (3 = deep).</p>
-    <div class="abars">${cols.map(x => `<div class="abar" style="--c:var(--lamp)"><span class="an"><span class="num">${fmtHourL(pm.dsh + x.i)}</span></span><span class="tr"><i style="width:${(x.v / 3 * 100).toFixed(1)}%"></i></span><span class="v">${x.v.toFixed(1)}</span></div>`).join('')}</div></section>`;
+    <div class="abars" role="img" aria-label="${esc('Average focus rating by starting hour: ' + cols.map(x => fmtHourL(pm.dsh + x.i) + ' ' + x.v.toFixed(1) + ' of 3').join('; '))}">${cols.map(x => `<div class="abar" style="--c:var(--lamp)"><span class="an"><span class="num">${fmtHourL(pm.dsh + x.i)}</span></span><span class="tr"><i style="width:${(x.v / 3 * 100).toFixed(1)}%"></i></span><span class="v">${x.v.toFixed(1)}</span></div>`).join('')}</div></section>`;
 }
 
 /* ---------- views: sheets ---------- */
