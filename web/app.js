@@ -723,10 +723,13 @@ function planReorder(k, id, dir) {
   let j = i + dir;
   while (j >= 0 && j < rows.length && (rows[j].at || !(rows[j].remaining > 0))) j += dir;
   if (j < 0 || j >= rows.length) return;
-  const ids = rows.map(r => r.id);
-  [ids[i], ids[j]] = [ids[j], ids[i]];
-  const blocks = {};
-  ids.forEach((x, n) => { blocks[x] = { order: n + 1 }; });
+  // Change only the two flexible blocks. Renumbering the entire visual
+  // list would silently rewrite fixed-time and completed block priorities.
+  if (rows[i].order === rows[j].order) return;
+  const blocks = {
+    [rows[i].id]: { order: rows[j].order },
+    [rows[j].id]: { order: rows[i].order }
+  };
   const w = W();
   w.plan(k, { blocks });
   commit(null, w);
