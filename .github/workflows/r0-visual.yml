@@ -1,0 +1,45 @@
+name: R0 visual regression
+on:
+  push:
+    branches:
+      - redesign/r0a-shell
+    paths:
+      - 'web/**'
+      - 'tools/shots.py'
+      - '.github/workflows/r0-visual.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Install web and browser dependencies
+        run: |
+          npm install --no-audit --no-fund
+          python3 -m pip install --break-system-packages playwright pillow
+          python3 -m playwright install --with-deps chromium
+      - name: Build with mock data (no production credentials)
+        run: npm run build:web
+      - name: Four-tab phone and desktop screenshots
+        run: |
+          python3 tools/shots.py screenshots/mobile-light
+          python3 tools/shots.py screenshots/mobile-dark --dark
+          python3 tools/shots.py screenshots/desktop-light --width 1280
+          python3 tools/shots.py screenshots/desktop-dark --width 1280 --dark
+      - name: Kit gallery and navigation smoke tests
+        run: |
+          python3 tools/shots.py screenshots/gallery --js "openPage('settings','kit')"
+      - name: Preserve screenshots and failure evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: r0-browser-shots
+          path: screenshots
+          if-no-files-found: ignore
+          retention-days: 7
