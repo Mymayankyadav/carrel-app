@@ -121,12 +121,12 @@ Object.assign(ACT,{
   't2-park-backlog'(el){
     const k=el.getAttribute('data-k'),id=el.getAttribute('data-id');
     parkToBacklog(k,id); // existing undoable dual-document transaction
-    if(parkedItems(k).length<=1)closeSheet(true);
+    if(!parkedItems(k).length)closeSheet(true);
   },
   't2-park-drop'(el){
     const k=el.getAttribute('data-k'),id=el.getAttribute('data-id');
     ACT['park-drop'](el);
-    if(parkedItems(k).length<=1)closeSheet(true);
+    if(!parkedItems(k).length)closeSheet(true);
   },
   't2-seen'(el){ACT['guard-seen']({getAttribute:k=>k==='data-t'?el.getAttribute('data-v'):null});}
 });
