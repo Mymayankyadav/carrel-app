@@ -35,6 +35,7 @@ assert.ok(shell.includes("e.key==='Escape'"), 'Escape goes through back handler'
 assert.ok(shell.includes("window.addEventListener('popstate'"), 'browser back goes through handler');
 assert.ok(css.includes('.k-nav-item') && css.includes('grid-template-columns:repeat(4,1fr)'));
 assert.ok(css.includes('.k-sheet-head') && css.includes('.k-page-head'));
+assert.ok(css.includes('.scrim.k-sheet-bg{z-index:50'), 'modal backdrop must stack above fixed navigation');
 const runtime={
   UI:{view:'plan',pages:[],sheet:null},
   PAGES:{tasks:{title:()=> 'Tasks',render:()=>'<p>list</p>'}},
