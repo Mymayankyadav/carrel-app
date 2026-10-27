@@ -9,26 +9,48 @@ data class NotificationModel(
 fun backTo(state: State): String = "Back to: " +
     (state.intention?.takeIf { it.isNotBlank() } ?: state.activity?.name ?: state.returnTo?.name ?: "Studying")
 
+/** Minimal notification contract; never decorate the title with session metadata. */
+@Suppress("UNUSED_PARAMETER")
 fun notificationModel(state: State?, now: Long, tally: Int = 0, feedbackUntil: Long = 0): NotificationModel? {
     if (state == null) return null
-    val model = when (state.status) {
-        Status.BREAK -> NotificationModel("☕ Break", state.returnTo?.let { "Back to ${it.name}" },
-            state.breakStartedAt ?: return null, false, state.returnTo?.color ?: "#B5543A", "$tally caught")
+    return when (state.status) {
+        Status.BREAK -> {
+            val started = state.breakStartedAt ?: return null
+            val ends = state.pomo?.breakEndsAt
+            NotificationModel(
+                title = "Break",
+                text = state.returnTo?.name?.let { "Back to $it" },
+                whenMillis = ends ?: started,
+                countDown = ends != null && now < ends,
+                color = "#0F766E",
+                subtext = "",
+                phase = "break",
+                canStop = true,
+                canTakeBreak = false,
+            )
+        }
         Status.RUNNING -> {
-            val a = state.activity ?: return null
-            val start = state.startedAt ?: return null
+            val name = state.activity?.name ?: return null
+            val started = state.startedAt ?: return null
             val end = state.pomo?.focusEndsAt
             val due = end != null && now >= end
-            NotificationModel(if (due) "Break due · ${a.name}" else a.name, state.intention,
-                end ?: start, end != null && !due, a.color, "$tally caught")
+            NotificationModel(
+                title = if (due) "Break time" else name,
+                text = when {
+                    due -> name
+                    end != null -> "Focus"
+                    else -> null
+                },
+                whenMillis = end ?: started,
+                countDown = end != null && !due,
+                color = "#0F766E",
+                subtext = "",
+                phase = if (due) "due" else "focus",
+                canStop = true,
+                canTakeBreak = due,
+            )
         }
     }
-    val breakDue = state.status == Status.RUNNING && state.pomo?.focusEndsAt?.let { now >= it } == true
-    return model.copy(
-        text = if (now < feedbackUntil) backTo(state) else model.text,
-        phase = if (state.status == Status.BREAK) "REST" else if (breakDue) "BREAK DUE" else "FOCUS",
-        canStop = true, canTakeBreak = breakDue,
-    )
 }
 
 enum class PulseKind { FOCUS, BREAK }
