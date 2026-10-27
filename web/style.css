@@ -318,6 +318,10 @@ textarea.inp{min-height:64px;resize:vertical;line-height:1.4}
 .abar.wide{grid-template-columns:minmax(0,120px) minmax(0,1fr) 9.6em}
 .abar .an{display:flex;align-items:center;gap:7px;min-width:0}
 .abar .an span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.abar.wide .an span{overflow:visible;text-overflow:clip;white-space:normal;overflow-wrap:anywhere}
+.abar.wide .an{align-self:start;align-items:flex-start}
+.abar.wide .an .dot{margin-top:.3em}
+@media (max-width:420px){.abar.wide{grid-template-columns:minmax(0,108px) minmax(32px,1fr) minmax(0,9.6em);gap:6px}.abar.wide .v{font-size:10px;white-space:normal;overflow-wrap:anywhere}}
 .abar .an .dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
 .abar .tr{height:8px;border-radius:4px;background:var(--sunk);overflow:hidden}
 .abar .tr i{display:block;height:100%;background:var(--c);border-radius:4px}

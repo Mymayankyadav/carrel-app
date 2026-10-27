@@ -450,7 +450,7 @@ function insights(pm, fmtHourLabel, nameOf, planStats) {
   for (const id in pm.lifeAvg) {
     const a = CTX.act(id), x = pm.lifeAvg[id];
     if (a && a.role === 'sleep' && x.days >= 5) out.push({ k: 'sleep', text: 'You log ' + fmtDur(x.avg) + ' of sleep on an average night.' });
-    if (a && a.role === 'drift' && x.days >= 4) out.push({ k: 'drift', text: a.name + ' takes ' + fmtDur(x.avg) + ' on the days you log it.' });
+    if (a && a.role === 'drift' && x.days >= 4) out.push({ k: 'drift', text: (a.name || String(id)) + ' takes ' + fmtDur(x.avg) + ' on the days you log it.' });
   }
   if (pm.rated >= 8) {
     let bi = -1, bv = 0, tw = 0, tv = 0;

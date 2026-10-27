@@ -3,9 +3,10 @@ const assert = require('assert');
 const L = require('../logic.js');
 const { CTX, MIN, HOUR } = L;
 CTX.cfg = { dayStart: '04:00', planStart: '08:00', planEnd: '22:30', gap: 10, dailyGoal: 120, weekStart: 1 };
-const acts = { phys: { kind: 'study' }, math: { kind: 'study' }, chem: { kind: 'study' }, brk: { kind: 'life', role: 'break' }, sleep: { kind: 'life', role: 'sleep' }, meals: { kind: 'life' }, phone: { kind: 'life', role: 'drift' } };
+const acts = { phys: { name: 'Physics',  kind: 'study' }, math: { name: 'Mathematics',  kind: 'study' }, chem: { name: 'Chemistry',  kind: 'study' }, brk: { name: 'Break',  kind: 'life', role: 'break' }, sleep: { name: 'Sleep',  kind: 'life', role: 'sleep' }, meals: { name: 'Meals',  kind: 'life' }, phone: { name: 'Phone',  kind: 'life', role: 'drift' } };
 CTX.act = id => acts[id] ? Object.assign({ id }, acts[id]) : null;
 const T = s => Date.parse(s + '+05:30');
+// All activity names are defined in the fixture to catch missing-name insights.
 const out = [];
 const ok = (name, cond, detail) => { out.push((cond ? 'PASS ' : 'FAIL ') + name + (detail ? '  ' + detail : '')); };
 

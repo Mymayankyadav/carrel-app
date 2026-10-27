@@ -1418,7 +1418,7 @@ function planStatsRange(fromK, toK, now) {
     if (k < todayKey()) pm.rows.forEach(r => { if (r.st !== 'done') left[r.activity] = (left[r.activity] || 0) + Math.max(0, r.target - r.done); });
   }
   const top = Object.entries(left).sort((a, b) => b[1] - a[1])[0];
-  return { planned, done, days, ratio: planned ? done / planned : 0, carried: top && top[1] >= 30 * MIN ? act(top[0]).name : null };
+  return { planned, done, days, ratio: planned ? done / planned : 0, carried: top && top[1] >= 30 * MIN ? (act(top[0]).name || String(top[0])) : null };
 }
 function vWeek() {
   const now = Date.now(), tk = todayKey();
@@ -1530,7 +1530,12 @@ function vReview(ws, ex) {
     return `<section class="review" aria-labelledby="rv-h"><div class="sec-head"><h2 id="rv-h" style="font-family:var(--f-display);font-size:22px">${esc(r.title || 'Weekly review')}</h2><span class="lbl">From Claude${written ? ' · ' + esc(shortDay(dayKeyOf(written))) : ''}</span></div>
       ${r.summary ? `<p class="rv-sum">${esc(r.summary)}</p>` : ''}${list('What went well', r.wins)}${list('Worth watching', r.watch)}${list('For next week', r.next)}</section>`;
   }
-  return `<section class="panel" aria-labelledby="rv-h"><div class="sec-head"><h2 id="rv-h">Weekly review</h2></div><div class="empty"><p>When the week is done, ask Claude in chat for a review. It reads this week’s log and plans and writes the review here.</p><div class="ask"><code>Review my week in Carrel</code><button type="button" class="btn sm" data-act="copy" data-text="Review my week in Carrel">${icon('copy')}Copy</button></div></div></section>`;
+  // During an ongoing week, don't prompt for a review until Friday.
+  const currentWeek = weekStartKey(todayKey());
+  const friday = addDaysKey(currentWeek, (5 - ((+CFG.weekStart || 0) % 7) + 7) % 7);
+  if (ws === currentWeek && todayKey() < friday)
+    return `<section class="panel" aria-labelledby="rv-h"><div class="sec-head"><h2 id="rv-h">Weekly review</h2></div><p class="cap">Your weekly review prompt appears on Friday. Keep logging as the week unfolds.</p></section>`;
+  return `<section class="panel" aria-labelledby="rv-h"><div class="sec-head"><h2 id="rv-h">Weekly review</h2></div><div class="empty"><p>When the week is done, ask Claude in chat for a review. It reads this week’s log and plans and writes the review here.</p><div class="ask"><code>Review my week in Carrel</code><button type="button" class="btn sm" data-act="copy" data-text="Review my week in Carrel">${icon('copy')}Copy prompt</button></div></div></section>`;
 }
 
 /* ---------- views: Patterns ---------- */
