@@ -80,6 +80,7 @@ assert.equal(writes.at(-1)[0],'plan');
 assert.equal(writes.at(-1)[2].events['v-new'].title,'Seminar');
 
 ctx.openQnew('2026-10-27',0,60*MIN,'busy',[]);
+UI.sheet.btitle='Weekly lecture';
 ACT['p2-weekly']();
 assert.equal(UI.sheet.weekly,true);
 assert.deepStrictEqual(Array.from(UI.sheet.days),[1]);
