@@ -22,8 +22,8 @@ Phase-2 redesign work had already landed on main, but main still shipped the leg
 - [x] Existing R5 QA branch previously passed web and Android JVM/debug build: runs 40527423063 / 40527422756.
 - [x] Current-main integration passed its initial web CI (run 40563816670) and Android debug/JVM CI (run 40563816642).
 - [x] Final source-regression-guard commit CI passed: [web run 40564097089](https://github.com/Mymayankyadav/carrel-app/actions/runs/40564097089), [Android run 40564097082](https://github.com/Mymayankyadav/carrel-app/actions/runs/40564097082).
-- [ ] Device verification: native notification shade in collapsed/expanded states, STOP and BREAK background actions, privacy lock screen, battery optimization, DND vibration, edge-to-edge/insets, dark launch.
-- [ ] Signed release APK with existing signing key, followed by install-on-device check.
+- [x] User reported device verification before approving #25. No additional physical-device matrix was run in the final integration pass.
+- [x] Signed [build-9 APK](https://github.com/Mymayankyadav/carrel-app/releases/download/build-9/Carrel.apk) published with existing signing key; signature verification passed. Installing this new build is the remaining user step.
 
 ## Integration and safety
 

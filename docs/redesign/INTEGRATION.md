@@ -38,3 +38,12 @@ The uncompressed generated HTML decreased from 422,285 bytes at the integration 
 The user reported device verification before approving the R5 merge. This pass does not claim an additional physical-device test. Release signing and signature verification use the existing APK workflow; the final APK must be installed once over the release-signed app. Thereafter compatible web updates continue normally. The existing `NATIVE_API` remains appropriate because the new optional bridge calls are capability-checked.
 
 Native notification Resume remains intentionally unavailable until there is a server-backed native resume operation, as documented in the R5 handoff; web Break/Resume remains working. No database/schema changes were made.
+
+## Published delivery
+
+- Merged [PR #26](https://github.com/Mymayankyadav/carrel-app/pull/26), code commit `c88d5eaab9b51e5b8aa325f3114c10b37aa08978`.
+- [PR browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40569532210) and [Android QA](https://github.com/Mymayankyadav/carrel-app/actions/runs/40569532047) passed. Screenshot artifact: `redesign-acceptance` (ID `12765016711`).
+- [Main browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40569898655) and [Pages deployment](https://github.com/Mymayankyadav/carrel-app/actions/runs/40569898470) passed. Published web update `1.0.29`; checksum manifest read back successfully from Pages.
+- [Signed Android release build](https://github.com/Mymayankyadav/carrel-app/actions/runs/40569898727): [build-9 / Carrel.apk](https://github.com/Mymayankyadav/carrel-app/releases/download/build-9/Carrel.apk), version code `100009`. APK signature verification passed before upload.
+- APK SHA-256: `a0f8d9ecafe751230420f7e2a2e4aafd8a2e682aa12d2d226e43e885e9beb7ce` (also published in `SHA256SUMS.txt`).
+- Remaining user action: install this signed APK once. Actual installation of build-9 has not been performed by the integrator.
