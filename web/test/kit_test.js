@@ -34,7 +34,7 @@ vm.runInContext(kit,state);
 const run = src => vm.runInContext(src,state);
 assert.match(run("kIconBtn('add', 'Add entry', 'data-act=\"noop\"')"),/aria-label="Add entry" title="Add entry"/);
 assert.match(run("kIconBtn('edit', '<unsafe>')"),/aria-label="&lt;unsafe&gt;"/);
-assert.match(run("kSwitch({bind:'d.on',on:true,label:'Notifications'})"),/role="switch" aria-checked="true"/);
+assert.match(run("kSwitch({bind:'d.on',on:true,label:'Notifications'})"),/role="switch"[^>]*aria-checked="true"/);
 assert.match(run("kSwitch({bind:'d.on',on:true,label:'Notifications'})"),/data-v="false"/);
 assert.match(run("kSeg({bind:'v',value:'week',options:[{v:'day',label:'Day'},{v:'week',label:'Week'}]})"),/aria-pressed="true"/);
 assert.match(run("kRow({label:'Maths',dot:'#3D7EA6',sub:'Today'})"),/k-row-sub/);
