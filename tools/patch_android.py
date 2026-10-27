@@ -102,7 +102,9 @@ res = app / 'src/main/res'
     </group>
 </vector>
 ''')
-(res / 'values/carrel_colors.xml').write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources><color name="carrel_bg">#1C6A4E</color></resources>\n')
+(res / 'values/carrel_colors.xml').write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources><color name="carrel_bg">#1C6A4E</color><color name="carrel_window_background">#FAFAF9</color></resources>\n')
+(res / 'values-night').mkdir(parents=True, exist_ok=True)
+(res / 'values-night/carrel_colors.xml').write_text('<?xml version="1.0" encoding="utf-8"?>\n<resources><color name="carrel_window_background">#0C0C0D</color></resources>\n')
 icon = '<?xml version="1.0" encoding="utf-8"?>\n<adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">\n    <background android:drawable="@color/carrel_bg"/>\n    <foreground android:drawable="@drawable/carrel_fg"/>\n</adaptive-icon>\n'
 (res / 'mipmap-anydpi-v26/ic_launcher.xml').write_text(icon)
 (res / 'mipmap-anydpi-v26/ic_launcher_round.xml').write_text(icon)
