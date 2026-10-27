@@ -13,7 +13,7 @@ Branch: `redesign/t1-today`, stacked on T2 PR #21.
 
 ## Integration boundaries
 - T1-owned files only: `web/ui/today.js`, `web/ui/today.css`, `web/test/t1_today_test.js`, and this status file.
-- The old helper functions and styles still exist in the same file during transition to protect other modules' calls. Phase-3 integrator should remove only after a global reference sweep. **No frozen core/shell edits**.
+- Obsolete Today renderers are deleted. The remaining helpers implement real timer/distraction/parking writes and are still needed by the shell or T1/T2. Legacy CSS is left intact for a separate reference and visual audit. **No frozen core/shell edits**.
 - `buildActs` currently drops the optional per-activity `today` pinned flag. Until the integrator threads it through, the view defaults to all Study + Break + Sleep; Settings Activities needs to persist and expose the optional `today` value if pinning is to be user-configurable.
 - Default Settings Pomodoro preference remains `UI.pomoOn`; the advanced preset UI lives in T2.
 - Post-study Focus? rating controls (Scattered, Okay, Deep) now write through the existing W().day commit contract, remain available for up to 60s and clear after selection.
