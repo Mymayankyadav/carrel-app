@@ -8,7 +8,7 @@
 .desk-ring{position:relative;width:min(200px,75vw);height:2px;border-radius:2px;overflow:hidden;background:#17171A}
 .desk-ring i{display:block;height:100%;background:#2DD4BF}
 .desk-ctl{display:flex;align-items:center;justify-content:center;gap:14px;margin-top:18px;transition:opacity .2s}
-.desk-ctl.hid{opacity:0;pointer-events:none}
+.desk-ctl.hid{opacity:0;visibility:hidden;pointer-events:none}
 .desk-ctl button{display:grid;place-items:center;flex:none;width:56px;height:56px;border:0;border-radius:50%;background:#17171A;color:#F4F4F5}
 .desk-ctl button .i{width:24px;height:24px}
 .desk-ctl button:focus-visible{outline:2px solid #2DD4BF;outline-offset:2px}
