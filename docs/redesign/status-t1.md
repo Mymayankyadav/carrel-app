@@ -1,6 +1,6 @@
 # T1 — minimalist Today implementation (in progress)
 
-Branch: `redesign/t1-today`, stacked on T2 PR #21.
+Branch: `redesign/t1-today`, stacked on T2 PR #21 (now including the corrected-stop and modal visual fixes, validated independently by T2 QA #40560093385).
 
 ## Implemented initial integration
 - Today is registered to the new `t1Today()` renderer: date and studied total → T3 Log, one minimal timer card, progressive Pomodoro bar, note, running/edit/Focus controls, idle state and three-hour resume shortcut.
