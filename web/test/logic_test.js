@@ -161,6 +161,6 @@ ok('running block stops for the call and resumes after it', pmA.rows[0].pieces.m
 console.log(out.join('\n'));
 console.log('\nInsights:\n- ' + ins.map(x => x.text).join('\n- '));
 console.log('\nPeak col', pmod.bestCol, 'median', Math.round(pmod.median), 'streak', pmod.streak, 'best', pmod.bestStreak);
-ok('insights never contain undefined', ins.every(x => !/\\bundefined\\b/.test(x.text)));
+ok('insights never contain undefined', ins.every(x => !/\bundefined\b/.test(x.text)));
 const fails = out.filter(l => l.startsWith('FAIL')).length;
 console.log(fails ? fails + ' FAILED' : 'ALL PASSED');
