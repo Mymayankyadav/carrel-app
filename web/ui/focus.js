@@ -62,6 +62,16 @@ function exitDesk(fromHistory) {
   if (wasOpen && !fromHistory) kHistoryConsume('desk');
   render();
 }
+// The shell's generic Escape handler can otherwise pop a page before dismissing Focus.
+// Intercept while focused, ahead of the later shell listener.
+if (typeof document !== 'undefined' && document.addEventListener) {
+  document.addEventListener('keydown', event => {
+    if (!UI.desk || event.key !== 'Escape') return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    exitDesk();
+  }, true);
+}
 // Runs before shell popstate handling, avoiding a second navigation on Back.
 if (typeof window !== 'undefined' && window.addEventListener) {
   window.addEventListener('popstate', event => {
