@@ -43,7 +43,8 @@ function makeDb(sb, uid, opts) {
     if (code === 'P0002') return { code: 'invalid_argument', message: msg };
     if (code === '42501' || code === '28000' || code === 'PGRST301' || code === 'PGRST303' || /JWT|not signed in/i.test(msg)) return { code: 'not_granted', message: msg, auth: true };
     if (!code || /Failed to fetch|NetworkError|Load failed/i.test(msg) || /^(5|08|57|53)/.test(String(code)) || /^PGRST[01]/.test(String(code))) return { code: 'unavailable', message: msg };
-    return { code: 'invalid_argument', message: msg };
+    if (/^(22|23)/.test(String(code)) || code === '42P01' || code === '42883') return { code: 'invalid_argument', message: msg };
+    return { code: 'unavailable', message: msg };
   }
   async function call(fn) {
     for (let i = 0; i < 2; i++) {
@@ -130,13 +131,21 @@ function makeDb(sb, uid, opts) {
   /* ----- realtime ----- */
   function connect() {
     if (!sb.channel) return;
-    chan = sb.channel('docs-' + uid)
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'docs', filter: 'owner=eq.' + uid }, p => {
-        if (p.eventType === 'DELETE') {
-          const path = p.old && p.old.path;
-          if (path) { cache.delete(path); notify(path); }
-        } else if (p.new && p.new.path) { cache.set(p.new.path, p.new.data); notify(p.new.path); }
+    const onWrite = p => {
+      if (p.new && p.new.owner === uid && p.new.path) {
+        cache.set(p.new.path, p.new.data); notify(p.new.path);
         schedSave();
+      }
+    };
+    chan = sb.channel('docs-' + uid)
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'docs', filter: 'owner=eq.' + uid }, onWrite)
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'docs', filter: 'owner=eq.' + uid }, onWrite)
+      // Supabase does not support filters on DELETE. Check the composite
+      // primary key's owner before touching the local cache.
+      .on('postgres_changes', { event: 'DELETE', schema: 'public', table: 'docs' }, p => {
+        const old = p.old || {};
+        if (old.owner !== uid || !old.path) return;
+        cache.delete(old.path); notify(old.path); schedSave();
       })
       .subscribe(status => {
         if (status === 'SUBSCRIBED') { if (dropped) { dropped = false; refreshAll(); } }

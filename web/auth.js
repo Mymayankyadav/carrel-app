@@ -1,8 +1,31 @@
 /* ===== sign-in and session ===== */
 const MOCK = typeof window !== 'undefined' && typeof window.__mockDocs !== 'undefined';
 let sb = null;
+let recoverT = 0;
+
+// Retry expired auth without requiring a page reload. Only a confirmed
+// refreshed session can make a read-only connection writable again.
+function recoverAuth(delay = 30000) {
+  if (!sb || !S.db || S.conn !== 'readonly' || recoverT) return;
+  recoverT = setTimeout(async () => {
+    recoverT = 0;
+    if (!sb || !S.db || S.conn !== 'readonly') return;
+    try {
+      const r = await sb.auth.refreshSession();
+      if (!r.error && r.data && r.data.session) {
+        S.conn = 'live'; S.offline = false;
+        pumpAll();
+        if (S.db && S.db.refresh) S.db.refresh();
+        changed();
+        return;
+      }
+    } catch (e) { /* offline; retry later */ }
+    if (S.conn === 'readonly') recoverAuth();
+  }, delay);
+}
 
 function teardownDb(clearData) {
+  clearTimeout(recoverT); recoverT = 0;
   S.unsubs.forEach(u => { try { u(); } catch (e) { /* already closed */ } });
   S.unsubs = [];
   if (S.db && S.db.close) { try { S.db.close(); } catch (e) { /* closed */ } }
@@ -69,8 +92,30 @@ Object.assign(ACT, {
     if (NATIVE) await Capacitor.Plugins.Browser.open({ url: r.data.url });
   },
   async signout() {
-    if (sb) await sb.auth.signOut();
+    if (!sb) return;
+    if (S.pending.length) {
+      pumpAll();
+      const deadline = Date.now() + 3000;
+      while (S.pending.length && Date.now() < deadline) {
+        await new Promise(resolve => setTimeout(resolve, 250));
+      }
+      if (S.pending.length && !window.confirm(S.pending.length + ' change(s) are not saved yet. Sign out and lose them?')) return;
+    }
+    const r = await sb.auth.signOut();
+    if (r.error) toast('Could not sign out: ' + r.error.message);
+  },
+  'a1-reconnect'() {
+    clearTimeout(recoverT); recoverT = 0;
+    recoverAuth(0);
   }
 });
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.db && S.db.refresh) S.db.refresh(); });
-window.addEventListener('online', () => { if (S.db && S.db.refresh) S.db.refresh(); });
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState !== 'visible') return;
+  if (S.db && S.db.refresh) S.db.refresh();
+  if (S.conn === 'readonly') recoverAuth(0);
+});
+window.addEventListener('online', () => {
+  if (S.db && S.db.refresh) S.db.refresh();
+  if (S.conn === 'readonly') recoverAuth(0);
+  else pumpAll();
+});

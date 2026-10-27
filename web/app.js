@@ -226,12 +226,17 @@ async function pump(path) {
       toast(code === 'quota_exceeded' ? 'Storage is full. Export your data from Setup, then remove old days.' : 'One change could not be saved and was dropped.');
     } else if (code === 'revoked' || code === 'not_granted' || code === 'capability_disabled' || code === 'capability_removed') {
       S.conn = 'readonly';
+      if (typeof recoverAuth === 'function') recoverAuth();
     } else retry = true;
+  }
+  if (retry && ++op.tries >= 10) {
+    retry = false; drop = true;
+    console.warn('Carrel write retry limit reached', op.path, op);
+    toast('One change kept failing and was dropped.');
   }
   S.inflight.delete(path);
   if (drop) { S.pending = S.pending.filter(o => o !== op); savePending(); }
   if (retry) {
-    op.tries++;
     S.offline = true;
     const delay = Math.min(60000, 1500 * Math.pow(2, Math.min(op.tries, 6))) * (0.75 + Math.random() * 0.5);
     clearTimeout(retryT[path]);
@@ -258,7 +263,7 @@ function subscribe() {
   const db = S.db, from = S.windowFrom;
   const onErr = name => e => {
     console.warn('Carrel subscription', name, e);
-    if (e && e.code === 'revoked') { S.conn = 'readonly'; changed(); }
+    if (e && e.code === 'revoked') { S.conn = 'readonly'; if (typeof recoverAuth === 'function') recoverAuth(); changed(); }
     else if (e && e.code !== 'invalid_argument') { clearTimeout(S.resubT); S.resubT = setTimeout(subscribe, 5000); }
   };
   S.unsubs.push(db.doc('state/current').onSnapshot(s => { S.base.current = s.exists ? s.data() : null; S.loaded.current = true; changed(); }, onErr('current')));
@@ -854,7 +859,7 @@ function vNav() {
 function vNotices() {
   if (S.conn === 'none') return `<div class="banner" style="margin-bottom:22px"><h3>Sign in to Carrel</h3><p>Your timers and log are saved to your own account so they follow you across devices.</p><div class="row"><button type="button" class="btn lamp" data-act="signin">Sign in with Google</button></div></div>`;
   if (!S.owner) return `<div class="banner" style="margin-bottom:22px"><h3>This tracker is private</h3><p>Only the person who owns it can see or change its log.</p></div>`;
-  if (S.conn === 'readonly') return `<div class="banner warn" style="margin-bottom:22px"><h3>View only</h3><p>This view can’t save changes right now. Reload the page to reconnect.</p></div>`;
+  if (S.conn === 'readonly') return `<div class="banner warn" style="margin-bottom:22px"><h3>View only</h3><p>Can't save right now. Carrel will retry automatically.</p><div class="row"><button type="button" class="btn sm" data-act="a1-reconnect">Try again</button></div></div>`;
   return '';
 }
 function vMain() {
