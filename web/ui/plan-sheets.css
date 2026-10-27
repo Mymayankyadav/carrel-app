@@ -1,1 +1,42 @@
-/* R0a empty CSS. Owned by the matching Phase-2 screen. */
+/* P2 Plan editors. Tokens and kit components only. */
+.p2-sheet{display:flex;flex-direction:column;gap:12px;min-width:0;padding-top:12px}
+.p2-sheet>.k-field{flex:none}
+.p2-sheet .k-act-pick{min-width:0}
+.p2-tabs{display:flex}
+.p2-tabs>.k-seg{width:100%}
+.p2-tabs .k-seg button{flex:1}
+.p2-input-group{display:flex;flex-direction:column;gap:8px;width:100%}
+.p2-input-group>label{font-size:var(--t-sm);color:var(--text-2)}
+.p2-input-group>.k-input{width:100%;min-height:48px}
+.p2-duration{display:flex;align-items:center;flex-wrap:wrap;justify-content:flex-end;gap:12px;min-width:0}
+.p2-duration>.k-chips{width:100%;justify-content:flex-end}
+.p2-duration .k-stepper{margin-left:auto}
+.p2-sheet .k-field:has(.p2-duration){flex-direction:column;align-items:stretch;gap:8px}
+.p2-sheet .k-field:has(.p2-duration)>.p2-duration{max-width:100%;width:100%}
+.p2-days{display:flex;justify-content:space-between;gap:4px;width:100%;overflow-x:auto;scrollbar-width:none}
+.p2-days::-webkit-scrollbar{display:none}
+.p2-weekday{width:44px;min-width:44px;height:44px;border:1px solid var(--line);border-radius:99px;background:var(--surface);color:var(--text-2);font-size:var(--t-xs);cursor:pointer}
+.p2-weekday.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+.p2-sheet .k-field:has(.p2-days){flex-direction:column;align-items:stretch;gap:8px}
+.p2-sheet .k-field:has(.p2-days)>.p2-days{max-width:100%}
+.p2-start{display:inline-flex;align-items:center;gap:6px;min-width:0}
+.p2-start .k-input{min-width:110px}
+.p2-auto{font-size:var(--t-sm);color:var(--text-2)}
+.p2-track{height:3px;background:var(--line);border-radius:99px;overflow:hidden}
+.p2-track i{height:100%;display:block;background:var(--accent)}
+.p2-progress{display:flex;flex-direction:column;gap:8px;color:var(--text-2);font-size:var(--t-xs)}
+.p2-wrap-summary{font-size:var(--t-sm);font-weight:600}
+.p2-section-title{font-size:var(--t-xs);color:var(--text-2);font-weight:600;margin-top:12px}
+.p2-wrap-item{display:flex;align-items:center;gap:12px;min-height:52px;border-bottom:1px solid var(--line);font-size:var(--t-sm)}
+.p2-wrap-item input[type=checkbox]{width:20px;height:20px;accent-color:var(--accent);flex:none}
+.p2-wrap-item>span:last-child{color:var(--text-2);white-space:nowrap}
+.p2-wrap-title{min-width:0;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p2-error{font-size:var(--t-xs);color:var(--danger);padding-block:4px}
+.p2-muted{font-size:var(--t-sm);color:var(--text-2)}
+.p2-two{display:flex;gap:8px;width:100%}
+.p2-two>.k-btn{flex:1;min-width:0}
+.p2-sheet .k-collapse-body{display:flex;flex-direction:column;gap:12px}
+.p2-sheet .k-field>.k-stepper{max-width:64%}
+.p2-sheet .k-input[type=time],.p2-sheet .k-input[type=date]{width:auto;max-width:160px}
+.p2-sheet button:focus-visible,.p2-sheet input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:380px){.p2-sheet .k-field:has(.k-seg){flex-direction:column;align-items:stretch;gap:8px}.p2-sheet .k-field .k-seg{max-width:100%;flex-wrap:wrap}.p2-days{gap:2px}}
