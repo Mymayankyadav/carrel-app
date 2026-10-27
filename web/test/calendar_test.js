@@ -18,26 +18,27 @@ function func(code, start, next, name, vars) {
   return vm.runInNewContext(between(code,'function '+start+'(','function '+next+'(')+'\n'+start, vars);
 }
 
-// C1: a new calendar defaults to Day on phones and preserves a stored choice.
-const calViewSource = between(cal,'function calView(', 'function calDays(');
-const view = width => {
-  const UI={cal:{view:null}}, window={innerWidth:width};
+// P1: Day is the default everywhere; stored Week wins. The three-day mode is gone.
+const calViewSource=between(cal,'function calView(', 'function calDays(');
+const view=width=>{
+  const UI={cal:{view:null}},window={innerWidth:width};
   const choose=vm.runInNewContext(calViewSource+'\ncalView',{UI,window});
   return {UI,choose};
 };
 const phone=view(390);
-assert.equal(phone.choose(),'day', '390px defaults to Day');
-phone.UI.cal.view='3day';assert.equal(phone.choose(),'3day','existing user choice wins');
-assert.equal(view(479).choose(),'day','narrow breakpoint');
-assert.equal(view(480).choose(),'3day','tablet defaults to three days');
-assert.equal(view(900).choose(),'week','desktop keeps week default');
+assert.equal(phone.choose(),'day','390px defaults to Day');
+phone.UI.cal.view='week';assert.equal(phone.choose(),'week','explicit Week choice wins');
+phone.UI.cal.view='3day';assert.equal(phone.choose(),'day','old three-day preference migrates to Day');
+assert.equal(view(480).choose(),'day','tablet defaults to Day');
+assert.equal(view(900).choose(),'day','wide default remains Day');
 assert(cal.includes("store.set('calView', UI.cal.view)"),'explicit calendar choices persist');
 
 // C2: three-way overlap, tiny screen and full accessible names.
 const it1={s:100,e:300},it2={s:120,e:260},it3={s:140,e:250};
 logic.layoutOverlaps([it1,it2,it3]);
 assert.equal(it1.ncol,3);assert.equal(it2.ncol,3);assert.equal(it3.ncol,3);
-const env={window:{innerWidth:390},UI:{cal:{view:'day'}},HPX:52,
+const env={window:{innerWidth:390},UI:{cal:{view:'day'}},HPX:56,
+  calView:()=>env.UI.cal.view,kSafeColour:s=>s,
   fmtT: t=>String(t),fmtDur: t=>String(t),ACTMAP:{},icon:()=>'*',
   esc,act:()=>({name:'Mathematics',color:'#225588'})};
 const calItem=vm.runInNewContext(between(cal,'function calItem(', '/* ---------- side panels ---------- */')+'\ncalItem',env);
@@ -52,30 +53,29 @@ html=calItem({kind:'blk',s:100,e:3600100,ncol:3,r:{
  },piece:0,last:true},'2026-10-27',yt,0,33.33);
 assert(html.includes('ce-narrow'),'plan item receives narrow style');
 assert(html.includes('aria-label="Planned Mathematics: Proof of a complicated theorem'),'full plan title accessible');
-env.UI.cal.view='3day';
+env.UI.cal.view='week';
 html=calItem({kind:'log',s:100,e:3600100,ncol:1,en:{id:'e',a:'math',s:100,e:3600100}},
   '2026-10-27',yt,0,100);
-assert(html.includes('ce-narrow'),'single lane in mobile 3-day calendar is treated as narrow');
+assert(html.includes('ce-narrow'),'single lane in mobile Week calendar is treated as narrow');
 assert(html.includes('aria-label="Logged Mathematics'),'log activity accessible');
 assert(css.includes('.ce-narrow .t{display:block;writing-mode:horizontal-tb'),'narrow title wraps horizontally');
 assert(css.includes('.ce-narrow .m{display:none}'),'narrow card hides metadata');
 
-// C3: bottom hours can scroll past floating button.
-assert(css.includes('.cv-scroll{padding-bottom:80px;scroll-padding-bottom:80px}'),'calendar scrolls beyond last hour');
-assert(css.includes('bottom:calc(62px + 16px + env(safe-area-inset-bottom,0px))'),'FAB sits above navigation and safe area');
-
-// C4: over-capacity language includes an explanatory tooltip.
+// P1: quiet calendar, a floating new-item control and Day-specific headers.
+assert(css.includes('.p1-plan .cv-scroll'),'calendar uses a bounded timeline viewport');
+assert(css.includes('.p1-fab{position:fixed'),'FAB follows the viewport');
+assert(css.includes('bottom:calc(80px + env(safe-area-inset-bottom,0px))'),'FAB clears the mobile nav');
 const k='2026-10-27';
-const makeHead=(need,free)=>func(cal,'vCalHead','vCalCol','vCalHead',{
-  dayCapacity:()=>({need,free}), V:{plans:{}},busyIv:()=>[],
-  dateOfKey:()=>new Date(2026,9,27), longDay:()=> 'Tue 27 Oct',
-  wdName:()=> 'Tue',fmtDur:m=> Math.round(m/MIN)+'m',esc,
-  deadlineList:()=>[],gcAllDay:()=>[],icon:()=>'',dayKeyOf:()=>k,
-  aggregate:()=>({}),ENTRIES:[],MIN
-})(k,0,k,{pm:{remaining:need}});
-assert(makeHead(81*MIN,60*MIN).includes('21m over'),'shortened over-capacity text');
-assert(makeHead(81*MIN,60*MIN).includes('Planned 21m more than the free time today'),'over-capacity tooltip');
-assert(!makeHead(40*MIN,60*MIN).includes('21m over'),'free day is not styled as over');
+const makeHead=()=>func(cal,'vCalHead','vCalCol','vCalHead',{
+  dateOfKey:()=>new Date(2026,9,27),longDay:()=> 'Tue 27 Oct',
+  wdName:()=> 'Tue',esc
+})(k,0,k,{pm:{remaining:MIN}});
+const head=makeHead();
+assert(head.includes('data-act="p1-day"'),'weekday header opens Day view');
+assert(!head.includes('spare')&&!head.includes('over'),'day capacity copy moved to Fit row');
+assert(cal.includes('data-act="p2-open-fit"'),'overflow opens P2 Does not fit sheet');
+assert(cal.includes("data-act=\"p1-open-tasks\""),'Tasks button on Plan header');
+assert(cal.includes('function planFocus(k,id)'),'Plan implements shared focus contract');
 
 // C5: stale timestamp alone controls suggestion; don't label fresh data as old.
 const now=Date.parse('2026-10-27T17:00:00+05:30');

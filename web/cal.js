@@ -1,5 +1,5 @@
 /* ===== Carrel calendar and planning tools ===== */
-const HPX = 52;            // pixels per hour in the calendar grid
+const HPX = 56;            // pixels per hour in the calendar grid
 const SNAP = 15 * MIN;     // drag and tap snapping
 let suppressClickUntil = 0;
 
@@ -32,22 +32,17 @@ function backlogList() {
 function nextBacklogOrder() { let m = 0; const b = backlogMap(); for (const id in b) if (b[id]) m = Math.max(m, +b[id].order || 0); return m + 1; }
 
 /* ---------- calendar range ---------- */
-function calView() {
-  // An explicit choice is persisted by cal-view and restored in UI.cal.view.
-  // Only the first visit gets a responsive default.
-  if (!UI.cal.view) {
-    const width = window.innerWidth;
-    UI.cal.view = width < 480 ? 'day' : width >= 860 ? 'week' : '3day';
-  }
+function calView(){
+  if(UI.cal.view!=='week'&&UI.cal.view!=='day')UI.cal.view='day';
   return UI.cal.view;
 }
-function calDays() {
-  const a = UI.cal.anchor || todayKey(), v = calView();
-  if (v === 'day') return [a];
-  if (v === '3day') return [a, addDaysKey(a, 1), addDaysKey(a, 2)];
-  const ws = weekStartKey(a);
-  return Array.from({ length: 7 }, (_, i) => addDaysKey(ws, i));
+function calDays(){
+  const k=UI.cal.anchor||todayKey();
+  if(calView()==='day')return [k];
+  const ws=weekStartKey(k);
+  return Array.from({length:7},(_,i)=>addDaysKey(ws,i));
 }
+
 function calTitle(days) {
   const a = dateOfKey(days[0]), b = dateOfKey(days[days.length - 1]);
   if (days.length === 1) return DF({ weekday: 'long', day: 'numeric', month: 'long' }).format(a);
@@ -62,13 +57,14 @@ function calScrollTarget() {
   else off = hmOnDay(days[0], CFG.planStart) - dayStartMs(days[0]) - 50 * MIN;
   return Math.max(0, off / HOUR * HPX);
 }
-function calShift(dir) {
-  const a = UI.cal.anchor || todayKey(), v = calView();
-  UI.cal.anchor = addDaysKey(a, dir * (v === 'week' ? 7 : v === '3day' ? 3 : 1));
-  UI.cal.mm = null;
+function calShift(dir){
+  const anchor=UI.cal.anchor||todayKey();
+  UI.cal.anchor=addDaysKey(anchor,dir*(calView()==='week'?7:1));
+  UI.cal.scrollTo=true;
   render();
 }
-function gutLabel(h) { h = ((h % 24) + 24) % 24; return H12 ? (h % 12 || 12) + (h < 12 ? ' am' : ' pm') : pad(h) + ':00'; }
+
+function gutLabel(h) { h=((h%24)+24)%24; return H12?(h%12||12)+(h<12?'a':'p'):pad(h); }
 let PEAK = null;
 function peakHours() {
   const key = todayKey() + '|' + ENTRIES.length;
@@ -83,64 +79,85 @@ function peakHours() {
 }
 
 /* ---------- calendar view ---------- */
-function vCalendar() {
-  const now = Date.now(), tk = todayKey();
-  calView();
-  const days = calDays();
-  ensureRange(addDaysKey(days[0], -1), days[days.length - 1]);
-  const models = {};
-  days.forEach(k => { models[k] = { pm: planModelFor(k, now), busy: busyOf(k) }; });
-  const views = [['day', 'Day'], ['3day', '3 days'], ['week', 'Week']];
-  const shows = [['both', 'Plan + log'], ['plan', 'Plan'], ['log', 'Log']];
-  const bar = `<section class="cv-bar">
-    <div class="cv-nav"><button type="button" class="icon-btn" data-act="cal-prev" aria-label="Earlier">${icon('left')}</button><button type="button" class="icon-btn" data-act="cal-next" aria-label="Later">${icon('right')}</button>${days.includes(tk) ? '' : `<button type="button" class="chip-btn" data-act="cal-today">Today</button>`}</div>
-    <label class="pickwrap" title="Go to a date"><h1>${esc(calTitle(days))}</h1><input type="date" id="cal-pick" data-change="cal-pick" value="${days[0]}" aria-label="Go to a date"></label>
-    <span class="grow"></span>
-    <div class="seg" role="group" aria-label="Days shown">${views.map(([v, t]) => `<button type="button" class="${UI.cal.view === v ? 'on' : ''}" data-act="cal-view" data-v="${v}" aria-pressed="${UI.cal.view === v}">${t}</button>`).join('')}</div>
-    <div class="seg" role="group" aria-label="What to show">${shows.map(([v, t]) => `<button type="button" class="${UI.cal.show === v ? 'on' : ''}" data-act="cal-show" data-v="${v}" aria-pressed="${UI.cal.show === v}">${t}</button>`).join('')}</div>
-    <button type="button" class="btn sm lamp cv-new" data-act="cal-new">${icon('plus')}New</button>
-  </section>`;
-  const peak = peakHours();
-  const legend = `<div class="legend cv-legend"><span><i class="lg lg-auto"></i>fits in automatically</span><span><i class="lg lg-pin"></i>pinned</span><span><i class="lg lg-busy"></i>busy</span><span><i class="lg lg-log"></i>logged</span>${GC.events.length ? '<span><i class="lg lg-busy"></i>Google Calendar (opens the event)</span>' : ''}${peak ? '<span><i class="lg lg-peak"></i>hours you usually study</span>' : ''}</div>
-    <p class="cap cv-hint">Drag blocks to move or resize them (press and hold on a touch screen). Tap empty time to plan ahead, or to log something earlier.</p>`;
-  return bar + `<div class="cv-layout"><div class="cv-main">${vCalGrid(days, now, tk, models, peak)}${legend}</div><aside class="cv-side" aria-label="Planning tools">${vCalSide(days, now, tk)}</aside></div>
-    <button type="button" class="fab" data-act="cal-new" aria-label="Plan something new">${icon('plus')}</button>`;
+function p1DateLabel(k){
+  return DF({weekday:'short',day:'numeric',month:'short'}).format(dateOfKey(k));
 }
+function p1Carry(){
+  const tk=todayKey(),yk=addDaysKey(tk,-1),yp=V.plans[yk];
+  if(!yp||yp.closed)return '';
+  const pm=planModelFor(yk);
+  const left=pm?pm.rows.filter(r=>r.remaining>=10*MIN&&['open','partial'].includes(r.st)):[];
+  const total=left.reduce((sum,r)=>sum+r.remaining,0);
+  if(total<15*MIN)return '';
+  return '<div class="p1-bridge"><span>'+esc(fmtDur(total))+' left from yesterday</span>'+
+    kBtn('Carry','data-act="carry-y"',{kind:'text'})+
+    kIconBtn('close','Dismiss','data-act="carry-n"')+'</div>';
+}
+function vCalendar(){
+  const now=Date.now(),tk=todayKey();
+  const days=calDays(),anchor=UI.cal.anchor||tk,view=calView();
+  const models={};
+  ensureRange(addDaysKey(days[0],-1),days[days.length-1]);
+  days.forEach(k=>{models[k]={pm:planModelFor(k,now),busy:busyOf(k)};});
+  const pm=planModelFor(anchor,now),plan=V.plans[anchor];
+  const header='<header class="p1-header">'+
+    kIconBtn('prev','Previous '+(view==='week'?'week':'day'),'data-act="cal-prev"')+
+    '<label class="p1-pick" title="Choose day"><span>'+esc(p1DateLabel(anchor))+'</span>'+
+      '<input type="date" data-change="cal-pick" value="'+esc(anchor)+'" aria-label="Choose day"></label>'+
+    kIconBtn('next','Next '+(view==='week'?'week':'day'),'data-act="cal-next"')+
+    kIconBtn('jump','Today','data-act="cal-today"')+
+    kIconBtn('tasks','Tasks','data-act="p1-open-tasks"')+
+    kIconBtn('more','Plan options','data-act="p2-plan-menu" data-k="'+esc(anchor)+'"')+
+    '</header>';
+  const toggle='<div class="p1-toggle">'+kSeg({act:'cal-view',value:view,
+    options:[{v:'day',label:'Day'},{v:'week',label:'Week'}]})+'</div>';
+  const note=plan&&plan.note?'<div class="p1-note"><span>'+esc(plan.note)+'</span></div>':'';
+  const over=pm&&pm.over>0?'<div class="p1-bridge p1-over"><span>'+esc(fmtDur(pm.over))+
+    ' won\'t fit</span>'+kBtn('Fix','data-act="p2-open-fit" data-k="'+esc(anchor)+'"',{kind:'text'})+'</div>':'';
+  return '<div class="p1-plan">'+header+toggle+
+    (anchor===tk?p1Carry():'')+note+over+
+    '<div class="p1-timeline">'+vCalGrid(days,now,tk,models,null)+'</div>'+
+    '<button type="button" class="p1-fab" data-act="cal-new" aria-label="New plan item" title="New plan item">'+icon('add')+'</button>'+
+    '</div>';
+}
+function planFocus(k,id){
+  if(!k)return;
+  UI.view='plan';UI.pages=[];
+  UI.cal.anchor=k;UI.cal.view='day';UI.cal.scrollTo=true;
+  store.set('calView','day');
+  try{history.replaceState(null,'','#plan');}catch(_){}
+  render();
+  if(id&&typeof requestAnimationFrame==='function')requestAnimationFrame(()=>{
+    const node=Array.from(document.querySelectorAll('.p1-plan [data-id]')).find(el=>el.getAttribute('data-id')===id);
+    if(node)node.scrollIntoView({behavior:'smooth',block:'center'});
+  });
+}
+
 function vCalGrid(days, now, tk, models, peak) {
   const n = days.length, ds0 = dayStartMs(days[0]);
-  const labels = Array.from({ length: 24 }, (_, i) => i === 0 ? '' : `<span style="top:${i * HPX}px">${gutLabel(new Date(ds0 + i * HOUR).getHours())}</span>`).join('');
+  const labels = Array.from({ length: 24 }, (_, i) => i === 0 || (n === 7 && i % 3 !== 0) ? '' : `<span style="top:${i * HPX}px">${gutLabel(new Date(ds0 + i * HOUR).getHours())}</span>`).join('');
   const pk = peak ? peak.map((f, i) => f >= 0.35 ? `<i class="pk" style="top:${i * HPX + 3}px;height:${HPX - 6}px;opacity:${(0.25 + f * 0.65).toFixed(2)}"></i>` : '').join('') : '';
   const heads = days.map(k => vCalHead(k, now, tk, models[k])).join('');
   const cols = days.map(k => vCalCol(k, now, tk, models[k])).join('');
   return `<div class="cv c${n}" style="--cols:${n};--hpx:${HPX}px"><div class="cv-scroll" id="cv-scroll"><div class="cv-head"><div class="cv-corner"></div>${heads}</div><div class="cv-body" style="height:${24 * HPX}px"><div class="cv-gutter" aria-hidden="true">${pk}${labels}</div>${cols}</div></div></div>`;
 }
-function vCalHead(k, now, tk, m) {
-  const d = dateOfKey(k), past = k < tk, today = k === tk;
-  let load = '';
-  if (!past) {
-    const cap = dayCapacity(k, V.plans[k], m.pm, busyIv(k), now);
-    if (cap && cap.need > 0) {
-      const over = cap.need > cap.free;
-      const pct = cap.free > 0 ? Math.min(100, cap.need / cap.free * 100) : 100;
-      load = `<div class="cv-load ${over ? 'over' : ''}" title="${over ? 'Planned ' + fmtDur(cap.need - cap.free) + ' more than the free time today' : fmtDur(cap.need) + ' planned, ' + fmtDur(cap.free) + ' free in your planning hours'}"><span>${over ? fmtDur(cap.need - cap.free) + ' over' : fmtDur(cap.free - cap.need) + ' spare'}</span><span class="tr"><i style="width:${pct.toFixed(1)}%"></i></span></div>`;
-    } else if (cap && cap.free > 0) load = `<div class="cv-load"><span>${fmtDur(cap.free)} free</span><span class="tr"><i style="width:0"></i></span></div>`;
-  } else {
-    const a = aggregate(ENTRIES, now, k, k)[k];
-    load = `<div class="cv-load"><span>${a && a.study ? fmtDur(a.study) + ' studied' : 'no study'}</span></div>`;
-  }
-  const dls = deadlineList().filter(x => x.date === k && !x.done).map(x => `<button type="button" class="cv-dl" data-act="dl-edit" data-id="${esc(x.id)}" title="${esc(x.title)}">${icon('flag')}<span>${esc(x.title)}</span></button>`).join('');
-  const gd = gcAllDay(k).map(x => `<span class="cv-gd" title="${esc(x.title)}">${icon('cal')}<span>${esc(x.title)}</span></span>`).join('');
-  return `<div class="cv-dh ${today ? 'today' : ''} ${past ? 'past' : ''}" data-key="h-${k}"><button type="button" class="cv-date" data-act="goto-day" data-k="${k}" aria-label="Open ${esc(longDay(k))} in Today"><span>${esc(wdName(d))}</span><b>${d.getDate()}</b></button>${load}${dls}${gd}</div>`;
+function vCalHead(k,now,tk,m){
+  const date=dateOfKey(k),today=k===tk;
+  return '<div class="cv-dh p1-dayhead'+(today?' today':'')+'">'+
+    '<button type="button" class="cv-date" data-act="p1-day" data-k="'+esc(k)+'" aria-label="Open '+esc(longDay(k))+'">'+
+    '<span>'+esc(wdName(date).slice(0,1))+'</span><b>'+date.getDate()+'</b>'+
+    '</button></div>';
 }
+
 function vCalCol(k, now, tk, m) {
-  const ds = dayStartMs(k), de = dayEndMs(k), past = k < tk, today = k === tk, show = UI.cal.show;
+  const ds = dayStartMs(k), de = dayEndMs(k), past = k < tk, today = k === tk, show = 'both';
   const y = t => (t - ds) / HOUR * HPX;
   const planItems = [], logItems = [];
   if (show !== 'log') {
     m.busy.forEach(z => { const s = Math.max(z.s, ds), e = Math.min(z.e, de); if (e > s) planItems.push({ kind: 'busy', s, e, z }); });
     if (m.pm) m.pm.rows.forEach(r => {
       if (r.st === 'skipped' || r.st === 'moved') return;
-      if (r.missed) { const a = hmOnDay(k, r.at); planItems.push({ kind: 'blk', s: a, e: a + Math.max(r.target, SNAP), r, flag: 'missed', piece: 0, last: true }); return; }
+      if (r.missed) return; // P1: unresolved blocks are presented in the Fix row.
       if (past) { if (r.at) { const a = hmOnDay(k, r.at); planItems.push({ kind: 'blk', s: a, e: a + Math.max(r.target, SNAP), r, flag: 'past', piece: 0, last: true }); } return; }
       r.pieces.forEach((p, i) => { if (p[1] > p[0]) planItems.push({ kind: 'blk', s: p[0], e: p[1], r, piece: i, last: i === r.pieces.length - 1, over: p[1] > m.pm.endMs }); });
     });
@@ -153,34 +170,48 @@ function vCalCol(k, now, tk, m) {
   if (today) html.push(`<div class="cv-now" style="top:${y(now).toFixed(1)}px" data-key="now"></div>`);
   return `<div class="cv-col ${past ? 'past' : ''} ${today ? 'today' : ''}" data-k="${k}" data-act="cal-slot" data-key="col-${k}">${html.join('')}</div>`;
 }
-function calItem(it, k, y, left, width) {
-  const top = y(it.s), h = Math.max(15, y(it.e) - top - 2);
-  const pos = `top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;left:calc(${left.toFixed(2)}% + 2px);width:calc(${width.toFixed(2)}% - 4px)`;
-  // Single-day columns can still have 3+ overlapping events; on a phone,
-  // 3-day and week columns are narrow even without overlap.
-  const narrow = it.ncol >= 3 || (window.innerWidth < 480 && (it.ncol >= 2 || UI.cal.view !== 'day'));
-  const size = [h < 27 ? 'xs' : h < 46 ? 'sm' : '', narrow ? 'ce-narrow' : ''].filter(Boolean).join(' ');
-  const span = `${fmtT(it.s)}–${fmtT(it.e)}`;
-  if (it.kind === 'busy') {
-    const z = it.z, c = z.activity && ACTMAP[z.activity] ? act(z.activity).color : 'var(--ink-3)';
-    if (z.gcal) {
-      const inner = `<span class="t">${icon('cal', 'pi')}${esc(z.title)}</span><span class="m">${span} · Google Calendar</span>`;
-      return z.link ? `<a class="ce ce-busy gcal ${size}" style="${pos}" href="${esc(z.link)}" target="_blank" rel="noopener" data-key="${esc(z.id)}" aria-label="Google Calendar: ${esc(z.title)}, ${span}">${inner}</a>` : `<div class="ce ce-busy gcal ${size}" style="${pos}" data-key="${esc(z.id)}" role="img" aria-label="Google Calendar: ${esc(z.title)}, ${span}">${inner}</div>`;
-    }
-    return `<button type="button" class="ce ce-busy ${size}" style="${pos};--c:${c}" data-act="cal-busy" data-k="${k}" data-id="${esc(z.id)}" data-rec="${z.rec ? 1 : 0}" data-key="z-${esc(z.id)}" aria-label="Busy: ${esc(z.title)}, ${span}"><span class="t">${esc(z.title)}</span><span class="m">${span}${z.rec ? ' · weekly' : ''}</span></button>`;
+function calItem(it,k,y,left,width){
+  const top=y(it.s),h=Math.max(15,y(it.e)-top-2);
+  const pos='top:'+top.toFixed(1)+'px;height:'+h.toFixed(1)+
+    'px;left:calc('+left.toFixed(2)+'% + 2px);width:calc('+width.toFixed(2)+'% - 4px)';
+  const narrow=it.ncol>=3||(window.innerWidth<600&&calView()==='week');
+  const size=(h<24?'xs':h<44?'sm':'')+(narrow?' ce-narrow':'');
+  const time=h>=44&&!narrow?'<span class="m">'+esc(fmtT(it.s)+'–'+fmtT(it.e))+'</span>':'';
+  const span=fmtT(it.s)+'–'+fmtT(it.e);
+  if(it.kind==='busy'){
+    const z=it.z;
+    const content='<span class="t">'+esc(z.title)+'</span>'+time;
+    if(z.gcal)return z.link?
+      '<a class="ce ce-busy p1-busy gcal '+size+'" style="'+pos+
+      '" href="'+esc(z.link)+'" target="_blank" rel="noopener" aria-label="Google Calendar: '+esc(z.title)+', '+esc(span)+'">'+content+'</a>':
+      '<div class="ce ce-busy p1-busy '+size+'" style="'+pos+'" role="img" aria-label="Busy: '+esc(z.title)+', '+esc(span)+'">'+content+'</div>';
+    return '<button type="button" class="ce ce-busy p1-busy '+size+'" style="'+pos+
+      '" data-act="cal-busy" data-k="'+esc(k)+'" data-id="'+esc(z.id)+
+      '" data-rec="'+(z.rec?1:0)+'" data-key="z-'+esc(z.id)+
+      '" aria-label="Busy: '+esc(z.title)+', '+esc(span)+'">'+content+'</button>';
   }
-  if (it.kind === 'log') {
-    const en = it.en, a = act(en.a), run = !!en.running;
-    const attrs = run ? 'data-act="edit-running"' : `data-act="edit-entry" data-id="${esc(en.id)}" data-drag="entry" data-s="${en.s}" data-e="${en.e}"`;
-    return `<button type="button" class="ce ce-log ${run ? 'run' : ''} ${size}" style="${pos};--c:${a.color}" ${attrs} data-key="l-${esc(en.id)}" aria-label="Logged ${esc(a.name)}, ${fmtT(en.s)} to ${run ? 'now' : fmtT(en.e)}"><span class="t">${esc(a.name)}</span><span class="m">${fmtT(en.s)}–${run ? 'now' : fmtT(en.e)}</span>${run ? '' : '<i class="rz" aria-hidden="true"></i>'}</button>`;
+  if(it.kind==='log'){
+    const en=it.en,a=act(en.a),running=!!en.running;
+    const attrs=running?'data-act="edit-running"':
+      'data-act="edit-entry" data-id="'+esc(en.id)+'" data-drag="entry" data-s="'+en.s+'" data-e="'+en.e+'"';
+    return '<button type="button" class="ce ce-log p1-logged'+(running?' run':'')+' '+size+'" style="'+
+      pos+';--c:'+kSafeColour(a.color)+'" '+attrs+' data-key="l-'+esc(en.id)+
+      '" aria-label="Logged '+esc(a.name)+', '+esc(span)+'">'+
+      '<span class="t">'+esc(a.name)+'</span>'+time+
+      (!running?'<i class="rz" aria-hidden="true"></i>':'')+'</button>';
   }
-  const r = it.r, a = act(r.activity);
-  const pinned = !!r.at && !r.late && it.flag !== 'missed';
-  const active = r.st === 'active';
-  const drag = !active && it.flag !== 'past';
-  const cls = ['ce', 'ce-blk', size, pinned ? 'pinned' : 'auto', active ? 'active' : '', it.flag || '', it.over ? 'over' : '', r.clash ? 'clash' : ''].join(' ');
-  const meta = it.flag === 'missed' ? 'missed · drag to a new time' : it.flag === 'past' ? 'planned' : `${span} · ${active ? 'now' : pinned ? 'pinned' : 'fits in'}${it.over ? ' · past your end time' : ''}`;
-  return `<button type="button" class="${cls}" style="${pos};--c:${a.color}" data-act="cal-blk" data-k="${k}" data-id="${esc(r.id)}" ${drag ? `data-drag="block" data-s="${it.s}" data-e="${it.e}"` : ''} data-key="b-${esc(r.id)}-${it.piece}" aria-label="Planned ${esc(a.name)}${r.title ? ': ' + esc(r.title) : ''}, ${span}"><span class="t">${pinned ? icon('pin', 'pi') : ''}${esc(a.name)}${it.piece > 0 ? ' (cont.)' : ''}</span>${r.title ? `<span class="s">${esc(r.title)}</span>` : ''}<span class="m">${meta}</span>${drag && it.last ? '<i class="rz" aria-hidden="true"></i>' : ''}</button>`;
+  const r=it.r,a=act(r.activity),fixed=!!r.at&&!r.late;
+  const active=r.st==='active',drag=!active&&it.flag!=='past';
+  const title=r.title||a.name;
+  const attrs=drag?'data-drag="block" data-s="'+it.s+'" data-e="'+it.e+'"':'';
+  return '<button type="button" class="ce ce-blk p1-block '+(fixed?'pinned':'auto')+
+    (active?' active':'')+' '+size+'" style="'+pos+';--c:'+kSafeColour(a.color)+
+    '" data-act="cal-blk" data-k="'+esc(k)+'" data-id="'+esc(r.id)+'" '+attrs+
+    ' data-key="b-'+esc(r.id)+'-'+it.piece+'" aria-label="Planned '+esc(a.name)+
+    (r.title?': '+esc(r.title):'')+', '+esc(span)+'">'+
+    '<span class="t">'+esc(title)+'</span>'+time+
+    (fixed?'<span class="p1-fixed">'+icon('pin')+'</span>':'')+
+    (drag&&it.last?'<i class="rz" aria-hidden="true"></i>':'')+'</button>';
 }
 
 /* ---------- side panels ---------- */
@@ -589,5 +620,16 @@ Object.assign(SUBMIT, {
     const el = document.getElementById('ta-title');
     if (el) el.value = '';
     commit('Added “' + title + '” to the backlog.', w);
+  }
+});
+
+/* P1 navigation: the four-tab shell and T1 call planFocus. */
+Object.assign(ACT,{
+  'p1-open-tasks'(){pushPage('tasks',{tab:'deadlines'});},
+  'p1-day'(el){
+    const k=el.getAttribute('data-k');
+    if(!k)return;
+    UI.cal.anchor=k;UI.cal.view='day';UI.cal.scrollTo=true;
+    store.set('calView','day');render();
   }
 });
