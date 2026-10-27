@@ -170,34 +170,48 @@ function vCalCol(k, now, tk, m) {
   if (today) html.push(`<div class="cv-now" style="top:${y(now).toFixed(1)}px" data-key="now"></div>`);
   return `<div class="cv-col ${past ? 'past' : ''} ${today ? 'today' : ''}" data-k="${k}" data-act="cal-slot" data-key="col-${k}">${html.join('')}</div>`;
 }
-function calItem(it, k, y, left, width) {
-  const top = y(it.s), h = Math.max(15, y(it.e) - top - 2);
-  const pos = `top:${top.toFixed(1)}px;height:${h.toFixed(1)}px;left:calc(${left.toFixed(2)}% + 2px);width:calc(${width.toFixed(2)}% - 4px)`;
-  // Single-day columns can still have 3+ overlapping events; on a phone,
-  // 3-day and week columns are narrow even without overlap.
-  const narrow = it.ncol >= 3 || (window.innerWidth < 480 && (it.ncol >= 2 || UI.cal.view !== 'day'));
-  const size = [h < 27 ? 'xs' : h < 46 ? 'sm' : '', narrow ? 'ce-narrow' : ''].filter(Boolean).join(' ');
-  const span = `${fmtT(it.s)}–${fmtT(it.e)}`;
-  if (it.kind === 'busy') {
-    const z = it.z, c = z.activity && ACTMAP[z.activity] ? act(z.activity).color : 'var(--ink-3)';
-    if (z.gcal) {
-      const inner = `<span class="t">${icon('cal', 'pi')}${esc(z.title)}</span><span class="m">${span} · Google Calendar</span>`;
-      return z.link ? `<a class="ce ce-busy gcal ${size}" style="${pos}" href="${esc(z.link)}" target="_blank" rel="noopener" data-key="${esc(z.id)}" aria-label="Google Calendar: ${esc(z.title)}, ${span}">${inner}</a>` : `<div class="ce ce-busy gcal ${size}" style="${pos}" data-key="${esc(z.id)}" role="img" aria-label="Google Calendar: ${esc(z.title)}, ${span}">${inner}</div>`;
-    }
-    return `<button type="button" class="ce ce-busy ${size}" style="${pos};--c:${c}" data-act="cal-busy" data-k="${k}" data-id="${esc(z.id)}" data-rec="${z.rec ? 1 : 0}" data-key="z-${esc(z.id)}" aria-label="Busy: ${esc(z.title)}, ${span}"><span class="t">${esc(z.title)}</span><span class="m">${span}${z.rec ? ' · weekly' : ''}</span></button>`;
+function calItem(it,k,y,left,width){
+  const top=y(it.s),h=Math.max(15,y(it.e)-top-2);
+  const pos='top:'+top.toFixed(1)+'px;height:'+h.toFixed(1)+
+    'px;left:calc('+left.toFixed(2)+'% + 2px);width:calc('+width.toFixed(2)+'% - 4px)';
+  const narrow=it.ncol>=3||(window.innerWidth<600&&calView()==='week');
+  const size=(h<24?'xs':h<44?'sm':'')+(narrow?' ce-narrow':'');
+  const time=h>=44&&!narrow?'<span class="m">'+esc(fmtT(it.s)+'–'+fmtT(it.e))+'</span>':'';
+  const span=fmtT(it.s)+'–'+fmtT(it.e);
+  if(it.kind==='busy'){
+    const z=it.z;
+    const content='<span class="t">'+esc(z.title)+'</span>'+time;
+    if(z.gcal)return z.link?
+      '<a class="ce ce-busy p1-busy gcal '+size+'" style="'+pos+
+      '" href="'+esc(z.link)+'" target="_blank" rel="noopener" aria-label="Google Calendar: '+esc(z.title)+', '+esc(span)+'">'+content+'</a>':
+      '<div class="ce ce-busy p1-busy '+size+'" style="'+pos+'" role="img" aria-label="Busy: '+esc(z.title)+', '+esc(span)+'">'+content+'</div>';
+    return '<button type="button" class="ce ce-busy p1-busy '+size+'" style="'+pos+
+      '" data-act="cal-busy" data-k="'+esc(k)+'" data-id="'+esc(z.id)+
+      '" data-rec="'+(z.rec?1:0)+'" data-key="z-'+esc(z.id)+
+      '" aria-label="Busy: '+esc(z.title)+', '+esc(span)+'">'+content+'</button>';
   }
-  if (it.kind === 'log') {
-    const en = it.en, a = act(en.a), run = !!en.running;
-    const attrs = run ? 'data-act="edit-running"' : `data-act="edit-entry" data-id="${esc(en.id)}" data-drag="entry" data-s="${en.s}" data-e="${en.e}"`;
-    return `<button type="button" class="ce ce-log ${run ? 'run' : ''} ${size}" style="${pos};--c:${a.color}" ${attrs} data-key="l-${esc(en.id)}" aria-label="Logged ${esc(a.name)}, ${fmtT(en.s)} to ${run ? 'now' : fmtT(en.e)}"><span class="t">${esc(a.name)}</span><span class="m">${fmtT(en.s)}–${run ? 'now' : fmtT(en.e)}</span>${run ? '' : '<i class="rz" aria-hidden="true"></i>'}</button>`;
+  if(it.kind==='log'){
+    const en=it.en,a=act(en.a),running=!!en.running;
+    const attrs=running?'data-act="edit-running"':
+      'data-act="edit-entry" data-id="'+esc(en.id)+'" data-drag="entry" data-s="'+en.s+'" data-e="'+en.e+'"';
+    return '<button type="button" class="ce ce-log p1-logged'+(running?' run':'')+' '+size+'" style="'+
+      pos+';--c:'+kSafeColour(a.color)+'" '+attrs+' data-key="l-'+esc(en.id)+
+      '" aria-label="Logged '+esc(a.name)+', '+esc(span)+'">'+
+      '<span class="t">'+esc(a.name)+'</span>'+time+
+      (!running?'<i class="rz" aria-hidden="true"></i>':'')+'</button>';
   }
-  const r = it.r, a = act(r.activity);
-  const pinned = !!r.at && !r.late && it.flag !== 'missed';
-  const active = r.st === 'active';
-  const drag = !active && it.flag !== 'past';
-  const cls = ['ce', 'ce-blk', size, pinned ? 'pinned' : 'auto', active ? 'active' : '', it.flag || '', it.over ? 'over' : '', r.clash ? 'clash' : ''].join(' ');
-  const meta = it.flag === 'missed' ? 'missed · drag to a new time' : it.flag === 'past' ? 'planned' : `${span} · ${active ? 'now' : pinned ? 'pinned' : 'fits in'}${it.over ? ' · past your end time' : ''}`;
-  return `<button type="button" class="${cls}" style="${pos};--c:${a.color}" data-act="cal-blk" data-k="${k}" data-id="${esc(r.id)}" ${drag ? `data-drag="block" data-s="${it.s}" data-e="${it.e}"` : ''} data-key="b-${esc(r.id)}-${it.piece}" aria-label="Planned ${esc(a.name)}${r.title ? ': ' + esc(r.title) : ''}, ${span}"><span class="t">${pinned ? icon('pin', 'pi') : ''}${esc(a.name)}${it.piece > 0 ? ' (cont.)' : ''}</span>${r.title ? `<span class="s">${esc(r.title)}</span>` : ''}<span class="m">${meta}</span>${drag && it.last ? '<i class="rz" aria-hidden="true"></i>' : ''}</button>`;
+  const r=it.r,a=act(r.activity),fixed=!!r.at&&!r.late;
+  const active=r.st==='active',drag=!active&&it.flag!=='past';
+  const title=r.title||a.name;
+  const attrs=drag?'data-drag="block" data-s="'+it.s+'" data-e="'+it.e+'"':'';
+  return '<button type="button" class="ce ce-blk p1-block '+(fixed?'pinned':'auto')+
+    (active?' active':'')+' '+size+'" style="'+pos+';--c:'+kSafeColour(a.color)+
+    '" data-act="cal-blk" data-k="'+esc(k)+'" data-id="'+esc(r.id)+'" '+attrs+
+    ' data-key="b-'+esc(r.id)+'-'+it.piece+'" aria-label="Planned '+esc(a.name)+
+    (r.title?': '+esc(r.title):'')+', '+esc(span)+'">'+
+    '<span class="t">'+esc(title)+'</span>'+time+
+    (fixed?'<span class="p1-fixed">'+icon('pin')+'</span>':'')+
+    (drag&&it.last?'<i class="rz" aria-hidden="true"></i>':'')+'</button>';
 }
 
 /* ---------- side panels ---------- */
