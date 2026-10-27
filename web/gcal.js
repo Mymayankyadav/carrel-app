@@ -72,7 +72,9 @@ function vGcalPanel() {
   const n = GC.events.filter(x => x.allDay ? x.to > todayKey() : x.e > Date.now()).length;
   let text, btn = '';
   if (st === 'ok' || st === 'stale') {
-    text = st === 'stale' ? `Couldn’t refresh just now. Showing events from ${fmtT(GC.at)}.` : `${n ? n + ' upcoming event' + (n > 1 ? 's' : '') : 'No upcoming events'} in the next four weeks. Timed events count as busy, so plans move around them. Updated ${fmtT(GC.at)}.`;
+    const elapsed = GC.at ? Date.now() - GC.at : 0;
+    const refreshHint = elapsed > 30 * MIN ? ' · tap Refresh to sync' : '';
+    text = st === 'stale' ? `Couldn’t refresh just now. Showing events from ${fmtT(GC.at)}.` : `${n ? n + ' upcoming event' + (n > 1 ? 's' : '') : 'No upcoming events'} in the next four weeks. Timed events count as busy, so plans move around them. Updated ${fmtT(GC.at)}${refreshHint}.`;
     btn = `<button type="button" class="btn sm" data-act="gc-refresh">Refresh</button>`;
   } else if (st === 'loading' || st === 'off') text = 'Checking your Google Calendar…';
   else if (st === 'approval_required' || st === 'consent_required') { text = 'Allow Carrel to read your Google Calendar so your events show here and plans fit around them. It only reads; nothing in your calendar changes.'; btn = `<button type="button" class="btn sm lamp" data-act="gc-connect">Allow and show events</button>`; }
