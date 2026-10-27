@@ -22,8 +22,13 @@ with sync_playwright() as p:
         expect(page.locator('.k-page-title')).to_contain_text('Tasks')
         def capture(label):
             actual=page.evaluate("Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)")
-            assert actual<=width+1, '%s %s overflow: %s'%(name,label,actual)
             page.screenshot(path=str(out/(name+'-'+label+'.png')),full_page=True)
+            if actual>width+1:
+                offenders=page.evaluate("""() => [...document.querySelectorAll('body *')]
+                  .map(e=>({tag:e.tagName.toLowerCase(),cls:e.className?.baseVal||e.className,txt:(e.innerText||'').slice(0,30),right:Math.round(e.getBoundingClientRect().right),width:Math.round(e.getBoundingClientRect().width)}))
+                  .filter(e=>e.right>innerWidth+1).sort((a,b)=>b.right-a.right).slice(0,16)""")
+                print('OVERFLOW DETAILS',name,label,offenders,flush=True)
+            assert actual<=width+1, '%s %s overflow: %s'%(name,label,actual)
         capture('deadlines')
         page.locator('[data-act="p3-add"]').click()
         expect(page.locator('#sheet [role="dialog"]')).to_have_count(1)
