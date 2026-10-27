@@ -285,9 +285,19 @@ function t1Timer(now,pm){
   const c=CUR;
   if(!c){
     const last=lastEntry(),recent=last&&last.e&&last.e<=now&&now-last.e<3*HOUR&&isStudyId(last.a);
+    const pending=UI.lastRate&&UI.lastRate.id&&UI.lastRate.day;
+    if(pending&&(!UI.t1RateShown||UI.t1RateShown.id!==UI.lastRate.id)){
+      UI.t1RateShown={id:UI.lastRate.id,until:now+60*1000};
+      if(typeof setTimeout==='function')setTimeout(()=>{if(UI.t1RateShown&&Date.now()>=UI.t1RateShown.until){UI.lastRate=null;UI.t1RateShown=null;render();}},60050);
+    }
+    const asking=pending&&UI.t1RateShown&&UI.t1RateShown.until>now;
+    const rating=asking?'<div class="t1-rating"><span>Focus?</span>'+[
+      [1,'Scattered'],[2,'Okay'],[3,'Deep']].map(([value,label])=>
+      kIconBtn('rate'+value,label,'data-act="t1-rate" data-v="'+value+'"')).join('')+'</div>':'';
+    const done=UI.t1RateDoneUntil>now?'<div class="t1-rated" role="status">'+icon('check')+'</div>':'';
     return '<section class="t1-timer t1-idle" aria-label="Timer">'+
-      '<div class="t1-idle-label">Not tracking</div>'+
-      (recent?kBtn('Resume '+act(last.a).name,'data-act="resume"',{kind:'primary',icon:'start'}):'')+'</section>';
+      (rating||done||'<div class="t1-idle-label">Not tracking</div>')+
+      (!rating&&recent?kBtn('Resume '+act(last.a).name,'data-act="resume"',{kind:'primary',icon:'start'}):'')+'</section>';
   }
   const a=act(c.activity),start=parseT(c.start),ps=pomoState(now),g=guardInfo(now);
   const isBreak=a.role==='break',isDue=!!(ps&&ps.left<=0),focusDue=!!(ps&&ps.phase==='focus'&&isDue);
@@ -364,6 +374,14 @@ function t1Today(){
 }
 Object.assign(ACT,{
   't1-log'(){pushPage('log',{k:todayKey()});},
+  't1-rate'(el){
+    const rate=UI.lastRate,value=Number(el.getAttribute('data-v'));
+    if(!rate||![1,2,3].includes(value)||!rate.day||!rate.id)return;
+    const w=W();w.day(rate.day,{[rate.id]:{focus:value}});
+    UI.lastRate=null;UI.t1RateShown=null;UI.t1RateDoneUntil=Date.now()+1000;
+    commit(null,w,{undo:false});
+    if(typeof setTimeout==='function')setTimeout(()=>{UI.t1RateDoneUntil=0;render();},1050);
+  },
   't1-plan-focus'(el){planFocus(el.getAttribute('data-k'),el.getAttribute('data-id'));},
   't1-fit'(){openSheet({type:'fit',k:todayKey()});},
   't1-activities'(){openSheet({type:'activities'});},
