@@ -16,7 +16,7 @@ const state={
   render(){this.calls.push('render');},
   closeSheet(){this.UI.sheet=null;this.calls.push('close-sheet');},
   setBind(k,v){this.calls.push(['bind',k,v]);},
-  esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');},
+  esc(s){return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');},
   console,
   setTimeout,clearTimeout,
 };
