@@ -20,7 +20,7 @@ const DL = {
 };
 
 /* ----- phone notification (the CarrelLive plugin) ----- */
-const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifications: true, exactAlarms: true };
+const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifDistractions: false, notifications: true, exactAlarms: true };
 let nbDone = false, nsSig = '';
 
 /* Native may have refreshed the login while the app was closed; pick up the newer tokens before supabase-js starts. */
@@ -107,6 +107,10 @@ Object.assign(ACT, {
   'np-test'() { if (CL) CL.testNudge().then(p => { Object.assign(NP, p); changed(); }).catch(() => toast('Could not test the buzz.')); },
   'np-check'() { if (CL) CL.getPrefs().then(p => { Object.assign(NP, p); changed(); }).catch(() => {}); },
   'upd-check'() { checkUpdates(true); },
+  'upd-restart'() {
+    if (UPD && typeof UPD.reload === 'function') UPD.reload().catch(() => toast('Reopen Carrel to update.'));
+    else toast('Reopen Carrel to update.');
+  },
   'upd-apk'() { if (UPDI.apk && CAP.Browser) CAP.Browser.open({ url: UPDI.apk.url }); },
   'np-exact'() { if (CL) CL.openExactAlarmSettings(); },
   'np-battery'() { if (CL) CL.openBatterySettings().then(r => { if (r && r.help) toast(r.help); }).catch(() => {}); }
@@ -135,7 +139,7 @@ async function checkUpdates(manual) {
         const m = await r.json();
         if (!m.version || m.version === UPDI.bundle) UPDI.web = manual ? 'Web code is up to date.' : UPDI.web;
         else if (m.minNative && UPDI.build < m.minNative) UPDI.web = 'A new web version needs the new app first.';
-        else if (store.get('updReady') === m.version) UPDI.web = 'Update ready. Reopen Carrel to apply.';
+        else if (store.get('updReady') === m.version) { UPDI.web = 'Update ready'; toast('Update ready', { persist:true, action:{label:'Restart',act:'upd-restart'} }); }
         else {
           step = 'downloading ' + m.version;
           if (!m.checksum) throw new Error('latest.json has no checksum');
@@ -143,8 +147,8 @@ async function checkUpdates(manual) {
           step = 'switching to ' + m.version;
           await UPD.next({ id: b.id });
           store.set('updReady', m.version);
-          UPDI.web = 'Update ready. Reopen Carrel to apply.';
-          toast('Update ready. Reopen Carrel to apply.');
+          UPDI.web = 'Update ready';
+          toast('Update ready', { persist:true, action:{label:'Restart',act:'upd-restart'} });
         }
       }
     } catch (e) {
@@ -172,6 +176,10 @@ function updateBoot() { if (NATIVE) setTimeout(() => checkUpdates(false), 5000);
 
 /* Google sign-in returns to the app through the app.carrel.study://auth deep link. */
 if (NATIVE && CAP.App) {
+  CAP.App.addListener('backButton', () => {
+    if (typeof goBack === 'function' && goBack()) return;
+    if (typeof CAP.App.minimizeApp === 'function') CAP.App.minimizeApp();
+  });
   CAP.App.addListener('appUrlOpen', async ({ url }) => {
     if (!url || url.indexOf(APP_SCHEME + '://') !== 0) return;
     try { if (CAP.Browser) await CAP.Browser.close(); } catch (e) { /* already closed */ }
