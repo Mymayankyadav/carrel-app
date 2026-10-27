@@ -5,7 +5,7 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
 const read = name => fs.readFileSync(path.join(__dirname, '../ui/', name), 'utf8');
-const MIN = 60000, HOUR = 60 * MIN, now = Date.now();
+const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR, now = Date.now();
 const entry = { e: now - 10 * MIN };
 const calls = [], ACT = {}, SHEETS = {};
 let parked = [{ id: 'p1', text: 'Check theorem statement' }];
@@ -18,7 +18,7 @@ const ACTMAP = { math: { id:'math', name:'Math <proofs>', color:'#3D7EA6', kind:
   break: { id:'break', name:'Break', color:'#4E5A86', kind:'life', role:'break' },
   archived: { id:'archived', name:'Hidden', color:'#333333', kind:'study', archived:true } };
 const kButton = (label, attrs='') => '<button '+attrs+'>'+label+'</button>';
-const ctx = { ACT, SHEETS, UI, CUR:null, ACTMAP, ACTS: Object.values(ACTMAP), ENTRIES:[],
+const ctx = { ACT, SHEETS, UI, CUR:{activity:'math',start:now-HOUR}, DAY, ACTMAP, ACTS: Object.values(ACTMAP), ENTRIES:[],
   MIN, HOUR, PRESETS: {'25/5':{},'50/10':{},'90/20':{}},
   CFG: { pomodoro: { focus:25,short:5 } },
   aggregate: () => { aggregates++; return { '2026-10-27':{acts:{ math:90*MIN, break:20*MIN }} }; },
@@ -48,6 +48,7 @@ const ctx = { ACT, SHEETS, UI, CUR:null, ACTMAP, ACTS: Object.values(ACTMAP), EN
 };
 ACT['park-drop']=()=>{ calls.push('drop'); parked=[]; };
 ACT['guard-seen']=el=>calls.push(['guard-seen',el.getAttribute('data-t')]);
+ACT['guard-save']=()=>calls.push('guard-save');
 vm.createContext(ctx);
 vm.runInContext(read('today-sheets.js'),ctx,{filename:'today-sheets.js'});
 assert.deepEqual(Object.keys(SHEETS).sort(),['activities','fixstop','park','parked','start']);
@@ -104,9 +105,19 @@ parked=[{ id:'p2',text:'Try a lemma'}]; UI.sheet={type:'parked',k:'2026-10-27'};
 ACT['t2-park-drop']({getAttribute: k=>k==='data-k'?'2026-10-27':'p2'});
 assert(calls.includes('drop') && UI.sheet===null);
 const fixed=SHEETS.fixstop();
-assert(fixed.includes('data-act="guard-save"') && fixed.includes('Last open'));
+assert(fixed.includes('data-act="t2-stop-save"') && fixed.includes('Last open'));
+UI.sheet={type:'fixstop'};
 ACT['t2-seen']({getAttribute:()=>String(now-10*MIN)});
 assert.equal(calls.at(-1)[0],'guard-seen');
+assert.equal(UI.sheet,null,'last-open stop closes the edit sheet');
+UI.sheet={type:'fixstop'};
+ACT['t2-seen']({getAttribute:()=>String(now-2*MIN)});
+assert.equal(UI.sheet.type,'fixstop','forged or too-recent stop leaves sheet open');
+const d=new Date(now-30*MIN);
+UI.guardTime=String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+ACT['t2-stop-save']();
+assert.equal(calls.at(-1),'guard-save');
+assert.equal(UI.sheet,null,'valid custom time closes the edit sheet');
 ACT['t2-edit-activities']();
 assert.deepEqual(calls.at(-1),['page','settings','settings.activities']);
 
