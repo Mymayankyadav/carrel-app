@@ -14,8 +14,12 @@ Personal study timer and planner. Web app (vanilla JS) wrapped as an Android app
 
 ## Build and test
 ```bash
-python3 web/build.py                     # -> www/index.html and web/test/carrel-test.html (mock data, no sign-in)
+npm ci --no-audit --no-fund
+npm run build:web                       # -> www/index.html and web/test/carrel-test.html (mock data, no sign-in)
 for f in web/test/*_test.js; do TZ=Asia/Kolkata node "$f" || exit 1; done
 python3 tools/shots.py /tmp/shots [--dark]
+python3 tools/redesign_smoke.py           # Playwright/Chromium; mock-only integration matrix
 ```
 CI: `ci.yml` (PRs), `web.yml` (main → GitHub Pages + in-app web update), `android.yml` (APK release).
+
+Redesign integration and verification: [docs/redesign/INTEGRATION.md](docs/redesign/INTEGRATION.md). Browser screenshots are retained by the Redesign acceptance workflow. Native/build-input changes on main also create a signed APK release; ordinary web-only changes update Pages and compatible installed apps.

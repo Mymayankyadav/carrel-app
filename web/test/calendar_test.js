@@ -77,17 +77,4 @@ assert(cal.includes('data-act="p2-open-fit"'),'overflow opens P2 Does not fit sh
 assert(cal.includes("data-act=\"p1-open-tasks\""),'Tasks button on Plan header');
 assert(cal.includes('function planFocus(k,id)'),'Plan implements shared focus contract');
 
-// C5: stale timestamp alone controls suggestion; don't label fresh data as old.
-const now=Date.parse('2026-10-27T17:00:00+05:30');
-function panel(ageMin,status='ok'){
-  const GC={status,at:now-ageMin*MIN,events:[],msg:''};
-  return vm.runInNewContext(between(gcal,'function vGcalPanel(', 'Object.assign(ACT,')+'\nvGcalPanel',{
-    S:{mcp:{}},GC,MIN,Date:{now:()=>now},fmtT:()=> '4:30 pm',
-    todayKey:()=> '2026-10-27',esc
-  })();
-}
-assert(panel(29).includes('Updated 4:30 pm.'),'recent refresh unchanged');
-assert(!panel(30).includes('tap Refresh to sync'),'exactly 30 minutes is fresh');
-assert(panel(31).includes('Updated 4:30 pm · tap Refresh to sync.'),'over 30 minutes suggests syncing');
-assert(!panel(31,'stale').includes('Updated '),'failed refresh uses existing stale message');
 console.log('CALENDAR TESTS PASSED');

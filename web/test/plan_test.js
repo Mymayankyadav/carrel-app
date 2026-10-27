@@ -37,7 +37,7 @@ function section(a, b) {
   const to=next>from?(m?Math.min(next,m.index):next):(m?m.index:app.length);
   return app.slice(from,to).replace(/^VIEWS\.[^\n]*$/gm,'').replace(/^SHEETS\.[^\n]*$/gm,'');
 }
-const display = vm.runInNewContext(section('planDisplayRows', 'vPlan') + '\nplanDisplayRows');
+const display = vm.runInNewContext(fs.readFileSync(require('path').join(__dirname,'../ui/plan.js'),'utf8').replace(/^VIEWS.*$/gm,'') + '\nplanDisplayRows');
 const order = Array.from(display(pm), x => x.id);
 assert.equal(order[0], 'completed', 'completed blocks appear before pending blocks');
 const liveRows = display(pm).filter(x => x.remaining > 0);
@@ -67,27 +67,6 @@ assert.equal(recorder[0].pinned, undefined, 'fixed block priority remains untouc
 assert.equal(recorder[0].flexible.order, 4, 'flexible block moved past fixed');
 assert.equal(recorder[0].later.order, 2, 'flexible neighbour moved up');
 
-const esc = s => String(s).replace(/[&<>"']/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
-const UI = { openBlk: 'pinned' };
-const render = vm.runInNewContext(section('vBlk', 'vAddBlock') + '\nvBlk', {
-  act: () => ({ name: 'Mathematics', color: '#234567' }),
-  UI, icon: () => '*', busyOf: () => busy,
-  parsePreset: s => s === '50/10' ? { focus: 50, short: 10 } : null,
-  esc, fmtT: () => '8:30 pm', fmtHM: s => s, fmtDur: s => Math.round(s / MIN) + 'm'
-});
-const html = render(row('pinned'), k, pm, true);
-assert(html.includes('Mathematics'), 'full activity name rendered');
-assert(html.includes('Clashes with Seminar &amp; lecture'), 'overlap names the conflicting commitment safely');
-assert(html.includes('50/10 pomo'), 'pomodoro badge explained');
-assert(html.includes('50-minute focus, 10-minute breaks'), 'pomodoro duration accessible');
-assert(!html.includes('data-act="blk-move"'), 'fixed-time block has no reorder controls');
-UI.openBlk = 'later';
-const htmlFlexible = render(row('later'), k, pm, true);
-assert(htmlFlexible.includes('data-act="blk-move"'), 'unfixed incomplete block can be reordered');
-UI.openBlk = 'completed';
-const htmlDone = render(row('completed'), k, pm, true);
-assert(!htmlDone.includes('data-act="blk-move"'), 'completed block has no reorder controls');
-assert(app.includes('planDisplayRows(pm).map(r => vBlk('), 'plan uses sorted display rows');
-assert(app.includes('class="busy-it"'), 'busy items remain together');
-assert(app.includes('aria-label="Open this day in the calendar"') && app.includes('aria-label="Plan options"'), 'header icon buttons labelled');
+assert(!app.includes('function vPlan('), 'retired Plan list removed');
+assert(!app.includes('function vBlk('), 'retired block renderer removed');
 console.log('PLAN TESTS PASSED');

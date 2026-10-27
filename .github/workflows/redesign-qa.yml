@@ -1,0 +1,47 @@
+name: Redesign acceptance
+on:
+  pull_request:
+    paths: ['web/**', 'tools/**', 'package*.json', '.github/workflows/redesign-qa.yml']
+  push:
+    branches: [main]
+    paths: ['web/**', 'tools/**', 'package*.json', '.github/workflows/redesign-qa.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.12' }
+      - run: npm ci --no-audit --no-fund
+      - run: python3 -m pip install playwright==1.56.0
+      - name: Select runner browser
+        run: |
+          CHROME=$(command -v google-chrome || command -v chromium || true)
+          if [ -n "$CHROME" ]; then
+            "$CHROME" --version
+            echo "CARREL_CHROMIUM=$CHROME" >> "$GITHUB_ENV"
+          else
+            python3 -m playwright install chromium
+          fi
+      - run: npm run build:web
+      - name: All JavaScript suites
+        run: |
+          for f in web/test/*_test.js; do
+            TZ=Asia/Kolkata node "$f" || exit 1
+          done
+      - name: Integrated mock-only acceptance
+        run: python3 tools/redesign_smoke.py
+      - name: Preserve screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: redesign-acceptance
+          path: screenshots/redesign
+          if-no-files-found: warn
+          retention-days: 14

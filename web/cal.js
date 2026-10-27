@@ -215,29 +215,6 @@ function calItem(it,k,y,left,width){
 }
 
 /* ---------- side panels ---------- */
-function vCalSide(days, now, tk) {
-  return [vMiniMonth(days, now, tk), vGcalPanel(), vDeadlinesPanel(tk), vBacklogPanel(tk), vTargetsPanel(now, tk), vTimetablePanel()].join('');
-}
-function mmBase() { return UI.cal.mm || calDays()[0].slice(0, 7); }
-function shiftMonth(ym, d) { const [y, m] = ym.split('-').map(Number); const x = new Date(y, m - 1 + d, 1); return x.getFullYear() + '-' + pad(x.getMonth() + 1); }
-function vMiniMonth(days, now, tk) {
-  const [y, m] = mmBase().split('-').map(Number);
-  const first = new Date(y, m - 1, 1), fk = keyOfDate(first), lk = keyOfDate(new Date(y, m, 0));
-  const start = weekStartKey(fk);
-  const agg = aggregate(ENTRIES, now, start, addDaysKey(start, 41));
-  const dl = new Set(deadlineList().filter(d => !d.done).map(d => d.date));
-  const cells = [];
-  for (let i = 0; i < 42; i++) {
-    const k = addDaysKey(start, i);
-    if (i >= 35 && k > lk) break;
-    const has = (agg[k] && agg[k].study >= 15 * MIN) || (V.plans[k] && Object.values(V.plans[k].blocks || {}).some(Boolean));
-    cells.push(`<button type="button" class="${k < fk || k > lk ? 'out' : ''} ${days.includes(k) ? 'sel' : ''} ${k === tk ? 'tdy' : ''} ${dl.has(k) ? 'dl' : ''}" data-act="mm-day" data-k="${k}" aria-label="${esc(longDay(k))}">${dateOfKey(k).getDate()}${has || dl.has(k) ? '<i></i>' : ''}</button>`);
-  }
-  const wds = Array.from({ length: 7 }, (_, i) => `<span>${esc(rowWeekday(i).slice(0, 2))}</span>`).join('');
-  return `<section class="panel mm" aria-label="Month"><div class="mm-head"><b>${esc(DF({ month: 'long', year: 'numeric' }).format(first))}</b><span><button type="button" class="icon-btn" data-act="mm-prev" aria-label="Previous month">${icon('left')}</button><button type="button" class="icon-btn" data-act="mm-next" aria-label="Next month">${icon('right')}</button></span></div><div class="mm-grid">${wds}${cells.join('')}</div></section>`;
-}
-/* ---------- sheets: new item, busy time, deadline, task, block ---------- */
-/* ---------- planning actions ---------- */
 function moveBlock(k1, id, k2, s) {
   const now = Date.now(), tk = todayKey();
   if (k2 < tk || (k2 === tk && s < now - 5 * MIN)) { toast('Pick a time from now on.'); return; }
@@ -505,15 +482,15 @@ function cancelDrag() {
 /* ---------- actions ---------- */
 Object.assign(ACT, {
   'cal-view'(el) { UI.cal.view = el.getAttribute('data-v'); store.set('calView', UI.cal.view); UI.cal.mm = null; UI.cal.scrollTo = true; render(); },
-  'cal-show'(el) { UI.cal.show = el.getAttribute('data-v'); store.set('calShow', UI.cal.show); render(); },
+
   'cal-prev'() { calShift(-1); },
   'cal-next'() { calShift(1); },
   'cal-today'() { UI.cal.anchor = null; UI.cal.mm = null; UI.cal.scrollTo = true; render(); },
   'cal-pick'(el) { if (/^\d{4}-\d{2}-\d{2}$/.test(el.value)) { UI.cal.anchor = el.value; UI.cal.mm = null; UI.cal.scrollTo = true; render(); } },
   'cal-open'(el) { UI.cal.anchor = el.getAttribute('data-k'); UI.view = 'plan'; UI.cal.mm = null; UI.cal.scrollTo = true; try { history.replaceState(null, '', '#plan'); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
-  'mm-day'(el) { UI.cal.anchor = el.getAttribute('data-k'); UI.cal.scrollTo = true; render(); },
-  'mm-prev'() { UI.cal.mm = shiftMonth(mmBase(), -1); render(); },
-  'mm-next'() { UI.cal.mm = shiftMonth(mmBase(), 1); render(); },
+
+
+
   'cal-slot'(el, e) {
     if (!e || e.target !== el) return;
     const k = el.getAttribute('data-k'), t = timeAt(el, e.clientY, 'floor'), now = Date.now();
@@ -531,7 +508,7 @@ Object.assign(ACT, {
     openQnew(k, s, s + 60 * MIN);
   },
   'q-tab'(el) { UI.sheet.tab = el.getAttribute('data-v'); UI.sheet.err = ''; renderSheet(); },
-  'q-min'(el) { UI.sheet.minutes = +el.getAttribute('data-m'); renderSheet(); },
+
   'q-day'(el) { const d = +el.getAttribute('data-d'), arr = UI.sheet.days, i = arr.indexOf(d); if (i >= 0) arr.splice(i, 1); else arr.push(d); renderSheet(); },
   'q-save'() { saveQnew(); },
   'busy-save'() {
@@ -548,7 +525,7 @@ Object.assign(ACT, {
     closeSheet(true);
     commit('Saved ' + doc.title + '.', w);
   },
-  'busy-skip'() { const sh = UI.sheet, w = W(); w.plan(sh.k, { skip: { [sh.id]: true } }); closeSheet(true); commit('Skipped ' + (sh.title || 'it') + ' on ' + dayName(sh.k) + '. Plans there use the free time.', w); },
+
   'busy-del'() {
     const sh = UI.sheet;
     if (!sh.armed) { sh.armed = true; renderSheet(); return; }
@@ -558,10 +535,10 @@ Object.assign(ACT, {
     closeSheet(true);
     commit(sh.rec ? 'Removed ' + (sh.title || 'it') + ' from your timetable.' : 'Deleted ' + (sh.title || 'the busy time') + '.', w);
   },
-  'tt-new'() { const tk = todayKey(); openQnew(tk, hmOnDay(tk, '10:00'), hmOnDay(tk, '11:00'), 'busy', [weekdayOfKey(tk)]); },
-  'tt-edit'(el) { openBusySheet(null, el.getAttribute('data-id'), true); },
-  'dl-new'() { openDeadlineSheet(null); },
-  'dl-edit'(el) { openDeadlineSheet(el.getAttribute('data-id')); },
+
+
+
+
   'dl-kind'(el) { UI.sheet.kind = el.getAttribute('data-v'); renderSheet(); },
   'dl-save'() {
     const sh = UI.sheet;
@@ -576,8 +553,8 @@ Object.assign(ACT, {
   },
   'dl-done'() { const sh = UI.sheet, w = W(); w.update('planning/deadlines', { items: { [sh.id]: { done: !sh.done } } }, { items: {} }); closeSheet(true); commit(sh.done ? 'Marked as not done.' : 'Marked ' + sh.title + ' done.', w); },
   'dl-del'() { const sh = UI.sheet; if (!sh.armed) { sh.armed = true; renderSheet(); return; } const w = W(); w.update('planning/deadlines', { items: { [sh.id]: null } }, { items: {} }); closeSheet(true); commit('Deleted ' + sh.title + '.', w); },
-  'task-open'(el) { openTaskSheet(el.getAttribute('data-id')); },
-  'task-min'(el) { UI.sheet.minutes = +el.getAttribute('data-m'); renderSheet(); },
+
+
   'task-prio'(el) { UI.sheet.prio = +el.getAttribute('data-v'); renderSheet(); },
   'task-save'() {
     const sh = UI.sheet, t = taskFromSheet();
@@ -602,25 +579,16 @@ Object.assign(ACT, {
     closeSheet(true);
     commit('Scheduled “' + t.title + '” for ' + dayName(k) + (fits ? '.' : '. That day is already full, so check its plan.'), w);
   },
-  'task-done'() { const sh = UI.sheet, w = W(); w.update('planning/backlog', { items: { [sh.id]: null } }, { items: {} }); closeSheet(true); commit('Done: ' + sh.title + '.', w); },
+
   'bl-auto'() { autoPlanAll(); },
-  'plan-copy'(el) { const k = el.getAttribute('data-k'); copyPlan(k, addDaysKey(k, 1)); },
+
   'block-start'() { const sh = UI.sheet, b = blocksOf(sh.k)[sh.id]; if (!b) return; closeSheet(true); startActivity(b.activity, { block: sh.id, pomoPreset: b.pomo || undefined, force: true }); },
   'block-dup'() { const sh = UI.sheet, b = blocksOf(sh.k)[sh.id]; if (!b) return; const w = W(); w.plan(sh.k, { blocks: { [uid('b')]: blockDoc({ activity: b.activity, title: b.title, minutes: +b.orig || +b.minutes, order: nextOrder(sh.k), at: null, pomo: b.pomo || null }) } }); closeSheet(true); commit('Duplicated the block.', w); },
   'block-back'() { const sh = UI.sheet; unscheduleBlock(sh.k, sh.id); },
-  'block-del'() { const sh = UI.sheet; if (!sh.armed) { sh.armed = true; renderSheet(); return; } const w = W(); w.plan(sh.k, { blocks: { [sh.id]: null } }); closeSheet(true); commit('Deleted the block.', w); }
+
 });
 Object.assign(SUBMIT, {
-  'task-add'() {
-    const title = String(UI.ta.title || '').trim();
-    if (!title) return;
-    const w = W();
-    w.update('planning/backlog', { items: { [uid('t')]: { title: title.slice(0, 80), activity: ACTMAP[UI.ta.activity] ? UI.ta.activity : firstStudyId(), minutes: +UI.ta.minutes || 60, due: null, prio: 2, order: nextBacklogOrder(), created: isoLocal(Date.now()) } } }, { items: {} });
-    UI.ta.title = '';
-    const el = document.getElementById('ta-title');
-    if (el) el.value = '';
-    commit('Added “' + title + '” to the backlog.', w);
-  }
+
 });
 
 /* P1 navigation: the four-tab shell and T1 call planFocus. */

@@ -78,7 +78,7 @@ function g2About(){
     (UPDI.apk?kRow({label:'New app version',icon:'download',attrs:'data-act="upd-apk"'}):'')+'</div>';
 }
 function g2Keys(){
-  const keys=[['1–9','Start an activity'],['S','Stop timer'],['B','Break or resume'],['R','Resume last'],['M','Toggle Pomodoro'],['D','Focus mode'],['N','New entry'],['← →','Change day'],['T','Today'],['C','Plan'],['W','Week'],['P','Patterns'],['Ctrl Z','Undo']];
+  const keys=[['1–9','Start an activity'],['S','Stop timer'],['B','Break or resume'],['R','Resume last'],['M','Toggle Pomodoro'],['D','Focus mode'],['N','New entry'],['← →','Page Plan or Stats'],['T','Today'],['C','Plan'],['W','Stats'],['P','Patterns'],['Ctrl Z','Undo']];
   return '<div class="g2-page">'+keys.map(([key,desc])=>'<div class="g2-key-row"><kbd>'+esc(key)+'</kbd><span>'+esc(desc)+'</span></div>').join('')+'</div>';
 }
 PAGES['settings.timer']={title:'Timer',render:g2Timer};

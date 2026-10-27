@@ -4,6 +4,7 @@ No production login: opens web/test/carrel-test.html with the mock store.
 """
 from pathlib import Path
 import sys
+import os
 from playwright.sync_api import sync_playwright, expect
 
 root=Path(__file__).resolve().parents[1]
@@ -13,7 +14,7 @@ if not html.is_file():
 
 errors=[]
 with sync_playwright() as p:
-    browser=p.chromium.launch()
+    browser=p.chromium.launch(executable_path=os.environ.get('CARREL_CHROMIUM') or None)
     page=browser.new_page(viewport={'width':390,'height':844},color_scheme='light',
                          is_mobile=True,has_touch=True)
     page.on('pageerror',lambda e: errors.append(str(e)))
@@ -26,13 +27,12 @@ with sync_playwright() as p:
         expect(page.locator('#nav [data-v="'+tab+'"]')).to_have_attribute('aria-current','page')
         assert page.evaluate('UI.view')==tab, 'route mismatch: '+tab
         assert page.locator('#main').inner_text().strip(), 'Empty screen: '+tab
-    # The temporary Stats switch protects access to both legacy report types.
+    # Stats detail pages replace the old Week/Patterns root aliases.
     page.locator('#nav [data-v="stats"]').click()
-    assert page.locator('[data-act="r0-stats-pane"][data-v="patterns"]').count()==1
-    page.locator('[data-act="r0-stats-pane"][data-v="patterns"]').click()
-    assert page.evaluate('UI.statsPane')=='patterns'
-    page.locator('[data-act="r0-stats-pane"][data-v="week"]').click()
-    assert page.evaluate('UI.statsPane')=='week'
+    page.locator('[data-act="s1-patterns"]').click()
+    assert page.evaluate('UI.pages.at(-1).id')=='stats.patterns'
+    page.keyboard.press('Escape')
+    page.wait_for_timeout(150)
     # Registering a page must not erase the underlying tab or interfere with Escape.
     page.evaluate("openPage('settings','kit')")
     assert page.evaluate('UI.pages.length')==1
