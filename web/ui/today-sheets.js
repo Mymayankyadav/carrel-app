@@ -71,7 +71,7 @@ function sFixStop(){
     '<div class="k-sheet-body t2-sheet">'+
     kField('Time',kTime({bind:'guardTime',hm:UI.guardTime||msToHm(now)}))+
     (valid?kChips({act:'t2-seen',value:'',options:[{v:String(seen),label:'Last open '+fmtT(seen)}]}):'')+
-    '</div>'+kSheetFoot(kBtn('Save','data-act="guard-save"',{kind:'primary'}));
+    '</div>'+kSheetFoot(kBtn('Save','data-act="t2-stop-save"',{kind:'primary'}));
 }
 Object.assign(SHEETS,{start:sStart,activities:sActivities,park:sPark,parked:sParked,fixstop:sFixStop});
 Object.assign(ACT,{
@@ -126,5 +126,21 @@ Object.assign(ACT,{
     ACT['park-drop'](el);
     if(!parkedItems(k).length)closeSheet(true);
   },
-  't2-seen'(el){ACT['guard-seen']({getAttribute:k=>k==='data-t'?el.getAttribute('data-v'):null});}
+  't2-stop-save'(){
+    const c=CUR,now=Date.now(),hm=UI.guardTime||'';
+    if(!c||!/^\d{1,2}:\d{2}$/.test(hm))return;
+    const [h,m]=hm.split(':').map(Number);
+    if(h>23||m>59)return;
+    const d=new Date(now);d.setHours(h,m,0,0);
+    let at=d.getTime();while(at>now)at-=DAY;
+    // Let the existing action report invalid starts without losing the editor.
+    if(at<=parseT(c.start)){ACT['guard-save']();return;}
+    closeSheet(true);ACT['guard-save']();
+  },
+  't2-seen'(el){
+    const c=CUR,now=Date.now(),at=Number(el.getAttribute('data-v'));
+    if(!c||at!==Number(store.get('seen'))||!(at>parseT(c.start)+MIN&&at<now-5*MIN))return;
+    closeSheet(true);
+    ACT['guard-seen']({getAttribute:k=>k==='data-t'?String(at):null});
+  }
 });
