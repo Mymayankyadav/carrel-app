@@ -549,6 +549,8 @@ textarea.inp{min-height:64px;resize:vertical;line-height:1.4}
 @media (min-width:640px) and (max-width:1099px){.cv-side{grid-template-columns:repeat(2,minmax(0,1fr));gap:30px 34px}}
 .cv{border:1px solid var(--rule);border-radius:var(--r-card);background:var(--raised);overflow:hidden;box-shadow:var(--shadow)}
 .cv-scroll{position:relative;height:calc(100vh - 250px);height:calc(100dvh - 250px);min-height:430px;max-height:1240px;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+/* Enough scrollable trailing room to lift the last hour above the floating +. */
+@media (max-width:859px){.cv-scroll{padding-bottom:80px;scroll-padding-bottom:80px}}
 @media (min-width:860px){.cv-scroll{height:calc(100vh - 200px);height:calc(100dvh - 200px);min-height:520px}}
 .cv-head,.cv-body{display:grid;grid-template-columns:50px repeat(var(--cols),minmax(0,1fr))}
 .cv-head{position:sticky;top:0;z-index:6;background:var(--raised);border-bottom:1px solid var(--rule-2)}
@@ -683,7 +685,7 @@ html.is-dragging,html.is-dragging *{cursor:grabbing!important;-webkit-user-selec
 .tl-p.busy{border:1px solid var(--rule-2);border-left:3px solid var(--ink-3);color:var(--ink-2);background:repeating-linear-gradient(135deg,color-mix(in oklab,var(--ink) 8%,transparent) 0 4px,transparent 4px 8px)}
 .fab{display:none}
 @media (max-width:859px){
-  .fab{display:grid;place-items:center;position:fixed;right:max(16px, env(safe-area-inset-right,0px));bottom:calc(78px + env(safe-area-inset-bottom,0px));z-index:8;width:56px;height:56px;border:0;border-radius:18px;background:var(--lamp);color:var(--on-lamp);box-shadow:0 12px 26px -10px rgba(0,0,0,.5)}
+  .fab{display:grid;place-items:center;position:fixed;right:max(16px, env(safe-area-inset-right,0px));bottom:calc(62px + 16px + env(safe-area-inset-bottom,0px));z-index:8;width:56px;height:56px;border:0;border-radius:18px;background:var(--lamp);color:var(--on-lamp);box-shadow:0 12px 26px -10px rgba(0,0,0,.5)}
   .fab .i{width:26px;height:26px;stroke-width:2}
 }
 
