@@ -42,7 +42,7 @@ async function main() {
 
   // Web users cannot see unusable Android toggles.
   const web = load();
-  assert.equal(web.ctx.PAGES['settings.notifications'].render(), '<empty>Available on Android');
+  assert.equal(web.ctx.PAGES['settings.notifications'].render(), '<empty>Available on Android</empty>');
   assert.equal(vm.runInContext('vPhonePanel()', web.ctx), '');
 
   // Native-only Settings subscreen: no explanatory paragraphs and five independent controls.
