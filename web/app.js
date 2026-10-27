@@ -857,7 +857,7 @@ function vHeader() {
     const a = act(CUR.activity), s = parseT(CUR.start);
     pill = `<span class="runpill" style="--c:${a.color}"><i class="dot"></i><span class="rp-name">${esc(a.name)}</span><span class="num" data-tk="elx" data-s="${s}">${fmtEl(Date.now() - s)}</span><button type="button" class="icon-btn" data-act="stop" aria-label="Stop ${esc(a.name)}">${icon('stop')}</button></span>`;
   }
-  return `<div class="wrap bar-in ${UI.view === 'calendar' ? 'wide' : ''}"><div class="brand"><i class="lampdot" aria-hidden="true"></i>Carrel</div><nav class="tabs-top" aria-label="Views">${tabs}</nav><div class="bar-right">${pill}<span class="sync s-${st}" role="status">${lbl}</span><button type="button" class="icon-btn hide-sm" data-act="setup" aria-label="Setup">${icon('sliders')}</button></div></div>`;
+  return `<div class="wrap bar-in ${UI.view === 'calendar' ? 'wide' : ''}"><div class="brand"><i class="lampdot" aria-hidden="true"></i>Carrel</div><nav class="tabs-top" aria-label="Views">${tabs}</nav><div class="bar-right">${pill}<span class="sync s-${st}${pill && st === 'live' ? ' a6-dot-only' : ''}" role="status"><span>${lbl}</span></span><button type="button" class="icon-btn hide-sm" data-act="setup" aria-label="Setup">${icon('sliders')}</button></div></div>`;
 }
 function vNav() {
   const items = [['today', 'Today', 'clock'], ['calendar', 'Calendar', 'cal'], ['week', 'Week', 'bars'], ['patterns', 'Patterns', 'grid']];
@@ -1758,6 +1758,15 @@ function sWrap(sh) {
     <div class="sh-foot"><button type="button" class="btn ghost" data-act="sheet-close">Cancel</button><button type="button" class="btn lamp" data-act="wrap-save">Wrap up</button></div>`;
 }
 function sSetup() {
+  // Registered lazily: ACT is declared after the views section.
+  Object.assign(ACT, {
+    'a6-jump'(el) {
+      const id = el.getAttribute('data-target');
+      if (!/^(activities|timer|day|phone|data)$/.test(id)) return;
+      const target = document.getElementById('setsec-' + id);
+      if (target) target.scrollIntoView({ block: 'start', behavior: 'smooth' });
+    }
+  });
   const study = ACTS.filter(a => a.kind === 'study'), life = ACTS.filter(a => a.kind !== 'study');
   const row = a => `<div class="arow ${a.archived ? 'arch' : ''}" style="--c:${a.color}" data-key="a-${esc(a.id)}">
       <button type="button" class="swatch" data-act="act-color" data-id="${esc(a.id)}" aria-label="Change color of ${esc(a.name)}"></button>
@@ -1778,17 +1787,18 @@ function sSetup() {
   const nd = Object.keys(V.days || {}).length;
   const ne = ENTRIES.filter(e => !e.running).length;
   return `<div class="sh-head"><h2 id="sh-title">Setup</h2><button type="button" class="icon-btn" data-act="sheet-close" aria-label="Close">${icon('x')}</button></div>
-    <div class="setsec" style="border-top:0;padding-top:0"><h3>Activities</h3><p class="note-line">Study activities count toward study time, goals and streaks. Archiving hides an activity but keeps its history.</p>
+    <nav class="set-jump" aria-label="Setup sections">${[['activities','Activities'],['timer','Timer'],['day','Day'],['phone','Phone'],['data','Data']].map(([id, label]) => `<button type="button" class="chip-btn" data-act="a6-jump" data-target="${id}">${label}</button>`).join('')}</nav>
+    <div id="setsec-activities" class="setsec" style="border-top:0;padding-top:0"><h3>Activities</h3><p class="note-line">Study activities count toward study time, goals and streaks. Archiving hides an activity but keeps its history.</p>
       <span class="lbl">Study</span><div>${shown(study).map(row).join('') || '<p class="note-line">No study activities yet.</p>'}</div>
       <span class="lbl">Life</span><div>${shown(life).map(row).join('')}</div>
       <form class="row" data-submit="act-add"><input class="inp" id="na-name" style="flex:1 1 180px;width:auto" maxlength="40" placeholder="New activity" data-bind="newAct.name" value="${esc(UI.newAct.name)}" autocomplete="off" aria-label="New activity name"><span class="seg"><button type="button" class="${UI.newAct.kind === 'study' ? 'on' : ''}" data-act="na-kind" data-k="study">Study</button><button type="button" class="${UI.newAct.kind !== 'study' ? 'on' : ''}" data-act="na-kind" data-k="life">Life</button></span><button type="submit" class="btn sm lamp">${icon('plus')}Add</button></form>
       ${arch ? `<button type="button" class="btn sm ghost" data-act="show-arch" style="justify-self:start">${UI.showArchived ? 'Hide' : 'Show'} ${arch} archived</button>` : ''}
     </div>
-    <div class="setsec"><h3>Pomodoro</h3><p class="note-line">Silent by design. When a focus block ends, the timer turns brass and waits; time keeps counting as study until you take the break.</p>
+    <div class="setsec" id="setsec-timer"><h3>Pomodoro</h3><p class="note-line">Silent by design. When a focus block ends, the timer turns brass and waits; time keeps counting as study until you take the break.</p>
       <div class="chips">${Object.keys(PRESETS).concat(['1/1']).map(p => `<button type="button" class="chip-btn ${presetLabel(pd) === p ? 'on' : ''}" data-act="preset-apply" data-p="${p}">${p === '1/1' ? '1/1 test' : p}</button>`).join('')}</div>
       <div class="g2">${num('focus', pd.focus, 1, 180, 1, 'Focus minutes')}${num('short', pd.short, 1, 60, 1, 'Short break')}${num('long', pd.long, 1, 90, 1, 'Long break')}${num('every', pd.every, 2, 8, 1, 'Long break every')}</div>
     </div>
-    <div class="setsec"><h3>Your day</h3>
+    <div class="setsec" id="setsec-day"><h3>Your day</h3>
       <div class="g2">
         <label class="field"><span>A new day starts at</span><input type="time" class="inp" id="set-dayStart" data-change="set-time" data-f="dayStart" value="${esc(CFG.dayStart)}"></label>
         <label class="field"><span>Daily study goal (hours)</span><input type="number" class="inp" id="set-goal" data-change="set-goal" min="0" max="16" step="0.25" value="${+(CFG.dailyGoal / 60).toFixed(2)}"></label>
@@ -1801,11 +1811,11 @@ function sSetup() {
       </div>
       <p class="note-line">Time after midnight and before the day start still counts toward the evening it began.</p>
     </div>
-    ${vPhonePanel()}
+    <div id="setsec-phone" class="setsec-phone">${vPhonePanel()}</div>
     <div class="setsec"><h3>Ask Claude in chat</h3><p class="note-line">Everything routine happens on this page. For thinking work, open a chat with Claude and say one of these.</p>
       ${PROMPTS.map(([p, d]) => `<div class="field"><div class="ask"><code>${esc(p)}</code><button type="button" class="btn sm" data-act="copy" data-text="${esc(p)}">${icon('copy')}Copy</button></div><span style="font-weight:400;color:var(--ink-3)">${esc(d)}</span></div>`).join('')}
     </div>
-    <div class="setsec"><h3>Your data</h3><p class="note-line">${ne} entries across ${nd} days are loaded on this device. Exports include everything saved.</p>
+    <div class="setsec" id="setsec-data"><h3>Your data</h3><p class="note-line">${ne} entries across ${nd} days are loaded on this device. Exports include everything saved.</p>
       ${S.user && S.user.email ? `<div class="row"><span class="note-line">Signed in as ${esc(S.user.email)}</span><button type="button" class="btn sm" data-act="signout">Sign out</button></div>` : ''}<div class="row">${S.dl ? `<button type="button" class="btn sm" data-act="export" data-f="csv">${icon('download')}Export CSV</button><button type="button" class="btn sm" data-act="export" data-f="json">${icon('download')}Export JSON backup</button>` : '<span class="note-line">Exports are not available in this view.</span>'}</div>
     </div>
     <div class="setsec"><h3>Keyboard</h3><div class="keys">
@@ -1966,9 +1976,23 @@ function focusSheet() {
     if (!sh) return;
     const f = sh.querySelector('input:not([type=checkbox]),textarea,select,button.btn.lamp');
     if (f && window.matchMedia('(pointer:fine)').matches) f.focus({ preventScroll: true });
-    else sh.focus && sh.setAttribute('tabindex', '-1');
+    else { sh.setAttribute('tabindex', '-1'); sh.focus({ preventScroll: true }); }
   });
 }
+document.addEventListener('keydown', e => {
+  if (!UI.sheet || e.key !== 'Tab' || e.defaultPrevented) return;
+  const sh = document.querySelector('#sheet .sheet');
+  if (!sh) return;
+  const all = Array.from(sh.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'))
+    .filter(el => el.getClientRects().length && el.getAttribute('aria-hidden') !== 'true' && el.tabIndex >= 0);
+  if (!all.length) { e.preventDefault(); sh.focus({ preventScroll: true }); return; }
+  const first = all[0], last = all[all.length - 1], active = document.activeElement;
+  if (e.shiftKey && (active === first || active === sh || !sh.contains(active))) {
+    e.preventDefault(); last.focus({ preventScroll: true });
+  } else if (!e.shiftKey && (active === last || active === sh || !sh.contains(active))) {
+    e.preventDefault(); first.focus({ preventScroll: true });
+  }
+}, true);
 function openSheet(s) { sheetOpener = document.activeElement; UI.sheet = s; render(); focusSheet(); }
 function closeSheet(silent) {
   UI.sheet = null;
