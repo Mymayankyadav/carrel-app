@@ -17,3 +17,6 @@
 .t2-parked-row>span{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:var(--t-sm)}
 .t2-parked-row .k-icon{min-width:44px;min-height:44px}
 .t2-sheet button:focus-visible,.t2-sheet textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Do not cover a T2 editor's fields with a transient timer Undo snackbar. */
+body:has(#sheet .t2-sheet) #toast{opacity:0;pointer-events:none}
