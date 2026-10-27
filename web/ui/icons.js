@@ -89,3 +89,6 @@ Object.assign(P, {
   "repeat": "<path d=\"m17 2 4 4-4 4\" /> <path d=\"M3 11v-1a4 4 0 0 1 4-4h14\" /> <path d=\"m7 22-4-4 4-4\" /> <path d=\"M21 13v1a4 4 0 0 1-4 4H3\" />",
   "unarchive": "<rect width=\"20\" height=\"5\" x=\"2\" y=\"3\" rx=\"1\" /> <path d=\"M4 8v11a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8\" /> <path d=\"m9.5 17 5-5\" /> <path d=\"m9.5 12 5 5\" />"
 });
+
+// Backwards-compatible names from the pre-redesign app.
+Object.assign(P, {"play":P.start,"cup":P.break,"moon":P.wrap,"plus":P.add,"left":P.prev,"right":P.open,"sliders":P.settings,"clock":P.later,"bars":P.stats,"grid":P.patterns,"check":P.done,"x":P.close,"skip":P.next,"trash":P.delete,"download":P.export,"dots":P.more,"shrink":P.fit,"wand":P.autoplan,"cal":P.plan,"flag":P.deadline,"inbox":P.backlog});
