@@ -1,0 +1,21 @@
+name: CI (web build and tests)
+on:
+  pull_request:
+  push:
+    branches-ignore: [main]
+permissions:
+  contents: read
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - run: npm install --no-audit --no-fund
+      - run: npm run build:web
+      - name: JavaScript tests
+        run: |
+          for f in web/test/*_test.js; do
+            TZ=Asia/Kolkata node "$f" || exit 1
+          done

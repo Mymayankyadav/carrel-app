@@ -25,8 +25,9 @@ jobs:
       - run: npm run build:web
       - name: Tests
         run: |
-          TZ=Asia/Kolkata node web/test/logic_test.js
-          node web/test/supa_test.js
+          for f in web/test/*_test.js; do
+            TZ=Asia/Kolkata node "$f" || exit 1
+          done
       - name: Publish the web bundle for in-app updates
         env: { RUN: '${{ github.run_number }}', OWNER: '${{ github.repository_owner }}', REPO: '${{ github.event.repository.name }}' }
         run: |
