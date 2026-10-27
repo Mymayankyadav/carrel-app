@@ -1,14 +1,10 @@
 /* T2 — Today sheets: all writes delegate to existing timer/parking actions. */
-function t2StudyTotal(id,now){
-  const a=aggregate(ENTRIES,now,todayKey(),todayKey())[todayKey()];
-  const fromLog=a&&a.acts&&a.acts[id]||0;
-  return fromLog;
-}
-function t2ActivityRows(kind,now){
+function t2ActivityRows(kind,totals){
   const list=ACTS.filter(a=>!a.archived&&(kind==='study'?a.kind==='study':a.kind!=='study'));
   return list.map(a=>{
     const running=CUR&&CUR.activity===a.id;
-    const right=running?'Now':t2StudyTotal(a.id,now)?fmtDur(t2StudyTotal(a.id,now)):'';
+    const duration=totals[a.id]||0;
+    const right=running?'Now':duration?fmtDur(duration):'';
     return '<button type="button" class="t2-activity" data-act="t2-start" data-long="t2-start-opts" data-id="'+esc(a.id)+
       '" aria-label="'+esc('Start '+a.name)+'" aria-pressed="'+!!running+'">'+
       '<span class="t2-activity-left"><i class="t2-act-dot" style="--c:'+kSafeColour(a.color)+'"></i>'+
@@ -17,12 +13,14 @@ function t2ActivityRows(kind,now){
   }).join('');
 }
 function sActivities(){
-  const now=Date.now();
+  const now=Date.now(),k=todayKey();
+  const summary=aggregate(ENTRIES,now,k,k)[k];
+  const totals=summary&&summary.acts||{};
   const edit=kIconBtn('edit','Edit activities','data-act="t2-edit-activities"');
   return kSheetHead('Activities',edit)+
     '<div class="k-sheet-body t2-sheet">'+
-    '<div class="t2-section">Study</div>'+t2ActivityRows('study',now)+
-    '<div class="t2-section">Other</div>'+t2ActivityRows('life',now)+'</div>';
+    '<div class="t2-section">Study</div>'+t2ActivityRows('study',totals)+
+    '<div class="t2-section">Other</div>'+t2ActivityRows('life',totals)+'</div>';
 }
 function t2StartOffsets(){
   const last=lastEntry(),now=Date.now();
