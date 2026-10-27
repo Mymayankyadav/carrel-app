@@ -3,8 +3,8 @@ const assert = require('assert');
 const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
-const app = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
-const css = fs.readFileSync(path.join(__dirname, '../style.css'), 'utf8');
+const app = require('./src').app;
+const css = require('./src').css;
 const between = (start, end) => {
   const i = app.indexOf(start), j = app.indexOf(end, i + start.length);
   assert(i >= 0 && j > i, start + ' must exist before ' + end);

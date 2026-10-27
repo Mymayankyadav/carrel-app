@@ -4,8 +4,8 @@ const fs = require('fs');
 const vm = require('vm');
 const path = require('path');
 
-const app = fs.readFileSync(path.join(__dirname, '../app.js'), 'utf8');
-const css = fs.readFileSync(path.join(__dirname, '../style.css'), 'utf8');
+const app = require('./src').app;
+const css = require('./src').css;
 const cal = fs.readFileSync(path.join(__dirname, '../cal.js'), 'utf8');
 const fn = (name, next) => {
   const a = app.indexOf('function ' + name + '(');

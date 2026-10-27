@@ -6,7 +6,7 @@ const path = require('path');
 const logic = require('../logic.js');
 const cal = fs.readFileSync(path.join(__dirname, '../cal.js'), 'utf8');
 const gcal = fs.readFileSync(path.join(__dirname, '../gcal.js'), 'utf8');
-const css = fs.readFileSync(path.join(__dirname, '../style.css'), 'utf8');
+const css = require('./src').css;
 const MIN = 60000, HOUR=3600000;
 const esc = v => String(v).replace(/[&<>"']/g, x => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[x]));
 function between(code, a, b) {
