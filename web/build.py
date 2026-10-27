@@ -34,7 +34,7 @@ paper, dark_paper = paper_colors[:2]
 def document(extra_head='', before_app='', vendor=True):
     v = '<script src="vendor/supabase.js"></script>\n' if vendor else ''
     return ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
-            '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
+            '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,interactive-widget=resizes-content">'
             f'<meta name="theme-color" media="(prefers-color-scheme: light)" content="{paper}">\n'
             f'<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{dark_paper}">\n' + head + extra_head +
             '<style>\n' + css + '\n</style></head><body>\n' + shell + before_app + v +
