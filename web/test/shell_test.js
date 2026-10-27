@@ -57,6 +57,28 @@ runtime.syncState=()=> 'offline';runtime.S.pending=[{},{}];
 assert.ok(vSyncLine().includes('2 waiting'));
 runtime.syncState=()=> 'readonly';assert.ok(vSyncLine().includes("Can't save"));
 runtime.S.conn='none';assert.ok(vMain().includes('sign-in'));
+
+/* R0a transitional route compatibility: Plan must allow editing and old Patterns must remain reachable. */
+const calSource=fs.readFileSync(path.join(__dirname,'../cal.js'),'utf8');
+const gcalSource=fs.readFileSync(path.join(__dirname,'../gcal.js'),'utf8');
+assert.ok(calSource.includes("UI.view !== 'plan'"), 'calendar pointer/drag guard accepts Plan view');
+assert.ok(calSource.includes("UI.view === 'plan' ? calDays()"), 'new calendar block uses visible Plan dates');
+assert.ok(calSource.includes("UI.view = 'plan'"), 'calendar day navigation stays in Plan');
+assert.ok(gcalSource.includes("UI.view === 'plan'"), 'Google Calendar follows Plan range');
+assert.ok(shell.includes("UI.view === 'plan') ACT['cal-new']()"), 'N creates a plan item inside Plan');
+assert.ok(shell.includes("UI.view === 'plan') ACT['cal-prev']()"), 'left arrow pans Plan');
+assert.ok(shell.includes("UI.view === 'plan') ACT['cal-next']()"), 'right arrow pans Plan');
+assert.ok(!shell.includes("UI.view !== 'calendar'"), 'no old calendar-specific drag guard in shell');
+runtime.UI.view='stats';
+runtime.UI.statsPane='patterns';
+runtime.VIEWS.patterns=()=>'<p>legacy patterns view</p>';
+runtime.kSeg=()=>'<div role="group">Week Patterns</div>';
+assert.ok(vMain().includes('legacy patterns view'), 'legacy Patterns preserved under Stats');
+runtime.UI.statsPane='week';
+assert.ok(vMain().includes('<p>stats</p>'), 'Week retained under Stats');
+runtime.UI.view='today';
+delete runtime.VIEWS.patterns;
+
 assert.ok(app.includes('Object.assign(ACT,'),'action registration preserved');
 
 /* Execute all module initializers, but not boot's asynchronous sign-in. */
