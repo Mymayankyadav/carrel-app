@@ -284,7 +284,7 @@ function t1ActivityButton(a,klass){
 function t1Timer(now,pm){
   const c=CUR;
   if(!c){
-    const last=lastEntry(),recent=last&&last.e&&last.e<=now&&now-last.e<3*HOUR&&isStudyId(last.a);
+    const last=lastStudy(),recent=last&&last.e&&last.e<=now&&now-last.e<3*HOUR;
     const pending=UI.lastRate&&UI.lastRate.id&&UI.lastRate.day;
     if(pending&&(!UI.t1RateShown||UI.t1RateShown.id!==UI.lastRate.id)){
       UI.t1RateShown={id:UI.lastRate.id,until:now+60*1000};
@@ -297,7 +297,7 @@ function t1Timer(now,pm){
     const done=UI.t1RateDoneUntil>now?'<div class="t1-rated" role="status">'+icon('check')+'</div>':'';
     return '<section class="t1-timer t1-idle" aria-label="Timer">'+
       (rating||done||'<div class="t1-idle-label">Not tracking</div>')+
-      (!rating&&recent?kBtn('Resume '+act(last.a).name,'data-act="resume"',{kind:'primary',icon:'start'}):'')+'</section>';
+      (!rating&&recent?kBtn('Resume '+act(last.a).name,'data-act="t1-resume-study" data-id="'+esc(last.a)+'"',{kind:'primary',icon:'start'}):'')+'</section>';
   }
   const a=act(c.activity),start=parseT(c.start),ps=pomoState(now),g=guardInfo(now);
   const isBreak=a.role==='break',isDue=!!(ps&&ps.left<=0),focusDue=!!(ps&&ps.phase==='focus'&&isDue);
@@ -374,6 +374,7 @@ function t1Today(){
 }
 Object.assign(ACT,{
   't1-log'(){pushPage('log',{k:todayKey()});},
+  't1-resume-study'(el){const id=el.getAttribute('data-id');if(ACTMAP[id]&&!ACTMAP[id].archived)startActivity(id);},
   't1-rate'(el){
     const rate=UI.lastRate,value=Number(el.getAttribute('data-v'));
     if(!rate||![1,2,3].includes(value)||!rate.day||!rate.id)return;
