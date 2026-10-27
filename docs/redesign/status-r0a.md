@@ -36,7 +36,7 @@ The original global function signatures remain available across the ordered, con
 - **Web build and Node suite:** passed on `c1b0320d` (CI run 40528128114); all module initializers and the combined script parse.
 - **Actual Chromium screenshots:** 390px light/dark, 1280px light/dark, component gallery, entry sheet and plan sheet generated without console errors or horizontal scrolling (run 40527266377).
 - **Actual Chromium interactions:** four-tab navigation, legacy Week/Patterns switch, opening entry editor, Escape and browser Back passed (run 40527266377).
-- **High-priority regression caught and corrected:** legacy `.scrim` had `z-index:20`, causing bottom tabs (`z-index:30`) to remain clickable while a sheet was open. Fixed with `.scrim.k-sheet-bg{z-index:50}` and added a browser hit-test; the latest rerun is tracked at run 40528128076.
+- **High-priority regression caught and corrected:** legacy `.scrim` had `z-index:20`, causing bottom tabs (`z-index:30`) to remain clickable while a sheet was open. Fixed with `.scrim.k-sheet-bg{z-index:50}` and added a browser hit-test; the hit-test **passed** on run 40528128076.
 - **Legacy route compatibility:** restored calendar drag guard, plan shortcuts, Google Calendar date range and access to both old Week and Patterns until their Phase-2 replacements.
 - **Silence policy:** removed long-press vibration in both the R0b kit branch and R0a working branch. Only the optional Pomodoro-end pulse may vibrate.
 - **Android hardware:** remains untested; this is browser evidence only, not Android device validation. Phase-2 screens are not yet redesigned.
