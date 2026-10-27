@@ -1,0 +1,43 @@
+name: Phase 2 visual QA (staging)
+on:
+  push:
+    branches: [redesign/phase2-qa]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  visual:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Browser prerequisites
+        run: |
+          npm install --no-audit --no-fund
+          python3 -m pip install --break-system-packages playwright pillow
+          python3 -m playwright install --with-deps chromium
+      - name: Build and unit regressions
+        run: |
+          npm run build:web
+          for f in web/test/*_test.js; do TZ=Asia/Kolkata node "$f"; done
+      - name: Light and dark four-tab smoke
+        run: |
+          python3 tools/shots.py phase2-shots/mobile-light
+          python3 tools/shots.py phase2-shots/mobile-dark --dark
+          python3 tools/shots.py phase2-shots/desktop-light --width 1280
+          python3 tools/shots.py phase2-shots/desktop-dark --width 1280 --dark
+      - name: Settings, Stats and welcome states
+        run: |
+          python3 tools/shots.py phase2-shots/settings-pages --js "openPage('settings','settings.timer')" --js "openPage('settings','settings.day')" --js "openPage('settings','settings.calendar')" --js "openPage('settings','settings.about')" --js "openPage('settings','settings.activities')" --js "openPage('stats','stats.patterns')" --js "openPage('stats','stats.insights')"
+          python3 tools/shots.py phase2-shots/auth --js "S.conn='none';render()" --js "S.conn='live';S.owner=false;render()"
+          python3 tools/shots.py phase2-shots/dark-pages --dark --js "openPage('settings','settings.timer')" --js "openPage('stats','stats.patterns')"
+      - name: Upload reviewed screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: phase2-stacked-ui-screenshots
+          path: phase2-shots/
+          if-no-files-found: ignore
+          retention-days: 7
