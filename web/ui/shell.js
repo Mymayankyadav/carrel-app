@@ -368,12 +368,12 @@ Object.assign(ACT, {
   'wk-this'() { UI.weekOff = 0; render(); },
   pw(el) { UI.pweeks = +el.getAttribute('data-w'); render(); }
 });
-const SUBMIT = {
+Object.assign(SUBMIT, {
   'park-add'() { parkAdd(UI.parkText); },
   'onb-add'() { const names = String(UI.onbText || '').split(/[,;\n]/).map(s => s.trim()).filter(Boolean); if (!names.length) return; UI.onbText = ''; const el = document.getElementById('onb-text'); if (el) el.value = ''; addActs(names, 'study'); },
   'act-add'() { const n = UI.newAct.name; if (!String(n).trim()) return; UI.newAct.name = ''; const el = document.getElementById('na-name'); if (el) el.value = ''; addActs([n], UI.newAct.kind); },
   'blk-add'(f) { planAddBlock(f.getAttribute('data-k')); }
-};
+});
 function addActs(names, kind) {
   const items = {};
   const added = [];
