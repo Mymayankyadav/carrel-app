@@ -88,9 +88,9 @@ function sDeadline(sh) {
   const actions=sh.id?(kIconBtn('check','Toggle done','data-act="dl-done"')+
     kIconBtn('delete','Delete','data-act="dl-del"')):'';
   const types=kSeg({act:'dl-kind',value:sh.kind||'exam',options:[
-    {v:'exam',label:'Exam',icon:'education'},
-    {v:'due',label:'Due',icon:'file'},
-    {v:'other',label:'Other',icon:'flag'}]});
+    {v:'exam',label:'Exam',icon:'exam'},
+    {v:'due',label:'Due',icon:'due'},
+    {v:'other',label:'Other',icon:'other'}]});
   return kSheetHead('Deadline',actions)+
     '<div class="k-sheet-body p3-sheet">'+
     kText({bind:'sheet.title',value:sh.title,placeholder:'Title',attrs:'id="dl-title" maxlength="60" aria-label="Deadline title"'})+
@@ -149,13 +149,27 @@ function p3PageParams(){
   const stack=UI.pages||[],top=stack[stack.length-1];
   return top&&top.id==='tasks'?top.params||{}:{};
 }
+function p3DueLabel(date){
+  const days=daysUntil(date);
+  if(days===0)return 'Today';
+  if(days===1)return 'Tomorrow';
+  if(days>1)return 'in '+days+'d';
+  return days===-1?'Yesterday':Math.abs(days)+'d ago';
+}
 function p3DeadlineRows(){
   const rows=deadlineList(),pending=rows.filter(d=>!d.done),done=rows.filter(d=>d.done);
   const label=d=>esc(shortDay(d.date))+(d.time?' · '+esc(fmtHM(d.time)):'');
-  const row=d=>kRow({icon:d.kind==='exam'?'education':d.kind==='due'?'file':'flag',
-    label:d.title,sub:label(d),right:'<span class="p3-count'+(daysUntil(d.date)<=2&&!d.done?' urgent':'')+'">'+
-      esc(countdown(d.date))+'</span>',
-    attrs:'data-act="p3-deadline" data-id="'+esc(d.id)+'"'});
+  const row=d=>{
+    const subject=d.activity&&ACTMAP[d.activity]?ACTMAP[d.activity]:null;
+    const marker=d.kind==='exam'?'exam':d.kind==='due'?'due':'other';
+    const priority=!d.done&&daysUntil(d.date)<=2;
+    const contents=kRow({icon:marker,label:d.title,sub:label(d),
+      right:'<span class="p3-count'+(priority?' urgent':'')+'">'+
+      esc(d.done?'Done':p3DueLabel(d.date))+'</span>'+icon('open'),
+      attrs:'data-act="p3-deadline" data-id="'+esc(d.id)+'"'});
+    return '<div class="p3-deadline-row"'+(subject?' style="--p3-subject:'+kSafeColour(subject.color)+'"':'')+'>'+
+      contents+'</div>';
+  };
   return pending.map(row).join('')+(done.length?'<details class="p3-done"><summary>Done ('+done.length+')</summary>'+
     done.map(row).join('')+'</details>':'')||kEmpty('No deadlines');
 }
@@ -166,7 +180,7 @@ function p3BacklogRows(){
     const a=t.activity&&ACTMAP[t.activity]?ACTMAP[t.activity]:null;
     const parts=[a&&a.name,fmtDur(t.minutes*MIN),t.due?'due '+shortDay(t.due):null].filter(Boolean).join(' · ');
     return '<div class="p3-taskrow">'+
-      kRow({label:t.title,sub:parts,dot:a&&a.color||null,right:t.prio===1?'<span class="p3-high">'+icon('up')+'</span>':'',
+      kRow({label:t.title,sub:parts,dot:a&&a.color||null,right:t.prio===1?'<span class="p3-high" role="img" aria-label="High priority" title="High priority">'+icon('high')+'</span>':'',
         attrs:'data-act="p3-task" data-id="'+esc(t.id)+'"'})+
       kIconBtn('schedule','Find time','data-act="p3-schedule" data-id="'+esc(t.id)+'"')+
       '</div>';
