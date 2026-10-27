@@ -3,6 +3,8 @@ on:
   push:
     branches: [redesign/t2-visual-qa]
   workflow_dispatch:
+  pull_request:
+    branches: [redesign/t2-today-sheets]
 permissions:
   contents: read
 jobs:
