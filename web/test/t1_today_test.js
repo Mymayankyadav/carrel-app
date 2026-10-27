@@ -30,7 +30,8 @@ const base={
   kBtn:(title,attrs)=>'<button '+attrs+'>'+title+'</button>',
   kIconBtn:(name,label,attrs)=>'<button '+attrs+' aria-label="'+label+'"></button>',
   planModelFor:()=>pm,vSyncLine:()=> '',
-  lastEntry:()=>({a:'maths',e:now-30*MIN}),pomoState:()=>null,guardInfo:()=>null,
+  lastEntry:()=>({a:'break',e:now-2*MIN}),lastStudy:()=>({a:'maths',e:now-30*MIN}),
+  ACTMAP:A,startActivity:id=>calls.push(['resume',id]),pomoState:()=>null,guardInfo:()=>null,
   noticeOpen:()=>false,parkedItems:()=>[],
   w1NeedsSetup:()=>false,w1FirstRun:()=>'<main>First run</main>',
   pushPage:(id,params)=>calls.push(['page',id,params]),
@@ -47,6 +48,9 @@ assert.equal(typeof VIEWS.today,'function');
 let html=VIEWS.today();
 assert(html.includes('t1-today')&&html.includes('90m')&&html.includes('t1-timer'));
 assert(html.includes('Not tracking')&&html.includes('Resume Mathematics'));
+assert(html.includes('data-act="t1-resume-study"'));
+ACT['t1-resume-study']({getAttribute:()=> 'maths'});
+assert.equal(calls.at(-1)[0],'resume');
 assert(html.includes('data-act="t1-log"')&&html.includes('data-long="t2-start-opts"'));
 assert(html.includes('data-act="t1-plan-focus"')&&html.includes('data-act="t1-fit"'));
 assert(!html.includes('Timeline')&&!html.includes('Where the day went')&&!html.includes('Untracked since'));
