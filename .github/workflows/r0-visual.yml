@@ -6,6 +6,7 @@ on:
     paths:
       - 'web/**'
       - 'tools/shots.py'
+      - 'tools/r0_smoke.py'
       - '.github/workflows/r0-visual.yml'
   workflow_dispatch:
 permissions:
