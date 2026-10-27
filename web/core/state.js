@@ -144,7 +144,7 @@ function buildActs(doc) {
   const items = (doc && doc.items) || {};
   const list = Object.entries(items).filter(([, a]) => a && a.name).map(([id, a]) => ({
     id, name: String(a.name), color: a.color || '#7A7F87', kind: a.kind === 'study' ? 'study' : 'life', order: +a.order || 0,
-    goal: a.goal ? +a.goal : null, archived: !!a.archived, role: a.role || null, guard: a.guard ? +a.guard : null
+    goal: a.goal ? +a.goal : null, archived: !!a.archived, role: a.role || null, guard: a.guard ? +a.guard : null, today: a.today == null ? undefined : !!a.today
   }));
   list.sort((a, b) => (a.kind === b.kind ? 0 : a.kind === 'study' ? -1 : 1) || a.order - b.order || a.name.localeCompare(b.name));
   return list;

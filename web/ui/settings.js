@@ -8,18 +8,18 @@ function g1Settings() {
   const updated=updater&&(updater.apk||store.get('updReady'));
   const link=(id,label,iconName,value)=>kRow({label,icon:iconName,value,open:true,
     attrs:'data-act="g1-page" data-page="'+id+'"'});
-  const first=link('settings.activities','Activities','activity',studies+' study')+
-    link('settings.timer','Timer','pomodoro',timer)+
-    link('settings.day','Day','sun',fmtHM(CFG.dayStart))+
+  const first=link('settings.activities','Activities','activities',studies+' study')+
+    link('settings.timer','Timer','timer',timer)+
+    link('settings.day','Day','daycfg',fmtHM(CFG.dayStart))+
     (typeof NATIVE!=='undefined'&&NATIVE?link('settings.notifications','Notifications','bell',NP.notifications===false?'Off':'On'):'');
-  const second=link('settings.calendar','Google Calendar','calendar',calendar)+
-    link('settings.claude','Claude prompts','sparkles')+
-    link('settings.data','Export','download');
+  const second=link('settings.calendar','Google Calendar','gcal',calendar)+
+    link('settings.claude','Claude prompts','note')+
+    link('settings.data','Export','export');
   const third=link('settings.account','Account','user',account)+
     kRow({label:'About',icon:'info',right:'<span class="g1-about-value">'+esc(updater&&updater.bundle||'')+(updated?'<i class="g1-update-dot"></i>':'')+icon('open')+'</span>',
       attrs:'data-act="g1-page" data-page="settings.about"'})+
     (typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(pointer:fine)').matches?
-      link('settings.keys','Keyboard','keyboard'):'');
+      link('settings.keys','Keyboard','keys'):'');
   return '<div class="g1-root"><header class="k-head"><h1 class="k-h1">Settings</h1></header>'+
     '<div class="g1-section">'+first+'</div><div class="g1-section">'+second+'</div><div class="g1-section">'+third+'</div></div>';
 }

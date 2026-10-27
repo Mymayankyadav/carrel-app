@@ -39,4 +39,4 @@
 .p2-sheet .k-field>.k-stepper{max-width:64%}
 .p2-sheet .k-input[type=time],.p2-sheet .k-input[type=date]{width:auto;max-width:160px}
 .p2-sheet button:focus-visible,.p2-sheet input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
-@media(max-width:380px){.p2-sheet .k-field:has(.k-seg){flex-direction:column;align-items:stretch;gap:8px}.p2-sheet .k-field .k-seg{max-width:100%;flex-wrap:wrap}.p2-days{gap:2px}}
+@media(max-width:420px){.p2-sheet .k-field:has(.k-seg){flex-direction:column;align-items:stretch;gap:8px}.p2-sheet .k-field .k-seg{max-width:100%;flex-wrap:wrap}.p2-days{gap:2px}}

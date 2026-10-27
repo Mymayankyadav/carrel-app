@@ -32,7 +32,6 @@ function g1ActivityEditor(){
       g1Control('Type',kSeg({act:'g1-new-kind',value:UI.g1NewKind||'study',options:[{v:'study',label:'Study'},{v:'life',label:'Other'}]}))+
       '</div>';
   }
-  const actions=kIconBtn('more','Activity options','data-act="g1-menu"');
   const goal=a.goal||0;
   const swatch=kSwatches({act:'g1-colour',color:a.color,palette:PALETTE});
   const pin=kSwitch({act:'g1-pin',on:g1PinValue(a),label:'On Today'});
@@ -47,8 +46,7 @@ function g1ActivityEditor(){
     g1Control('Colour',swatch)+
     g1Control('Type',kSeg({act:'g1-kind',value:a.kind,options:[{v:'study',label:'Study'},{v:'life',label:'Other'}]}))+
     (a.kind==='study'?g1Control('Weekly goal',g1Stepper('g1-goal',goal,x=>x?fmtDur(x*MIN):'—')):'')+
-    g1Control('On Today',pin)+roleList+
-    '<div class="g1-options">'+actions+'</div></div>';
+    g1Control('On Today',pin)+roleList+'</div>';
 }
 function g1Stepper(act,value,fmt){
   return '<div class="g1-stepper">'+
@@ -63,7 +61,8 @@ PAGES['settings.activities']={
 };
 PAGES['settings.activity']={
   title:()=>g1ActivityName(g1SelectedAct()),
-  render:g1ActivityEditor
+  render:g1ActivityEditor,
+  actions:()=>g1SelectedAct()?kIconBtn('more','Activity options','data-act="g1-menu"'):''
 };
 Object.assign(ACT,{
   'g1-new'(){

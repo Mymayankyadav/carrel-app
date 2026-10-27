@@ -59,8 +59,8 @@ function kStepper(o){
 
 function kTime(o){
   const input='<input class="k-input" type="time" aria-label="Time" data-bind="'+kEsc(o.bind||'')+'" value="'+kEsc(o.hm||'')+'">';
-  return o.nudge?'<div class="k-stepper">'+kBtn('−5m','data-act="k-nudge-time" data-min="-5" data-bind-to="'+kEsc(o.bind||'')+'"',{kind:'text'})+input+
-    kBtn('+5m','data-act="k-nudge-time" data-min="5" data-bind-to="'+kEsc(o.bind||'')+'"',{kind:'text'})+'</div>':input;
+  return o.nudge?'<div class="k-stepper">'+kIconBtn('minus','5 minutes earlier','data-act="k-nudge-time" data-min="-5" data-bind-to="'+kEsc(o.bind||'')+'"')+input+
+    kIconBtn('add','5 minutes later','data-act="k-nudge-time" data-min="5" data-bind-to="'+kEsc(o.bind||'')+'"')+'</div>':input;
 }
 
 function kDate(o){return '<input type="date" class="k-input" aria-label="Date" data-bind="'+kEsc(o.bind||'')+'" value="'+kEsc(o.key||'')+'">';}
