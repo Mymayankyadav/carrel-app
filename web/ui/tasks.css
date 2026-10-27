@@ -8,6 +8,10 @@
 .p3-list .k-row-left{min-width:0}
 .p3-list .k-row-text{min-width:0}
 .p3-list .k-row-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p3-deadline-row .k-row{width:100%}
+.p3-deadline-row .k-row-icon{color:var(--p3-subject,var(--text-2))}
+.p3-deadline-row .k-row-right{gap:8px;white-space:nowrap}
+.p3-deadline-row .k-row-right>.i{width:16px;height:16px;color:var(--text-2)}
 .p3-count{font-size:var(--t-xs);color:var(--text-2);white-space:nowrap}
 .p3-count.urgent{color:var(--danger)}
 .p3-done{border-top:1px solid var(--line);margin-top:24px}
