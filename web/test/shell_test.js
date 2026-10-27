@@ -69,6 +69,7 @@ assert.ok(shell.includes("UI.view === 'plan') ACT['cal-new']()"), 'N creates a p
 assert.ok(shell.includes("UI.view === 'plan') ACT['cal-prev']()"), 'left arrow pans Plan');
 assert.ok(shell.includes("UI.view === 'plan') ACT['cal-next']()"), 'right arrow pans Plan');
 assert.ok(!shell.includes("UI.view !== 'calendar'"), 'no old calendar-specific drag guard in shell');
+runtime.S.conn='live';
 runtime.UI.view='stats';
 runtime.UI.statsPane='patterns';
 runtime.VIEWS.patterns=()=>'<p>legacy patterns view</p>';
