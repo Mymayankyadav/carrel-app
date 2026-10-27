@@ -59,8 +59,8 @@ planReorder(k, 'completed', 1);
 assert.equal(recorder.length, 0, 'fixed and completed blocks cannot be reordered');
 planReorder(k, 'flexible', 1);
 assert.equal(recorder.length, 1);
-assert.equal(recorder[0].completed.order, 1, 'completed stays at top');
-assert.equal(recorder[0].pinned.order, 3, 'fixed block not swapped');
+assert.equal(recorder[0].completed, undefined, 'completed block priority remains untouched');
+assert.equal(recorder[0].pinned, undefined, 'fixed block priority remains untouched');
 assert.equal(recorder[0].flexible.order, 4, 'flexible block moved past fixed');
 assert.equal(recorder[0].later.order, 2, 'flexible neighbour moved up');
 
