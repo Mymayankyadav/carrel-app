@@ -16,11 +16,12 @@
 - Passing tests do not prove real device notification shade, lock screen privacy, haptics, background stop or edge-to-edge status bar behavior.
 
 ## Validation
-- [ ] New PR GitHub Actions bridge checks green.
-- [ ] New PR Gradle unit tests green.
-- [ ] New PR debug APK assembled and retained as artifact.
+- [x] Bridge checks green — [Android QA run 40527422756](https://github.com/Mymayankyadav/carrel-app/actions/runs/40527422756).
+- [x] Gradle `testDebugUnitTest` and `assembleDebug` green in the same run.
+- [x] Debug APK artifact `Carrel-R5-QA-debug` (artifact ID 12744067982; 5.85 MB).
 - [ ] Android device/manual screenshot checks (native owner).
 - [x] No source implementation files touched; no Supabase or production app mutations.
+- [x] Web CI green — [run 40527423063](https://github.com/Mymayankyadav/carrel-app/actions/runs/40527423063).
 
 ## Requests
 - R5 owner: use unsigned QA artifact and run device checks before requesting integration; keep it draft if tests fail.
