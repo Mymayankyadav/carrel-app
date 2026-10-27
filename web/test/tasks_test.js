@@ -21,7 +21,7 @@ const env={
  dateOfKey:k=>new Date(k+'T12:00:00Z'),uid:s=>s+'1',
  ACTS:Object.values(acts),deadlineList:()=>[pending,done],backlogList:()=>[backlog.t1],
  backlogMap:()=>backlog,commitmentsMap:()=>commitments,deadlinesMap:()=>({d1:pending}),
- kEmpty:s=>'<div>'+s+'</div>',kRow:o=>'<button '+(o.attrs||'')+'>'+o.label+(o.sub||'')+(o.right||'')+'</button>',
+ kEmpty:s=>'<div>'+s+'</div>',kRow:o=>'<button '+(o.attrs||'')+'>'+o.label+(o.sub||'')+(o.value||'')+(o.right||'')+'</button>',
  kSeg:o=>'<div class="k-seg">'+o.options.map(v=>'<button data-act="'+o.act+'" data-v="'+v.v+'">'+v.label+'</button>').join('')+'</div>',
  kIconBtn:(ic,label,attrs)=>'<button '+attrs+' aria-label="'+label+'"></button>',
  kBtn:(label,attrs)=>'<button '+attrs+'>'+label+'</button>',
