@@ -70,3 +70,36 @@
 .abar .tr i{display:block;height:100%;background:var(--c);border-radius:4px}
 .abar .v{font-family:var(--f-num);font-stretch:85%;font-size:12px;color:var(--ink-2);white-space:nowrap;text-align:right}
 
+
+/* T3 standalone log, entry and split sheets. Legacy log styles kept until T1 migrates. */
+.t3-log{padding:8px 0 24px;min-width:0}
+.t3-log-summary{font-size:var(--t-xs);color:var(--text-2);padding:12px 0 16px;border-bottom:1px solid var(--line)}
+.t3-log-row{display:grid;grid-template-columns:65px minmax(0,1fr) auto;align-items:start;gap:8px;width:100%;min-height:56px;padding:12px 0;border:0;border-bottom:1px solid var(--line);background:transparent;color:var(--text);text-align:left;cursor:pointer;font-size:var(--t-sm)}
+.t3-log-row>.t3-time{color:var(--text-2);font-variant-numeric:tabular-nums;font-size:var(--t-xs);padding-top:3px;white-space:nowrap}
+.t3-entry-main{display:flex;flex-direction:column;gap:4px;min-width:0}
+.t3-entry-label{display:flex;align-items:center;gap:8px;min-width:0;font-weight:500}
+.t3-entry-label>span{white-space:nowrap;text-overflow:ellipsis;overflow:hidden}
+.t3-dot{width:8px;height:8px;border-radius:50%;background:var(--c);flex:none}
+.t3-entry-note{font-size:var(--t-xs);color:var(--text-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t3-duration{display:flex;align-items:center;gap:8px;font-size:var(--t-xs);color:var(--text-2);white-space:nowrap;justify-self:end;font-variant-numeric:tabular-nums}
+.t3-duration .i{width:18px;height:18px}
+.t3-gap .t3-entry-label,.t3-gap .t3-duration{color:var(--text-2);font-weight:400}
+.t3-sheet{display:flex;flex-direction:column;gap:12px;padding-top:12px}
+.t3-sheet .k-field{gap:12px}
+.t3-sheet .k-field:has(.k-act-pick){align-items:center}
+.t3-sheet .k-field>.k-act-pick{max-width:64%;min-width:0}
+.t3-sheet .k-field:has(.k-textarea){align-items:flex-start}
+.t3-time-field{display:flex;align-items:center;justify-content:flex-end;gap:4px;min-width:0}
+.t3-time-field .k-icon{width:40px;height:40px;flex:none}
+.t3-time-field .k-input{min-width:98px;width:110px;text-align:center}
+.t3-entry-duration{text-align:right;color:var(--text-2);font-size:var(--t-xs);font-variant-numeric:tabular-nums}
+.t3-now{color:var(--text-2);font-size:var(--t-sm)}
+.t3-focus{display:flex;align-items:center;gap:8px}
+.t3-focus-choice{display:grid;place-items:center;width:44px;height:44px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--text-2)}
+.t3-focus-choice[aria-pressed=true]{background:var(--text);color:var(--bg)}
+.t3-focus-choice .i{width:20px;height:20px}
+.t3-split-summary{font-size:var(--t-xs);color:var(--text-2)}
+.t3-error{font-size:var(--t-xs);color:var(--danger)}
+.t3-sheet .k-collapse-body{display:flex;flex-direction:column;gap:12px}
+.t3-sheet button:focus-visible,.t3-log button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(max-width:380px){.t3-time-field .k-input{min-width:90px;width:98px}.t3-time-field{gap:2px}}
