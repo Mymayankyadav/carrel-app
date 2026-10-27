@@ -30,12 +30,10 @@ function t2StartOffsets(){
 }
 function sStart(sh){
   const a=ACTMAP[sh.act],name=a?a.name:'Activity';
-  const title='<span class="t2-start-title"><i class="t2-act-dot" style="--c:'+kSafeColour(a&&a.color)+'"></i>'+esc(name)+'</span>';
   const modes=kChips({act:'t2-from',value:sh.from||'now',options:t2StartOffsets()});
   const pomp=!!sh.pomo;
   return kSheetHead(name)+
     '<div class="k-sheet-body t2-sheet">'+
-    '<div class="t2-start-heading">'+title+'</div>'+
     kField('Start',modes)+
     kField('Pomodoro',kSwitch({act:'t2-pomo',on:pomp,label:'Pomodoro'}))+
     (pomp?kField('Length',kSeg({act:'t2-preset',value:sh.preset||'25/5',
