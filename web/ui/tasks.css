@@ -30,8 +30,9 @@
 .p3-sheet .k-input[type="time"],.p3-sheet .k-input[type="date"]{width:auto;max-width:170px;min-height:44px;text-align:right}
 .p3-dual{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
 .p3-dual .k-btn{min-width:0}
-.p3-days{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap}
-.p3-day{width:36px;height:40px;min-width:36px;border-radius:99px;border:1px solid var(--line);color:var(--text-2);background:var(--surface);cursor:pointer;font-size:var(--t-xs)}
+.p3-sheet .k-field:has(.p3-days){display:flex;flex-direction:column;align-items:stretch;gap:8px}
+.p3-days{display:flex;gap:4px;justify-content:space-between;flex-wrap:nowrap;width:100%;min-width:0}
+.p3-day{width:44px;height:44px;min-width:44px;border-radius:99px;border:1px solid var(--line);color:var(--text-2);background:var(--surface);cursor:pointer;font-size:var(--t-xs)}
 .p3-day.active{background:var(--text);border-color:var(--text);color:var(--bg)}
 .p3-error{color:var(--danger);font-size:var(--t-xs)}
 .p3-sheet .k-collapse{width:100%}
@@ -39,3 +40,4 @@
 .p3-tasks button:focus-visible,.p3-sheet button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(pointer:coarse){.p3-day{min-width:44px;width:44px;min-height:44px}}
 @media(max-width:390px){.p3-sheet{padding-inline:12px}.p3-days{gap:2px}}
+@media(max-width:359px){.p3-days{overflow-x:auto;justify-content:flex-start;scrollbar-width:none}.p3-days::-webkit-scrollbar{display:none}}
