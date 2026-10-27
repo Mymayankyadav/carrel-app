@@ -35,7 +35,7 @@ function section(a, b) {
   const r=/^function [A-Za-z_$]/gm; r.lastIndex=from+9;
   const m=r.exec(app);
   const to=next>from?(m?Math.min(next,m.index):next):(m?m.index:app.length);
-  return app.slice(from,to);
+  return app.slice(from,to).replace(/^VIEWS\.[^\n]*$/gm,'').replace(/^SHEETS\.[^\n]*$/gm,'');
 }
 const display = vm.runInNewContext(section('planDisplayRows', 'vPlan') + '\nplanDisplayRows');
 const order = Array.from(display(pm), x => x.id);

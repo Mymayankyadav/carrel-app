@@ -34,8 +34,7 @@ function section(name, after) {
   match.lastIndex=i+9;
   let m=match.exec(app);
   const j=next>i ? (m?Math.min(next,m.index):next) : (m?m.index:app.length);
-  const registration = app.indexOf('\nVIEWS.', i);
-  return app.slice(i, registration > i ? Math.min(j, registration) : j);
+  return app.slice(i,j).replace(/^VIEWS\.[^\n]*$/gm,'').replace(/^SHEETS\.[^\n]*$/gm,'');
 }
 const context = { esc: s=>String(s), MIN, HOUR,
   fmtDur: ms=>Math.round(ms/MIN)+'m',
