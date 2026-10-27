@@ -178,9 +178,9 @@ Object.assign(ACT, {
     if(!bind)return;
     let v=el.getAttribute('data-v');
     if(v==='true')v=true; else if(v==='false')v=false;
-    else if(/^\\d+(?:\\.\\d+)?$/.test(String(v)))v=+v;
+    else if(v!==null && String(v).trim()!=='' && Number.isFinite(Number(v)))v=Number(v);
     if(el.getAttribute('data-multi')==='1'){
-      const old=bind.split('.').reduce((obj,k)=>obj==null?undefined:obj[k], bind.startsWith('sheet.')?UI:{...UI});
+      const old=bind.split('.').reduce((obj,k)=>obj==null?undefined:obj[k],UI);
       if(Array.isArray(old))v=old.includes(v)?old.filter(x=>x!==v):old.concat([v]);else v=[v];
     }
     setBind(bind,v);render();
@@ -193,7 +193,7 @@ Object.assign(ACT, {
   },
   'k-nudge-time'(el){
     const bind=el.getAttribute('data-bind-to'),inp=el.parentNode&&el.parentNode.querySelector('input[type="time"]');
-    if(!bind||!inp||!/^(\\d{2}):(\\d{2})$/.test(inp.value))return;
+    if(!bind||!inp||!/^[0-9]{2}:[0-9]{2}$/.test(inp.value))return;
     const [h,m]=inp.value.split(':').map(Number),delta=+el.getAttribute('data-min')||0;
     const value=((h*60+m+delta)%1440+1440)%1440;
     setBind(bind,String(Math.floor(value/60)).padStart(2,'0')+':'+String(value%60).padStart(2,'0'));render();
