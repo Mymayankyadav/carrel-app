@@ -23,7 +23,7 @@ Branch: `redesign/r5-notification-ui-astra` from `main`. This is **one part of R
 ## Validation
 - [x] Source inspected against `Models.kt`, `Engine.kt`, `Receivers.kt`, `Store.kt`, kit and R0a shell contracts.
 - [x] Pure model unit tests added (running, focus, due, break, Undo).
-- [ ] GitHub Actions Android debug + JVM workflow green; check after opening PR.
+- [x] GitHub Actions Android debug + JVM workflow green ([run 40525407812](https://github.com/Mymayankyadav/carrel-app/actions/runs/40525407812)). Artifact: `Carrel-redesign-debug` (debug APK, not a release).
 - [ ] Physical Android 16 and lock-screen notification check (privacy and DND).
 - [ ] New Settings page screenshots at phone light / dark and desktop width after R0 integration.
 
@@ -35,7 +35,7 @@ Branch: `redesign/r5-notification-ui-astra` from `main`. This is **one part of R
 - [x] Stop remains accessible
 - [ ] Back/overflow check on an Android device
 - [ ] Empty state and horizontal overflow screenshot check after integration
-- [ ] All native tests pass in GitHub Actions
+- [x] All native tests pass in GitHub Actions
 - [x] Only isolated native / test / status / CI files edited
 
 ## Requests
