@@ -25,7 +25,7 @@ with sync_playwright() as p:
         def capture(label):
             page.wait_for_timeout(350)
             actual = page.evaluate('Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)')
-            page.screenshot(path=str(out / (name+'-'+label+'.png')), full_page=True)
+            page.screenshot(path=str(out / (name+'-'+label+'.png')), full_page=False)
             if actual>width+1:
                 boxes=page.evaluate("""() => [...document.querySelectorAll('body *')]
                   .filter(el=>el.getBoundingClientRect().right>innerWidth+2)
