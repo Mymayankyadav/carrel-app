@@ -22,8 +22,7 @@ function vDesk(){
     isBreak&&c.ret?
       '<button type="button" data-act="back" aria-label="Resume" title="Resume">'+icon('start')+'</button>'+
       '<button type="button" data-act="stop" aria-label="Stop" title="Stop">'+icon('stop')+'</button>':
-      '<button type="button" data-act="'+(late&&ps&&ps.phase==='focus'?'break':'break')+
-      '" aria-label="Take a break" title="Break">'+icon('break')+'</button>'+
+      (isBreak?'':'<button type="button" data-act="break" aria-label="Take a break" title="Break">'+icon('break')+'</button>')+
       '<button type="button" data-act="stop" aria-label="Stop" title="Stop">'+icon('stop')+'</button>'
     ):(
       lastEntry()?'<button type="button" data-act="resume" aria-label="Resume last" title="Resume">'+icon('start')+'</button>':''
@@ -43,7 +42,9 @@ let wake = null, driftT = 0;
 async function wakeOn() { try { if ('wakeLock' in navigator && !wake && document.visibilityState === 'visible') { wake = await navigator.wakeLock.request('screen'); wake.addEventListener('release', () => { wake = null; }); } } catch (e) { wake = null; } }
 function wakeOff() { try { if (wake) wake.release(); } catch (e) { /* ignore */ } wake = null; }
 function enterDesk() {
-  UI.desk = true; UI.deskCtl = Date.now() + 5000; UI.deskShift = [0, 0];
+  // Focus is a temporary navigation layer: Android/browser Back dismisses it.
+  if (!UI.desk) kHistoryPush('desk');
+  UI.desk = true; UI.deskCtl = Date.now() + 4000; UI.deskShift = [0, 0];
   wakeOn();
   clearInterval(driftT);
   driftT = setInterval(() => {
@@ -55,5 +56,18 @@ function enterDesk() {
   }, 45000);
   render();
 }
-function exitDesk() { UI.desk = false; clearInterval(driftT); wakeOff(); render(); }
+function exitDesk(fromHistory) {
+  const wasOpen = UI.desk;
+  UI.desk = false; clearInterval(driftT); wakeOff();
+  if (wasOpen && !fromHistory) kHistoryConsume('desk');
+  render();
+}
+// Runs before shell popstate handling, avoiding a second navigation on Back.
+if (typeof window !== 'undefined' && window.addEventListener) {
+  window.addEventListener('popstate', event => {
+    if (!UI.desk) return;
+    exitDesk(true);
+    if (event && event.stopImmediatePropagation) event.stopImmediatePropagation();
+  }, true);
+}
 
