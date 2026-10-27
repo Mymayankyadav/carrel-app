@@ -251,7 +251,8 @@ if(typeof document!=='undefined'){
     };
     const move=ev=>{if(Math.hypot(ev.clientX-x,ev.clientY-y)>8)cleanup();};
     const timer=setTimeout(()=>{cleanup();if(ACT[action]){ACT[action](el);el.dataset.kLongFired='1';
-      // Silent interaction: only the opt-in Pomodoro-end pulse may vibrate.}},450);
+      // Long press is silent. Vibration is reserved for the optional Pomodoro-end pulse.
+    }},450);
     document.addEventListener('pointermove',move,true);
     document.addEventListener('pointerup',cleanup,true);
     document.addEventListener('pointercancel',cleanup,true);
