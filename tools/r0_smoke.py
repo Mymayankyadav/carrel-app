@@ -44,6 +44,13 @@ with sync_playwright() as p:
     page.evaluate("openEntrySheet('add')")
     assert page.evaluate('UI.sheet && UI.sheet.type')=='entry'
     assert page.locator('#sheet [role="dialog"]').count()==1
+    # A modal must intercept interactions with the fixed bottom navigation.
+    nav_hit=page.evaluate("""() => {
+        const r=document.querySelector('#nav .k-nav-item').getBoundingClientRect();
+        const hit=document.elementFromPoint(r.x+r.width/2,r.y+r.height/2);
+        return !!(hit && hit.closest('#nav'));
+    }""")
+    assert not nav_hit,'Bottom navigation is clickable through the entry sheet'
     page.keyboard.press('Escape')
     assert page.evaluate('UI.sheet') is None,'Escape must close sheet'
     # App-level browser Back should unwind pages, then return to the original tab.
