@@ -17,7 +17,8 @@ Additional fixes in the resumed branch:
 
 - Activity totals aggregate **once per sheet render** rather than twice per activity row.
 - Hidden focus actions are also `visibility:hidden`, keeping visually concealed actions out of keyboard focus order.
-- `web/test/today_sheets_test.js` covers sheet registration, Start offsets/presets and off override, archived exclusions, parking, undoable action routing, guard-stop shortcuts, focus view states and hidden controls.
+- Focus mode pushes one browser-history entry and consumes it when exited. A Back/popstate handler registered ahead of the shell closes focus without accidentally changing tabs. Focus controls hide after 4s. A break without a return target cannot show an inert Break button.
+- `web/test/today_sheets_test.js` covers sheet registration, Start offsets/presets and off override, archived exclusions, parking, undoable action routing, guard-stop shortcuts, focus view states, hidden controls, history push/consume and Back dismissal.
 
 ## Integration ownership
 
@@ -28,7 +29,7 @@ Only T2-owned `web/ui/today-sheets.{js,css}`, `web/ui/focus.{js,css}`, its test 
 ## Verification
 
 - [x] Source checked against existing `startActivity`, `parkAdd`, `parkToBacklog`, `guard-save`, `guard-seen`, shell routing and kit contracts.
-- [x] Focus keyboard-hidden regression addressed.
+- [x] Focus keyboard-hidden and browser/Android Back regressions addressed.
 - [x] T2-focused Node unit test added.
 - [ ] Complete web/Node CI run on this branch.
 - [ ] 390px light/dark and desktop Chromium screenshots / tap, long-press and sheet actions.
