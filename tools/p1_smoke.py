@@ -55,7 +55,7 @@ with sync_playwright() as p:
         page.locator('#q-title').fill('P1 planning smoke')
         page.locator('#sheet [data-act="q-save"]').click()
         page.wait_for_timeout(350)
-        assert page.evaluate("Object.values(blocksOf(UI.cal.anchor||todayKey())).some(x=>x&&x.title==='P1 planning smoke')"),'new block missing'
+        assert page.evaluate("Object.values(blocksOf(todayKey())).some(x=>x&&x.title==='P1 planning smoke')"),'new block missing from today'
         page.evaluate("planFocus(todayKey(),'b2')")
         assert page.evaluate("UI.view==='plan'&&UI.cal.view==='day'"),'planFocus contract broken'
         # Mouse drag must remain wired; it may target an unoccupied slot, which is fine.
