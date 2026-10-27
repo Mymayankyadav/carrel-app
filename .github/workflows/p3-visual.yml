@@ -1,0 +1,33 @@
+name: P3 Tasks final visual QA
+on:
+  push:
+    branches: [redesign/p3-visual-final]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Chromium
+        run: |
+          npm install --no-audit --no-fund
+          python3 -m pip install --break-system-packages playwright pillow
+          python3 -m playwright install --with-deps chromium
+      - name: Build test-only mock
+        run: |
+          npm run build:web
+      - name: P3 browser actions and screenshots
+        run: python3 tools/p3_smoke.py
+      - name: Upload evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: p3-tasks-light-dark-browser-screenshots
+          path: p3-screens/
+          retention-days: 7
+          if-no-files-found: ignore
