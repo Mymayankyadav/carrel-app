@@ -20,7 +20,7 @@ const DL = {
 };
 
 /* ----- phone notification (the CarrelLive plugin) ----- */
-const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifications: true, exactAlarms: true };
+const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifDistractions: false, notifications: true, exactAlarms: true };
 let nbDone = false, nsSig = '';
 
 /* Native may have refreshed the login while the app was closed; pick up the newer tokens before supabase-js starts. */
@@ -80,37 +80,64 @@ function nativeSync() {
   CL.setState(payload).catch(() => { nsSig = ''; });
 }
 
+// Compact compatibility entry, until the redesigned Settings owner builds its row.
 function vPhonePanel() {
   if (!CL) return '';
-  const row = (k, label) => `<div class="row"><span class="note-line">${label}</span><button type="button" class="btn sm" data-act="np-toggle" data-k="${k}" aria-pressed="${NP[k] ? 'true' : 'false'}" aria-label="${esc(label)}: ${NP[k] ? 'On' : 'Off'}">${NP[k] ? 'On' : 'Off'}</button></div>`;
-  return `<div class="setsec"><h3>Phone notification</h3>
-    <p class="note-line">The running timer in your notification shade, with Urge, Drifted, Park, Stop and Take break buttons.</p>
-    ${NP.notifications === false ? `<div class="row"><span class="note-line">Notifications are off for Carrel.</span><button type="button" class="btn sm" data-act="np-notif">Allow</button></div>` : ''}
-    ${row('vibrateFocus', 'Vibrate when focus time ends')}
-    ${row('vibrateBreak', 'Vibrate when a break ends')}
-    ${row('respectDnd', 'Stay quiet in Do Not Disturb')}
-    ${row('privacy', 'Hide details on the lock screen')}
-    <div class="row"><span class="note-line">Last buzz: ${esc(NP.lastNudge || 'none yet')}</span><span><button type="button" class="btn sm" data-act="np-test">Test buzz</button> <button type="button" class="btn sm ghost" data-act="np-check">Refresh</button></span></div>
-    <div class="row"><span class="note-line">${NP.exactAlarms === false ? 'Exact alarms are off, so the vibration can arrive a few minutes late.' : 'Exact alarms are allowed.'}</span><button type="button" class="btn sm" data-act="np-exact">Open settings</button></div>
-    <div class="row"><span class="note-line">${UPDI.apk ? `<b>New app version available.</b>` : `App build ${UPDI.build || '?'}, web code ${esc(UPDI.bundle || 'built in')}.`} ${esc(UPDI.web)}</span><span>${UPDI.apk ? `<button type="button" class="btn sm" data-act="upd-apk">Download</button> ` : ''}<button type="button" class="btn sm ghost" data-act="upd-check">${UPDI.busy ? 'Checking' : 'Check now'}</button></span></div>
-    <div class="row"><span class="note-line">If the notification stops updating, let Carrel run in the background.</span><button type="button" class="btn sm" data-act="np-battery">Battery settings</button></div>
-  </div>`;
+  return '<section class="setsec" id="phone-settings"><h3>Phone</h3>'+
+    '<div class="row"><button type="button" class="btn" data-act="np-open">Notifications</button></div></section>';
+}
+function npSetPref(key) {
+  if (!['vibrateFocus','vibrateBreak','respectDnd','privacy','notifDistractions'].includes(key)) return;
+  NP[key] = !NP[key];
+  if (CL) CL.setPrefs({ [key]: NP[key] }).then(p => { Object.assign(NP, p); changed(); })
+    .catch(() => { NP[key] = !NP[key]; changed(); });
+  changed();
 }
 Object.assign(ACT, {
-  'np-toggle'(el) {
-    const k = el.getAttribute('data-k');
-    NP[k] = !NP[k];
-    if (CL) CL.setPrefs({ [k]: NP[k] }).then(p => { Object.assign(NP, p); changed(); }).catch(() => {});
-    changed();
-  },
+  'np-toggle'(el) { npSetPref(el.getAttribute('data-k')); },
+  'np-open'() { if (typeof openPage === 'function') openPage('settings','settings.notifications'); },
   'np-notif'() { if (CL) CL.requestNotifications().then(p => { Object.assign(NP, p); changed(); }).catch(() => {}); },
   'np-test'() { if (CL) CL.testNudge().then(p => { Object.assign(NP, p); changed(); }).catch(() => toast('Could not test the buzz.')); },
   'np-check'() { if (CL) CL.getPrefs().then(p => { Object.assign(NP, p); changed(); }).catch(() => {}); },
   'upd-check'() { checkUpdates(true); },
+  'upd-restart'() {
+    if (UPD && typeof UPD.reload === 'function') UPD.reload().catch(() => toast('Reopen Carrel to update.'));
+    else toast('Reopen Carrel to update.');
+  },
   'upd-apk'() { if (UPDI.apk && CAP.Browser) CAP.Browser.open({ url: UPDI.apk.url }); },
   'np-exact'() { if (CL) CL.openExactAlarmSettings(); },
   'np-battery'() { if (CL) CL.openBatterySettings().then(r => { if (r && r.help) toast(r.help); }).catch(() => {}); }
 });
+
+// Registered only once the R0a shell is present (R5 can still land independently).
+if (typeof PAGES !== 'undefined') {
+  const phoneToggle = (key, label) => kRow({
+    label, right:kSwitch({act:'np-'+key,on:!!NP[key],label})
+  });
+  PAGES['settings.notifications'] = {
+    title:()=>'Notifications',
+    render:() => {
+      if (!CL) return kEmpty('Available on Android');
+      const permission = NP.notifications === false
+        ? kRow({label:'Notifications blocked',right:kBtn('Allow','data-act="np-notif"',{kind:'text'})}) : '';
+      const options = [
+        phoneToggle('vibrateFocus','Vibrate when focus ends'),
+        phoneToggle('vibrateBreak','Vibrate when a break ends'),
+        phoneToggle('respectDnd','Quiet in Do Not Disturb'),
+        phoneToggle('privacy','Hide on lock screen'),
+        phoneToggle('notifDistractions','Noticed buttons')
+      ].join('');
+      const troubleshoot =
+        kRow({label:'Exact alarms',value:NP.exactAlarms?'Allowed':'Not allowed',open:true,attrs:'data-act="np-exact"'})+
+        kRow({label:'Background activity',open:true,attrs:'data-act="np-battery"'})+
+        kRow({label:'Test vibration',value:NP.lastNudge||'',open:true,attrs:'data-act="np-test"'});
+      return permission+kGroup('',options)+kCollapse('np-troubleshoot','Troubleshoot',troubleshoot);
+    }
+  };
+  ['vibrateFocus','vibrateBreak','respectDnd','privacy','notifDistractions'].forEach(key => {
+    ACT['np-'+key] = () => npSetPref(key);
+  });
+}
 
 /* ----- self-update: new web code arrives without reinstalling; a new APK shows a banner ----- */
 const UPD = NATIVE && CAP.CapacitorUpdater ? CAP.CapacitorUpdater : null;
@@ -135,7 +162,7 @@ async function checkUpdates(manual) {
         const m = await r.json();
         if (!m.version || m.version === UPDI.bundle) UPDI.web = manual ? 'Web code is up to date.' : UPDI.web;
         else if (m.minNative && UPDI.build < m.minNative) UPDI.web = 'A new web version needs the new app first.';
-        else if (store.get('updReady') === m.version) UPDI.web = 'Update ready. Reopen Carrel to apply.';
+        else if (store.get('updReady') === m.version) { UPDI.web = 'Update ready'; toast('Update ready', { persist:true, action:{label:'Restart',act:'upd-restart'} }); }
         else {
           step = 'downloading ' + m.version;
           if (!m.checksum) throw new Error('latest.json has no checksum');
@@ -143,8 +170,8 @@ async function checkUpdates(manual) {
           step = 'switching to ' + m.version;
           await UPD.next({ id: b.id });
           store.set('updReady', m.version);
-          UPDI.web = 'Update ready. Reopen Carrel to apply.';
-          toast('Update ready. Reopen Carrel to apply.');
+          UPDI.web = 'Update ready';
+          toast('Update ready', { persist:true, action:{label:'Restart',act:'upd-restart'} });
         }
       }
     } catch (e) {
@@ -172,6 +199,10 @@ function updateBoot() { if (NATIVE) setTimeout(() => checkUpdates(false), 5000);
 
 /* Google sign-in returns to the app through the app.carrel.study://auth deep link. */
 if (NATIVE && CAP.App) {
+  CAP.App.addListener('backButton', () => {
+    if (typeof goBack === 'function' && goBack()) return;
+    if (typeof CAP.App.minimizeApp === 'function') CAP.App.minimizeApp();
+  });
   CAP.App.addListener('appUrlOpen', async ({ url }) => {
     if (!url || url.indexOf(APP_SCHEME + '://') !== 0) return;
     try { if (CAP.Browser) await CAP.Browser.close(); } catch (e) { /* already closed */ }
