@@ -18,7 +18,7 @@ const ctx={
  esc:x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),
  todayKey:()=> '2026-10-27',weekdayOfKey:()=>1,
  wdName:()=> 'Monday',fmtDur:ms=>Math.round(ms/MIN)+'m',fmtHM:x=>x,fmtT:x=>String(x),
- msToHm:()=> '09:00',roundUpMs:x=>x,
+ msToHm:ms=>ms===0?'09:00':'10:00',roundUpMs:x=>x,
  dayName:k=>k,act:()=>({name:'Mathematics',color:'#3D7EA6'}),
  firstStudyId:()=> 'math',nextOrder:()=>2,uid:kind=>kind+'-new',
  blocksOf:()=>({b1:base}),
