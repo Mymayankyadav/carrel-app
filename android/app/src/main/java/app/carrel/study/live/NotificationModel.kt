@@ -9,7 +9,8 @@ data class NotificationModel(
     val canTakeBreak: Boolean = false,
 )
 
-fun notificationModel(state: State?, now: Long): NotificationModel? {
+@Suppress("UNUSED_PARAMETER")
+fun notificationModel(state: State?, now: Long, tally: Int = 0, feedbackUntil: Long = 0): NotificationModel? {
     if (state == null) return null
     return when (state.status) {
         Status.BREAK -> {
