@@ -879,6 +879,18 @@ function vMain() {
 }
 
 /* ---------- views: Today ---------- */
+function todayFold(name, body) {
+  const preference = store.get('fold:' + name);
+  const open = preference == null ? name === 'log' : !!preference;
+  const title = name === 'log' ? 'Log' : 'Where the day went';
+  return `<details class="fold" data-key="today-fold:${name}" data-fold="${name}"${open ? ' open' : ''}><summary><span class="fold-title">${title}</span><span class="fold-cue">Expand or collapse</span><span class="fold-chevron" aria-hidden="true"></span></summary><div class="fold-body">${body}</div></details>`;
+}
+// Persist manually toggled sections across renders and tab switches.
+document.addEventListener('toggle', e => {
+  const el = e.target;
+  if (el && el.matches && el.matches('details.fold') && el.dataset.fold)
+    store.set('fold:' + el.dataset.fold, el.open ? 1 : 0);
+}, true);
 function vToday() {
   const now = Date.now(), tk = todayKey(), k = UI.date || tk;
   const isToday = k === tk, isPast = k < tk, isFuture = k > tk;
@@ -910,8 +922,8 @@ function vToday() {
     colA.push(vParking(k));
     colA.push(vSwitcher(now, agg));
     colA.push(vPlan(k, pm, now));
-    colB.push(vLog(k, now, pm));
-    colB.push(vBreakdown(k, now, agg, pomos));
+    colB.push(todayFold('log', vLog(k, now, pm)));
+    colB.push(todayFold('breakdown', vBreakdown(k, now, agg, pomos)));
   } else if (isFuture) {
     colA.push(vPlan(k, pm, now));
     colB.push(vFutureNote(k));
@@ -943,7 +955,7 @@ function vOnboard() {
 }
 function vRing(p, color) {
   const f = clamp((Date.now() - p.ps) / p.len, 0, 1);
-  return `<svg class="ring ${p.left <= 0 ? 'due' : ''}" viewBox="0 0 64 64" aria-hidden="true" style="--c:${color}"><circle class="rb" cx="32" cy="32" r="27"/><circle class="rf" cx="32" cy="32" r="27" pathLength="1000" stroke-dasharray="1000" stroke-dashoffset="${Math.round(1000 * (1 - f))}" data-tk="ring" data-s="${p.ps}" data-len="${p.len}"/></svg>`;
+  return `<svg class="ring ${p.left <= 0 ? 'due' : ''}" viewBox="0 0 64 64" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="${Math.round(f * 100)}" aria-label="Pomodoro progress" style="--c:${color}"><circle class="rb" cx="32" cy="32" r="27"/><circle class="rf" cx="32" cy="32" r="27" pathLength="1000" stroke-dasharray="1000" stroke-dashoffset="${Math.round(1000 * (1 - f))}" data-tk="ring" data-s="${p.ps}" data-len="${p.len}"/></svg>`;
 }
 function vTimer(now, pm) {
   if (S.db && !S.loaded.current) return `<section class="timer idle"><div class="t-time dim">0:00</div><p class="t-meta">Opening your timer…</p></section>`;
@@ -973,6 +985,8 @@ function vTimer(now, pm) {
   const bid = c.block || (pm && pm.activeId);
   const br = pm && bid ? pm.rows.find(r => r.id === bid) : null;
   if (br) meta.push(`<span>${esc(br.title || 'Plan block')} · <span class="num">${fmtDur(br.done)}</span> of <span class="num">${fmtDur(br.target)}</span></span>`);
+  const noteRepeatsBlock = !!(br && br.title && c.note && c.note.trim() === br.title.trim());
+  const noteField = noteRepeatsBlock ? '' : `<input class="t-note" id="cur-note" data-change="cur-note" value="${esc(c.note || '')}" placeholder="This session I will… (optional)" maxlength="200" autocomplete="off" aria-label="What I will do this session">`;
   let buttons;
   if (isBreak && ret) buttons = `<button type="button" class="btn ${due || !ps ? 'lamp' : ''}" data-act="back">${icon('play')} Back to ${esc(ret.name)}</button><button type="button" class="btn" data-act="stop">${icon('stop')} Stop</button>`;
   else if (isBreak) buttons = `<button type="button" class="btn primary" data-act="stop">${icon('stop')} Stop</button>`;
@@ -985,7 +999,7 @@ function vTimer(now, pm) {
     <div class="t-top"><span class="t-act"><i class="dot"></i><span>${esc(a.name)}</span></span>${phase}<span class="tools"><button type="button" class="icon-btn" data-act="edit-running" aria-label="Edit the running timer" title="Edit">${icon('edit')}</button><button type="button" class="icon-btn" data-act="desk" aria-label="Open desk view" title="Desk view">${icon('moon')}</button></span></div>
     <div class="t-main">${big}${ring}</div>
     <p class="t-meta">${meta.join('')}</p>
-    <input class="t-note" id="cur-note" data-change="cur-note" value="${esc(c.note || '')}" placeholder="This session I will… (optional)" maxlength="200" autocomplete="off" aria-label="What I will do this session">
+    ${noteField}
     ${vNoticeBar()}
     ${guard}
     <div class="t-actions">${buttons}</div>
@@ -997,7 +1011,7 @@ function vNoticeBar() {
   if (!CUR) return '';
   const back = UI.back && UI.back.until > Date.now() ? `<p class="reentry" role="status" aria-live="polite">Back to: <b>${esc(UI.back.text)}</b></p>` : '';
   const chips = noticeOpen() ? `<span class="chips" role="group" aria-label="Did you drift?"><span class="lbl">Drifted</span>${[1, 5, 15].map(m => `<button type="button" class="chip-btn" data-act="notice-drift" data-m="${m}">${m} min</button>`).join('')}</span>` : '';
-  return `${back}<div class="row notice-row"><button type="button" class="btn sm" data-act="notice" title="Press X">Noticed <kbd>X</kbd></button>${chips}
+  return `${back}<div class="row notice-row"><button type="button" class="btn sm" data-act="notice" title="Press X" aria-label="Noticed an urge (shortcut X)">Noticed <kbd class="kbd">X</kbd></button>${chips}
     <form class="row" data-submit="park-add" style="flex:1 1 150px"><input class="inp" id="park-text" style="flex:1 1 100px;width:auto" maxlength="140" placeholder="Park a thought" data-bind="parkText" value="${esc(UI.parkText || '')}" autocomplete="off" aria-label="Park a thought for later"></form></div>`;
 }
 function backText() {
@@ -1132,11 +1146,11 @@ function vSwitcher(now, agg) {
   if (!PRESETS[cp]) presets.push(['custom', cp]);
   const studyBtns = study.map(a => {
     const k = keyOf(a.id), t = tot(a.id);
-    return `<button type="button" class="act ${a.id === runId ? 'on' : ''}" style="--c:${a.color}" data-act="start" data-id="${esc(a.id)}"${a.id === runId ? ' aria-pressed="true"' : ''}><span class="act-name">${esc(a.name)}</span><span class="act-meta"><span class="num">${t ? fmtDur(t) + ' today' : ''}</span>${k ? `<span class="kbd">${k}</span>` : ''}</span></button>`;
+    return `<button type="button" class="act ${a.id === runId ? 'on' : ''}" style="--c:${a.color}" data-act="start" data-id="${esc(a.id)}" aria-pressed="${a.id === runId ? 'true' : 'false'}"><span class="act-name">${esc(a.name)}</span><span class="act-meta"><span class="num">${t ? fmtDur(t) + ' today' : ''}</span>${k ? `<span class="kbd">${k}</span>` : ''}</span></button>`;
   }).join('');
   const lifeBtns = life.map(a => {
     const k = keyOf(a.id), t = tot(a.id);
-    return `<button type="button" class="pill ${a.id === runId ? 'on' : ''}" style="--c:${a.color}" data-act="start" data-id="${esc(a.id)}"${a.id === runId ? ' aria-pressed="true"' : ''}><i class="dot"></i>${esc(a.name)}${t ? `<span class="num">${fmtDur(t)}</span>` : ''}${k ? `<span class="kbd">${k}</span>` : ''}</button>`;
+    return `<button type="button" class="pill ${a.id === runId ? 'on' : ''}" style="--c:${a.color}" data-act="start" data-id="${esc(a.id)}" aria-pressed="${a.id === runId ? 'true' : 'false'}"><i class="dot"></i>${esc(a.name)}${t ? `<span class="num">${fmtDur(t)}</span>` : ''}${k ? `<span class="kbd">${k}</span>` : ''}</button>`;
   }).join('');
   return `<section class="sec" aria-labelledby="sw-h">
     <div class="sec-head"><h2 id="sw-h">${CUR ? 'Switch to' : 'Start'}</h2>

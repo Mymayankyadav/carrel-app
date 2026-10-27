@@ -142,10 +142,27 @@ textarea.inp{min-height:64px;resize:vertical;line-height:1.4}
 .stamp-wrap input::-webkit-calendar-picker-indicator{position:absolute;inset:0;width:100%;height:100%;margin:0;padding:0;opacity:0;cursor:pointer}
 .dh-sum{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:14px;color:var(--ink-2)}
 .dh-sum b{font-weight:600;color:var(--ink)}
+/* The deadline renderer belongs to Calendar; scope this mobile treatment to Today. */
+.dayhead + .dlc{display:flex;flex-wrap:nowrap;overflow-x:auto;overflow-y:hidden;gap:8px;max-width:100%;scrollbar-width:none;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch}
+.dayhead + .dlc::-webkit-scrollbar{display:none}
+.dayhead + .dlc > button{flex:none;max-width:min(78vw,380px);white-space:nowrap}
+.dayhead + .dlc > button span{min-width:0;overflow:hidden;text-overflow:ellipsis}
 
 /* ---------- Today grid ---------- */
 .tgrid{display:grid;gap:30px;grid-template-columns:minmax(0,1fr)}
 .col{display:grid;gap:30px;align-content:start;min-width:0}
+.fold{min-width:0;border:1px solid var(--rule);border-radius:var(--r-card);background:var(--surface)}
+.fold > summary{list-style:none;display:flex;align-items:center;gap:10px;padding:13px 15px;cursor:pointer}
+.fold > summary::-webkit-details-marker{display:none}
+.fold > summary::marker{content:''}
+.fold > summary:focus-visible{outline:2px solid var(--lamp);outline-offset:2px}
+.fold-title{font-family:var(--f-display);font-size:21px;font-weight:500}
+.fold-cue{margin-left:auto;color:var(--ink-3);font-size:12px}
+.fold-chevron{width:9px;height:9px;flex:none;border-right:2px solid var(--ink-2);border-bottom:2px solid var(--ink-2);transform:rotate(-45deg);transition:transform .15s ease}
+.fold[open] .fold-chevron{transform:rotate(45deg)}
+.fold-body{padding:0 15px 16px}
+.fold-body > .sec > .sec-head h2{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+@media (prefers-reduced-motion:reduce){.fold-chevron{transition:none}}
 @media (min-width:980px){.tgrid{grid-template-columns:minmax(0,430px) minmax(0,1fr);gap:44px}}
 
 .banner{display:grid;grid-template-columns:minmax(0,1fr);gap:10px;padding:14px 16px;border:1px solid var(--rule);border-radius:var(--r-card);background:var(--surface)}
