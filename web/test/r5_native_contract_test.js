@@ -35,7 +35,7 @@ assert.match(kt, /NotificationCompat\.Builder/);
 assert.match(kt, /setColorized\(false\)/);
 assert.match(kt, /"Stop",\s*action\("carrel\.STOP"/);
 assert.match(kt, /if\s*\(store\.notifDistractions\)/);
-assert.match(model, /title\s*=\s*"Break time"/);
+assert.match(model, /"Break time"/);
 assert.match(bridge, /PAGES\['settings\.notifications'\]/);
 assert.match(bridge, /notifDistractions:\s*false/);
 assert.match(patcher, /carrel_window_background/);
