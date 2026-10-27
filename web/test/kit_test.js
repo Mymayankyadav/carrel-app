@@ -61,4 +61,5 @@ assert.equal(run("goBack()"),false);
 const switchEl={getAttribute:k=>({'data-bind-to':'sheet.enabled','data-v':'true'}[k]||null)};
 state.ACT['k-set'](switchEl);
 assert.equal(JSON.stringify(state.calls.at(-2)),JSON.stringify(['bind','sheet.enabled',true]));
+assert.ok(!kit.includes('navigator.vibrate'), 'long press must never vibrate: only the optional Pomodoro pulse may do so');
 console.log('KIT TESTS PASSED');
