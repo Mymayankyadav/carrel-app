@@ -1,0 +1,38 @@
+# T2 — Today sheets and focus mode
+
+Branch: `redesign/t2-today-sheets`. Stacked on T3 PR #20 (`redesign/t3-log`), which itself is stacked on P1 PR #19.
+
+## Resumed work and implementation
+
+The interrupted branch already contained the five new sheet registrations and focus view. The continuation keeps those existing implementations instead of rewriting them:
+
+- `SHEETS.start`: start offsets (Now / 5 / 15 / 30 minutes ago / After last within 12h), Pomodoro switch and three presets, using `startActivity(id, { at, pomoPreset })` or `pomoRaw:null`.
+- `SHEETS.activities`: unarchived Study and Other activity rows, active state, long-press Start options, today's logged duration or Now, edit shortcut to `settings.activities`.
+- `SHEETS.park`: escaped 140-character thought field, no primary action for blank text, counter only after 120; delegates to `parkAdd` and its existing undo path.
+- `SHEETS.parked`: move to backlog / undoable discard, close on last item, delegates to the existing transactional actions.
+- `SHEETS.fixstop`: existing guard time field / last-open shortcut, delegates to `guard-save` and `guard-seen`.
+- `vDesk` in `focus.js`: always-black focus mode with Pomodoro bar, time, anti-burn-in drift, wake lock, icon-only actions, and existing Back/Escape behavior.
+
+Additional fixes in the resumed branch:
+
+- Activity totals aggregate **once per sheet render** rather than twice per activity row.
+- Hidden focus actions are also `visibility:hidden`, keeping visually concealed actions out of keyboard focus order.
+- Focus mode pushes one browser-history entry and consumes it when exited. Back/popstate and Escape handlers registered ahead of the shell close focus without accidentally changing tabs. Initial Focus controls hide after 4s (shell's tap-to-reveal duration remains 6s pending T1 integration). A break without a return target cannot show an inert Break button.
+- `web/test/today_sheets_test.js` covers sheet registration, Start offsets/presets and off override, archived exclusions, parking, undoable action routing, guard-stop shortcuts, focus view states, hidden controls, history push/consume, Back dismissal and Escape-key precedence.
+
+## Integration ownership
+
+Only T2-owned `web/ui/today-sheets.{js,css}`, `web/ui/focus.{js,css}`, its test and this status file are in scope. Shared shell/core/state/storage/data contracts are unchanged. The existing T3 files in the branch come from its parent PR #20.
+
+**T1 must wire** the Today buttons to `openSheet({type:'start' | 'activities' | 'park' | 'parked' | 'fixstop', ...})` and `enterDesk()`, and avoid resurrecting the old desk and guard inline controls. `UI.guardTime` must be initialized from the current timer before opening Fix stop (existing `guard-fix` behavior). T1 should ensure its activity chip uses `data-long="t2-start-opts"` and its direct tap uses `data-act="t2-start"`.
+
+## Verification
+
+- [x] Source checked against existing `startActivity`, `parkAdd`, `parkToBacklog`, `guard-save`, `guard-seen`, shell routing and kit contracts.
+- [x] Focus keyboard-hidden, browser Back and Escape regressions addressed (device Back still requires hardware acceptance).
+- [x] T2-focused Node unit test added.
+- [x] Full web build and Node suite passed at [GitHub Actions #40558517182](https://github.com/Mymayankyadav/carrel-app/actions/runs/40558517182); previous passing feature run #40555713218. The later source change closes Fix stop after a valid corrected-stop action and rejects a stale Last open shortcut.
+- [x] [Chromium QA #40560093385](https://github.com/Mymayankyadav/carrel-app/actions/runs/40560093385) passed 390px/1280px light/dark Start, Activities, Park, Parked, Fix stop and Focus navigation (Back and Escape), mock write paths and horizontal-overflow checks. Screenshot artifact [#12759780341](https://github.com/Mymayankyadav/carrel-app/actions/runs/40560093385/artifacts/12759780341) contains 28 images. Manually inspected Start, Park, Parked, Fix stop and Focus in both themes; duplicate Start heading removed and transient timer Undo toast no longer obscures sheet controls. This is browser-only, not hardware validation.
+- [ ] Physical Android wake lock, Back, keyboard, touch and notification interactions.
+
+**Do not self-merge**. Merge in stacked order through P1 #19, T3 #20, then T2; retarget sequentially per the integrator instructions. This is not a production deployment.
