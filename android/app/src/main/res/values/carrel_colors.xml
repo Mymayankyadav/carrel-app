@@ -1,2 +1,2 @@
 <?xml version="1.0" encoding="utf-8"?>
-<resources><color name="carrel_bg">#1C6A4E</color></resources>
+<resources><color name="carrel_bg">#1C6A4E</color><color name="carrel_window_background">#FAFAF9</color></resources>
