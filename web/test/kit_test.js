@@ -21,7 +21,14 @@ const state={
   setTimeout,clearTimeout,
 };
 vm.createContext(state);
-vm.runInContext('const UI=globalThis.UI, ACT=globalThis.ACT, PAGES=globalThis.PAGES, P=globalThis.P, ACTS=globalThis.ACTS; const esc=globalThis.esc; function render(){globalThis.render.call(globalThis)} function closeSheet(){globalThis.closeSheet.call(globalThis)} function setBind(k,v){globalThis.setBind.call(globalThis,k,v)} const icon=(name)=>\'<svg class="i">\'+(P[name]||\'\')+\'</svg>\';',state);
+vm.runInContext([
+  'const UI=globalThis.UI, ACT=globalThis.ACT, PAGES=globalThis.PAGES, P=globalThis.P, ACTS=globalThis.ACTS;',
+  'const esc=globalThis.esc;',
+  'function render(){globalThis.render.call(globalThis)}',
+  'function closeSheet(){globalThis.closeSheet.call(globalThis)}',
+  'function setBind(k,v){globalThis.setBind.call(globalThis,k,v)}',
+  "const icon=(name)=>'<svg class=\\\"i\\\">'+(P[name]||'')+'</svg>';",
+].join('\\n'),state);
 vm.runInContext(icons,state);
 vm.runInContext(kit,state);
 const run = src => vm.runInContext(src,state);
