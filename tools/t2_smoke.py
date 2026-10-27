@@ -51,7 +51,11 @@ with sync_playwright() as p:
         expect(page.locator('#sheet [data-act="t2-confirm-start"]')).to_be_visible()
         capture('start')
         page.locator('#sheet [data-act="t2-from"][data-v="5"]').click()
+        original_pomo = page.evaluate('UI.sheet.pomo')
         page.locator('#sheet [data-act="t2-pomo"]').click()
+        assert page.evaluate('UI.sheet.pomo') != original_pomo, name+' toggle did not change'
+        if page.evaluate('UI.sheet.pomo'):
+            page.locator('#sheet [data-act="t2-pomo"]').click()
         assert page.evaluate('UI.sheet.pomo') is False
         capture('start-no-pomodoro')
         page.locator('#sheet [data-act="t2-confirm-start"]').click()
