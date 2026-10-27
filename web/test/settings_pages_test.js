@@ -12,7 +12,7 @@ const env={
  ACT,CFG,UI,PAGES,PRESETS:{'25/5':{focus:25,short:5,long:15,every:4},'50/10':{focus:50,short:10,long:20,every:3},'90/20':{focus:90,short:20,long:30,every:2}},
  S:{mcp:null,dl:true,user:{email:'math@example.com'}},GC:{status:'off',events:[]},UPDI:{busy:false,bundle:'1.0.20',build:100009,apk:null,web:''},
  ENTRIES:[{running:false},{running:true}],PROMPTS:[['Prove this theorem','unused'],['Review my week','unused']],
- todayKey:()=> '2026-10-27',store:{get:()=>null},icon:()=> '<svg></svg>',esc:s=>String(s),
+ presetLabel:o=>o.focus+'/'+o.short,todayKey:()=> '2026-10-27',store:{get:()=>null},icon:()=> '<svg></svg>',esc:s=>String(s),
  kField:(s,c)=>'<label>'+s+c+'</label>',kSwitch:()=>'<button role="switch"></button>',
  kSeg:()=>'<div class="k-seg"></div>',kEmpty:s=>s,kIconBtn:(_ic,l,attrs)=>'<button '+attrs+'>'+l+'</button>',
  kRow:o=>'<div class="k-row" '+(o.attrs||'')+'>'+o.label+(o.value||'')+'</div>',
