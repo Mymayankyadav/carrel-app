@@ -87,6 +87,7 @@ class CarrelLivePlugin : Plugin() {
         call.getBoolean("vibrateBreak")?.let { s.vibrateBreak = it }
         call.getBoolean("respectDnd")?.let { s.respectDnd = it }
         call.getBoolean("privacy")?.let { s.privacy = it }
+        call.getBoolean("notifDistractions")?.let { s.notifDistractions = it }
         live.io.execute { live.engine.render() }
         call.resolve(prefs())
     }
@@ -100,7 +101,8 @@ class CarrelLivePlugin : Plugin() {
     private fun prefs(): JSObject {
         val s = live.store
         return JSObject().put("vibrateFocus", s.vibrateFocus).put("vibrateBreak", s.vibrateBreak)
-            .put("respectDnd", s.respectDnd).put("privacy", s.privacy).put("lastNudge", s.p.getString("lastNudge", ""))
+            .put("respectDnd", s.respectDnd).put("privacy", s.privacy)
+            .put("notifDistractions", s.notifDistractions).put("lastNudge", s.p.getString("lastNudge", ""))
             .put("notifications", live.notifications.allowed())
             .put("exactAlarms", Build.VERSION.SDK_INT < 31 || context.getSystemService(android.app.AlarmManager::class.java).canScheduleExactAlarms())
     }
