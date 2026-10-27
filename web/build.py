@@ -21,7 +21,7 @@ def offline_fonts():
         'User-Agent': 'Mozilla/5.0 Chrome/131.0.0.0 Safari/537.36'})
     with urllib.request.urlopen(req, timeout=30) as res:
         font_css = res.read().decode('utf-8')
-    urls = sorted(set(re.findall(r'https://fonts[.]gstatic[.]com/[^)\\s]+', font_css)))
+    urls = sorted(set(re.findall(r'https://fonts[.]gstatic[.]com/[^)\s]+', font_css)))
     if not urls:
         raise RuntimeError('Google Fonts did not provide any downloadable WOFF2 files')
     target = repo / 'www' / 'fonts'
@@ -38,7 +38,7 @@ def offline_fonts():
         if family not in font_css:
             raise RuntimeError('Missing font family: ' + family)
     print('bundled', len(urls), 'offline font files')
-    return '<style>\\n' + font_css + '\\n</style>\\n'
+    return '<style>\n' + font_css + '\n</style>\\n'
 
 head = """<meta name="description" content="Carrel: personal study time tracker with silent pomodoro timers, adaptive day plans and week views.">
 <title>Carrel</title>
