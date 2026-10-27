@@ -1,1 +1,22 @@
-/* R0a empty CSS. Owned by the matching Phase-2 screen. */
+/* W1: authentication and first-run setup. Uses kit tokens only. */
+.w1-auth{min-height:calc(100dvh - 140px);display:grid;place-items:center;text-align:center}
+.w1-auth-inner{display:flex;flex-direction:column;align-items:center;gap:0;width:100%;max-width:320px}
+.w1-mark{display:block;width:12px;height:12px;background:var(--accent);border-radius:50%}
+.w1-name{font-size:var(--t-xl);font-weight:600;line-height:1.2;margin:18px 0 32px;letter-spacing:-.02em}
+.w1-auth-inner>.k-btn{width:100%;max-width:320px}
+.w1-private{font-size:var(--t-sm);color:var(--text-2);margin:0 0 16px}
+.w1-setup{max-width:480px;width:100%;margin-inline:auto;padding-top:20px;display:flex;flex-direction:column;gap:20px}
+.w1-heading{font-size:var(--t-lg);font-weight:600;letter-spacing:-.015em;line-height:1.2}
+.w1-add-form{display:flex;gap:8px;align-items:center;width:100%}
+.w1-subject-input{flex:1;min-width:0;min-height:48px}
+.w1-add-btn{display:grid;place-items:center;flex:none;width:48px;height:48px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);color:var(--accent);cursor:pointer}
+.w1-add-btn .i,.w1-chip .i,.w1-suggest .i{width:18px;height:18px}
+.w1-added,.w1-suggestions{display:flex;flex-wrap:wrap;gap:8px}
+.w1-chip,.w1-suggest{display:inline-flex;align-items:center;justify-content:center;gap:6px;min-height:40px;padding:8px 12px;border-radius:99px;font-size:var(--t-xs);font-weight:500;cursor:pointer}
+.w1-chip{background:var(--text);color:var(--bg);border:1px solid var(--text);max-width:100%}
+.w1-chip-name{overflow:hidden;white-space:nowrap;text-overflow:ellipsis;max-width:220px}
+.w1-suggest{background:var(--surface);color:var(--text);border:1px solid var(--line)}
+.w1-setup>.k-btn{width:100%;min-height:48px;margin-top:4px}
+.w1-setup button:focus-visible,.w1-setup input:focus-visible,.w1-auth button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media (pointer:coarse){.w1-chip,.w1-suggest{min-height:44px}}
+@media (prefers-reduced-motion:reduce){.w1-chip,.w1-suggest,.w1-add-btn{transition:none}}
