@@ -64,7 +64,7 @@ function calShift(dir){
   render();
 }
 
-function gutLabel(h) { h = ((h % 24) + 24) % 24; return H12 ? (h % 12 || 12) + (h < 12 ? ' am' : ' pm') : pad(h) + ':00'; }
+function gutLabel(h) { h=((h%24)+24)%24; return H12?(h%12||12)+(h<12?'a':'p'):pad(h); }
 let PEAK = null;
 function peakHours() {
   const key = todayKey() + '|' + ENTRIES.length;
@@ -135,7 +135,7 @@ function planFocus(k,id){
 
 function vCalGrid(days, now, tk, models, peak) {
   const n = days.length, ds0 = dayStartMs(days[0]);
-  const labels = Array.from({ length: 24 }, (_, i) => i === 0 ? '' : `<span style="top:${i * HPX}px">${gutLabel(new Date(ds0 + i * HOUR).getHours())}</span>`).join('');
+  const labels = Array.from({ length: 24 }, (_, i) => i === 0 || (n === 7 && i % 3 !== 0) ? '' : `<span style="top:${i * HPX}px">${gutLabel(new Date(ds0 + i * HOUR).getHours())}</span>`).join('');
   const pk = peak ? peak.map((f, i) => f >= 0.35 ? `<i class="pk" style="top:${i * HPX + 3}px;height:${HPX - 6}px;opacity:${(0.25 + f * 0.65).toFixed(2)}"></i>` : '').join('') : '';
   const heads = days.map(k => vCalHead(k, now, tk, models[k])).join('');
   const cols = days.map(k => vCalCol(k, now, tk, models[k])).join('');
