@@ -1,1 +1,33 @@
-/* R0a empty CSS. Owned by the matching Phase-2 screen. */
+/* S2 Stats detail pages — token-based charts and read-only rows. */
+.s2-page{min-width:0;padding:16px 0}
+.s2-hero{font-size:var(--t-xl);font-weight:600;line-height:1.1;font-variant-numeric:tabular-nums}
+.s2-muted{color:var(--text-2);font-size:var(--t-xs);margin-top:8px}
+.s2-heading{margin:24px 0 12px}
+.s2-subject-bars{height:164px;display:grid;grid-template-columns:repeat(7,minmax(0,1fr));align-items:end;gap:12px;padding:12px 8px 0;border-bottom:1px solid var(--line)}
+.s2-subday{height:100%;display:flex;flex-direction:column;align-items:center;gap:8px}
+.s2-bar-wrap{height:140px;width:100%;display:flex;align-items:flex-end;justify-content:center}
+.s2-subbar{display:block;width:24px;max-width:100%;background:var(--accent);border-radius:3px 3px 0 0}
+.s2-day-label{font-size:var(--t-xs);color:var(--text-2)}
+.s2-session{min-height:56px;display:flex;align-items:center;justify-content:space-between;gap:12px;border-bottom:1px solid var(--line);font-size:var(--t-sm)}
+.s2-session>div{display:flex;flex-direction:column;min-width:0}
+.s2-session>span{flex:none;font-variant-numeric:tabular-nums}
+.s2-session div span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s2-note{font-size:var(--t-xs);color:var(--text-2)}
+.s2-controls{display:flex;justify-content:flex-end}
+.s2-heat{width:100%;max-width:340px;overflow:hidden}
+.s2-heat-row{display:grid;grid-template-columns:19px repeat(24,minmax(0,1fr));gap:2px;align-items:center;min-height:12px;margin:2px 0}
+.s2-heat-cell{display:block;aspect-ratio:1;border-radius:2px;background:color-mix(in srgb,var(--accent) var(--intensity),var(--surface))}
+.s2-weekday{font-size:11px;color:var(--text-2)}
+.s2-heat-labels{font-size:10px;color:var(--text-2);margin-top:6px}
+.s2-heat-labels span:not(:first-child){white-space:nowrap}
+.s2-scale{display:flex;align-items:center;justify-content:flex-end;gap:5px;color:var(--text-2);font-size:11px;margin:12px 0 24px}
+.s2-scale i{width:10px;height:10px;border-radius:2px;background:var(--accent);opacity:.2}
+.s2-scale i:nth-of-type(2){opacity:.45}
+.s2-scale i:nth-of-type(3){opacity:.7}
+.s2-scale i:nth-of-type(4){opacity:1}
+.s2-metrics{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-top:24px}
+.s2-metrics>div{display:flex;flex-direction:column;gap:5px}
+.s2-metrics strong{font-size:var(--t-lg);font-weight:600;font-variant-numeric:tabular-nums}
+.s2-metrics span{font-size:var(--t-xs);color:var(--text-2)}
+.s2-insight{font-size:var(--t-sm);line-height:1.5;padding:16px 0;border-bottom:1px solid var(--line)}
+@media(max-width:380px){.s2-subject-bars{gap:7px}.s2-heat-row{gap:1px}}
