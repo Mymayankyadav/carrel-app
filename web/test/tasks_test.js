@@ -55,7 +55,7 @@ assert(html.includes('Algebra exam')&&html.includes('Finished test'));
 assert(html.includes('Done (1)')&&html.includes('Tomorrow'));
 assert(html.includes('p3-count urgent'));
 assert(html.includes('data-id="d1"')&&html.includes('--p3-subject:#3D7EA6'));
-assert(html.includes('exam')&&html.includes('due'),'semantic bundled deadline icons');
+assert(source.includes("d.kind==='exam'?'exam':d.kind==='due'?'due':'other'"),'semantic bundled deadline icons');
 assert(html.includes('Done</span>'),'completed rows do not say overdue');
 assert.equal(env.p3DueLabel('2026-10-28'),'Tomorrow');
 assert.equal(env.p3DueLabel('2026-10-27'),'Yesterday'); // mocked daysUntil defaults to -1
