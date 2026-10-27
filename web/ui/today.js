@@ -170,7 +170,7 @@ function t1Today(){
   if(w1NeedsSetup())return w1FirstRun();
   const pm=planModelFor(k,now);
   const picks=t1Picks(),grid=!CUR?ACTS.filter(a=>!a.archived&&a.kind==='study').map(a=>t1ActivityButton(a,'t1-tile')).join(''):'';
-  const chips=picks.filter(a=>!CUR||a.id!==CUR.activity).map(a=>t1ActivityButton(a,'t1-chip')).join('');
+  const chips=picks.filter(a=>CUR?a.id!==CUR.activity:a.kind!=='study').map(a=>t1ActivityButton(a,'t1-chip')).join('');
   const more=kIconBtn('more','All activities','data-act="t1-activities"');
   const parked=CUR&&act(CUR.activity).role==='break'?parkedItems(k):[];
   return '<div class="t1-today">'+head+vSyncLine()+t1Timer(now,pm)+
