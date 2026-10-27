@@ -25,7 +25,7 @@ jobs:
         run: |
           TZ=Asia/Kolkata node web/test/logic_test.js
           node web/test/supa_test.js
-          npm run build:web
+          CARREL_BUNDLE_FONTS=1 npm run build:web
       - run: npx cap sync android
       - run: python3 tools/patch_android.py
       - name: Version

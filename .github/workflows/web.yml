@@ -23,6 +23,7 @@ jobs:
         with: { node-version: '22' }
       - run: npm install --no-audit --no-fund
       - run: npm run build:web
+        env: { CARREL_BUNDLE_FONTS: '1' }
       - name: Tests
         run: |
           for f in web/test/*_test.js; do
