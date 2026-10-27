@@ -86,4 +86,19 @@ assert.equal(vm.runInContext('typeof SUBMIT',startupCtx),'object');
 assert.equal(vm.runInContext('typeof VIEWS.plan',startupCtx),'function');
 assert.equal(vm.runInContext('typeof SHEETS.entry',startupCtx),'function');
 
+const toastOutput={html:''};
+const toastEnv={
+  UI:{toast:null,lastRate:null},
+  document:{getElementById:()=>({})},
+  morphInto:(_el,html)=>{toastOutput.html=html;},
+  esc:s=>String(s), kBtn:(label,attrs)=>'<button '+attrs+'>'+label+'</button>',
+  clearTimeout:()=>{}, setTimeout:()=>1
+};
+const [showToast]=vm.runInNewContext(between('let toastT = 0;', '/* ---------- rendering:')+
+  '\n[toast,renderToast]',toastEnv);
+showToast('Update ready',{persist:true,action:{label:'Restart',act:'upd-restart'}});
+assert.ok(toastOutput.html.includes('data-act="upd-restart"'),'persistent update toast has Restart action');
+showToast('Stopped',{undo:true,action:{label:'Restart',act:'upd-restart'}});
+assert.ok(toastOutput.html.includes('data-act="undo"'),'undo gets the sole action');
+assert.ok(!toastOutput.html.includes('data-act="upd-restart"'),'undo excludes a second action');
 console.log('SHELL TESTS PASSED');
