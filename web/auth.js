@@ -99,7 +99,7 @@ Object.assign(ACT, {
       while (S.pending.length && Date.now() < deadline) {
         await new Promise(resolve => setTimeout(resolve, 250));
       }
-      if (S.pending.length && !window.confirm(S.pending.length + ' change(s) are not saved yet. Sign out and lose them?')) return;
+      if (S.pending.length && !await confirmDialog({title:'Unsaved changes',text:S.pending.length+' waiting. Discard and sign out?',ok:'Sign out',danger:true})) return;
     }
     const r = await sb.auth.signOut();
     if (r.error) toast('Could not sign out: ' + r.error.message);

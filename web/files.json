@@ -29,7 +29,7 @@
   ],
   "css": [
     "ui/kit.css",
-    "ui/legacy.css",
+    "ui/base.css",
     "ui/welcome.css",
     "ui/today.css",
     "ui/today-sheets.css",

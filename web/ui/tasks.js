@@ -1,55 +1,5 @@
 /* R0a: task UI will be moved here by P3. */
 
-function vDeadlineChips(tk) {
-  const list = deadlineList().filter(d => !d.done && d.date >= tk && daysUntil(d.date) <= 21).slice(0, 4);
-  if (!list.length) return '';
-  return `<div class="dlc" aria-label="Coming up">${list.map(d => `<button type="button" data-act="dl-edit" data-id="${esc(d.id)}">${icon('flag')}<span>${esc(d.title)}</span><b>${countdown(d.date)}</b></button>`).join('')}</div>`;
-}
-
-function vDeadlinesPanel(tk) {
-  const list = deadlineList().filter(d => !d.done && d.date >= addDaysKey(tk, -3)).slice(0, 8);
-  const rows = list.map(d => {
-    const c = d.activity && ACTMAP[d.activity] ? act(d.activity).color : 'var(--rust)';
-    const n = daysUntil(d.date);
-    return `<button type="button" class="pitem" style="--c:${c}" data-act="dl-edit" data-id="${esc(d.id)}"><i class="dot"></i><span class="pb"><span class="nm">${esc(d.title)}</span><span class="sub">${esc(shortDay(d.date))}${d.time ? ' · ' + fmtHM(d.time) : ''}${d.activity && ACTMAP[d.activity] ? ' · ' + esc(act(d.activity).name) : ''}</span></span><span class="rt ${n <= 2 && n >= 0 ? 'soon' : n < 0 ? 'gone' : ''}">${countdown(d.date)}</span></button>`;
-  }).join('');
-  return `<section class="panel" aria-labelledby="dl-h"><div class="sec-head"><h2 id="dl-h">Deadlines</h2><button type="button" class="icon-btn" data-act="dl-new" aria-label="Add a deadline">${icon('plus')}</button></div>
-    ${rows ? `<div class="plist">${rows}</div>` : `<p class="cap">Add exams and due dates. They get a countdown here, on the calendar and on Today.</p>`}</section>`;
-}
-
-function vBacklogPanel(tk) {
-  const list = backlogList();
-  const rows = list.map(t => {
-    const a = t.activity && ACTMAP[t.activity] ? act(t.activity) : null;
-    const n = t.due ? daysUntil(t.due) : null;
-    return `<button type="button" class="pitem drag" style="--c:${a ? a.color : 'var(--ink-3)'}" data-act="task-open" data-id="${esc(t.id)}" data-bdrag="1"><i class="dot"></i><span class="pb"><span class="nm">${t.prio === 1 ? '<b class="hi">!</b> ' : ''}${esc(t.title)}</span><span class="sub">${a ? esc(a.name) + ' · ' : ''}${fmtDur(t.minutes * MIN)}</span></span><span class="rt ${n != null && n < 0 ? 'gone' : n != null && n <= 2 ? 'soon' : ''}">${t.due ? (n < 0 ? 'overdue' : 'due ' + countdown(t.due).replace(/^in /, 'in ')) : ''}</span></button>`;
-  }).join('');
-  const tot = list.reduce((s, t) => s + t.minutes, 0) * MIN;
-  const opts = [30, 45, 60, 90, 120, 180].map(m => `<option value="${m}"${+UI.ta.minutes === m ? ' selected' : ''}>${fmtDur(m * MIN)}</option>`).join('');
-  if (!ACTMAP[UI.ta.activity]) UI.ta.activity = firstStudyId();
-  return `<section class="panel" aria-labelledby="bl-h"><div class="sec-head"><h2 id="bl-h">Backlog${list.length ? ` <small>${list.length} · ${fmtDur(tot)}</small>` : ''}</h2>${list.length ? `<button type="button" class="btn sm" data-act="bl-auto" title="Place every task on the earliest day with room, before its due date">${icon('wand')}Find time for all</button>` : ''}</div>
-    ${rows ? `<div class="plist">${rows}</div><p class="cap">Drag a task onto the calendar, or tap it to schedule.</p>` : `<p class="cap">Collect study tasks here before they have a time. Find time places them on the first day with room, around your timetable and deadlines.</p>`}
-    <form class="qadd" data-submit="task-add"><input class="inp" id="ta-title" maxlength="80" data-bind="ta.title" value="${esc(UI.ta.title)}" placeholder="Add a task, e.g. Chapter 7 problems" autocomplete="off" aria-label="New task">
-      <div class="row"><select class="sel sm" id="ta-act" data-bind="ta.activity" data-value="${esc(UI.ta.activity)}" aria-label="Subject">${ACTS.filter(a => !a.archived).map(a => `<option value="${esc(a.id)}"${a.id === UI.ta.activity ? ' selected' : ''}>${esc(a.name)}</option>`).join('')}</select><select class="sel sm" id="ta-min" data-bind="ta.minutes" data-value="${esc(UI.ta.minutes)}" aria-label="Time needed">${opts}</select><button type="submit" class="btn sm lamp">${icon('plus')}Add</button></div></form>
-  </section>`;
-}
-
-function vTimetablePanel() {
-  const ws = +CFG.weekStart || 0;
-  const items = Object.entries(commitmentsMap()).filter(([, c]) => c && !c.archived && Array.isArray(c.days) && c.days.length)
-    .map(([id, c]) => ({ id, ...c, first: Math.min(...c.days.map(d => (d - ws + 7) % 7)) }))
-    .sort((a, b) => a.first - b.first || String(a.start).localeCompare(String(b.start)));
-  const dn = d => wdName(new Date(2026, 0, 4 + d));
-  const rows = items.map(c => {
-    const col = c.activity && ACTMAP[c.activity] ? act(c.activity).color : 'var(--ink-3)';
-    const ds = c.days.slice().sort((x, y) => ((x - ws + 7) % 7) - ((y - ws + 7) % 7)).map(dn).join(', ');
-    return `<button type="button" class="pitem" style="--c:${col}" data-act="tt-edit" data-id="${esc(c.id)}"><i class="dot"></i><span class="pb"><span class="nm">${esc(c.title || 'Busy')}</span><span class="sub">${esc(ds)}</span></span><span class="rt">${fmtHM(c.start)}–${fmtHM(c.end)}</span></button>`;
-  }).join('');
-  return `<section class="panel" aria-labelledby="tt-h"><div class="sec-head"><h2 id="tt-h">Weekly timetable</h2><button type="button" class="icon-btn" data-act="tt-new" aria-label="Add to timetable">${icon('plus')}</button></div>
-    ${rows ? `<div class="plist">${rows}</div>` : `<p class="cap">Add classes, coaching, shifts or anything fixed each week. Plans flow around them automatically.</p>`}</section>`;
-}
-
-
 function openBusySheet(k, id, rec) {
   if (rec) {
     const c = commitmentsMap()[id];

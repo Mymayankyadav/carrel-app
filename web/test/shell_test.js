@@ -35,14 +35,14 @@ assert.ok(shell.includes("e.key==='Escape'"), 'Escape goes through back handler'
 assert.ok(shell.includes("window.addEventListener('popstate'"), 'browser back goes through handler');
 assert.ok(css.includes('.k-nav-item') && css.includes('grid-template-columns:repeat(4,1fr)'));
 assert.ok(css.includes('.k-sheet-head') && css.includes('.k-page-head'));
-assert.ok(css.includes('.scrim.k-sheet-bg{z-index:50'), 'modal backdrop must stack above fixed navigation');
+assert.ok(css.includes('.scrim.k-sheet-bg{') && css.includes('z-index:50'), 'modal backdrop must stack above fixed navigation');
 const runtime={
   UI:{view:'plan',pages:[],sheet:null},
   PAGES:{tasks:{title:()=> 'Tasks',render:()=>'<p>list</p>'}},
-  VIEWS:{today:()=>'<span>timer</span>',plan:()=>'<p>plan</p>',stats:()=>'<p>stats</p>',settings:()=>'<p>settings</p>'},
+  VIEWS:{today:()=>'<span>timer</span>',plan:()=>'<p>plan</p>',stats:()=>'<p>stats</p>',settings:()=>'<p>settings</p>',welcome:()=>'<p>sign-in</p>'},
   S:{conn:'live',owner:true,pending:[]},
   syncState:()=> 'live',icon:()=>'',kBtn:()=>'<button>Retry</button>',
-  kPageHead:()=>'<header>Tasks</header>',vNotices:()=>'<p>sign-in</p>',console
+  kPageHead:()=>'<header>Tasks</header>',unused:()=>'',console
 };
 const section=between('function canonicalView(v)',"function vSheet()");
 const ctx=vm.createContext(runtime);
@@ -59,7 +59,7 @@ assert.ok(vSyncLine().includes('2 waiting'));
 runtime.syncState=()=> 'readonly';assert.ok(vSyncLine().includes("Can't save"));
 runtime.S.conn='none';assert.ok(vMain().includes('sign-in'));
 
-/* R0a transitional route compatibility: Plan must allow editing and old Patterns must remain reachable. */
+/* Final routes retain Plan editing and reject retired root view renderers. */
 const calSource=fs.readFileSync(path.join(__dirname,'../cal.js'),'utf8');
 const gcalSource=fs.readFileSync(path.join(__dirname,'../gcal.js'),'utf8');
 assert.ok(calSource.includes("UI.view !== 'plan'"), 'calendar pointer/drag guard accepts Plan view');
@@ -75,13 +75,18 @@ runtime.UI.view='stats';
 runtime.UI.statsPane='patterns';
 runtime.VIEWS.patterns=()=>'<p>legacy patterns view</p>';
 runtime.kSeg=()=>'<div role="group">Week Patterns</div>';
-assert.ok(vMain().includes('legacy patterns view'), 'legacy Patterns preserved under Stats');
+assert.ok(!vMain().includes('legacy patterns view'), 'retired Patterns route cannot override Stats');
 runtime.UI.statsPane='week';
 assert.ok(vMain().includes('<p>stats</p>'), 'Week retained under Stats');
 runtime.UI.view='today';
 delete runtime.VIEWS.patterns;
 
 assert.ok(app.includes('Object.assign(ACT,'),'action registration preserved');
+assert.ok(!manifest.css.includes('ui/legacy.css'));
+assert.ok(!/var\(--(?:paper|ink(?:-[23])?|lamp(?:-strong)?|rule(?:-2)?|f-(?:ui|num|display))\b/.test(css), 'retired theme aliases removed');
+assert.ok(!shell.includes('VIEWS.calendar='));
+assert.ok(!app.includes('VIEWS.week='));
+
 
 /* Execute all module initializers, but not boot's asynchronous sign-in. */
 const startup=fs.readFileSync(path.join(__dirname,'../logic.js'),'utf8')+

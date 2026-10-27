@@ -22,7 +22,7 @@ jobs:
           node-version: '22'
       - name: Install web and browser dependencies
         run: |
-          npm install --no-audit --no-fund
+          npm ci --no-audit --no-fund
           python3 -m pip install --break-system-packages playwright pillow
           python3 -m playwright install --with-deps chromium
       - name: Build with mock data (no production credentials)

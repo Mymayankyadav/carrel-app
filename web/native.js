@@ -80,12 +80,8 @@ function nativeSync() {
   CL.setState(payload).catch(() => { nsSig = ''; });
 }
 
-// Compact compatibility entry, until the redesigned Settings owner builds its row.
-function vPhonePanel() {
-  if (!CL) return '';
-  return '<section class="setsec" id="phone-settings"><h3>Phone</h3>'+
-    '<div class="row"><button type="button" class="btn" data-act="np-open">Notifications</button></div></section>';
-}
+// Retained bridge contract; Settings owns the Notifications entry.
+function vPhonePanel() { return ''; }
 function npSetPref(key) {
   if (!['vibrateFocus','vibrateBreak','respectDnd','privacy','notifDistractions'].includes(key)) return;
   NP[key] = !NP[key];

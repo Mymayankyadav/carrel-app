@@ -66,27 +66,6 @@ async function gcPermissions() {
 }
 function gcFor(k) { const ds = dayStartMs(k), de = dayEndMs(k); return GC.events.filter(x => !x.allDay && x.s < de && x.e > ds); }
 function gcAllDay(k) { return GC.events.filter(x => x.allDay && x.from <= k && x.to > k); }
-function vGcalPanel() {
-  if (!S.mcp) return `<section class="panel"><div class="sec-head"><h2>Google Calendar</h2></div><p class="cap">Busy time from Google Calendar is coming in a later update.</p></section>`;
-  const st = GC.status;
-  const n = GC.events.filter(x => x.allDay ? x.to > todayKey() : x.e > Date.now()).length;
-  let text, btn = '';
-  if (st === 'ok' || st === 'stale') {
-    const elapsed = GC.at ? Date.now() - GC.at : 0;
-    const refreshHint = elapsed > 30 * MIN ? ' · tap Refresh to sync' : '';
-    text = st === 'stale' ? `Couldn’t refresh just now. Showing events from ${fmtT(GC.at)}.` : `${n ? n + ' upcoming event' + (n > 1 ? 's' : '') : 'No upcoming events'} in the next four weeks. Timed events count as busy, so plans move around them. Updated ${fmtT(GC.at)}${refreshHint}.`;
-    btn = `<button type="button" class="btn sm" data-act="gc-refresh">Refresh</button>`;
-  } else if (st === 'loading' || st === 'off') text = 'Checking your Google Calendar…';
-  else if (st === 'approval_required' || st === 'consent_required') { text = 'Allow Carrel to read your Google Calendar so your events show here and plans fit around them. It only reads; nothing in your calendar changes.'; btn = `<button type="button" class="btn sm lamp" data-act="gc-connect">Allow and show events</button>`; }
-  else if (st === 'not_in_manifest') { text = 'Google Calendar is turned off for this page.'; btn = `<button type="button" class="btn sm" data-act="gc-perms">Turn it on</button>`; }
-  else if (st === 'needs_reauth') text = 'Your Google Calendar connection needs signing in again. Reconnect it in claude.ai Settings → Connectors, then reload.';
-  else if (st === 'server_not_connected' || st === 'server_not_found') text = 'Add Google Calendar in claude.ai Settings → Connectors to see your events here.';
-  else if (st === 'selection_required') text = 'You have more than one Google Calendar connector. Choose one when Claude asks, then reload.';
-  else if (st === 'blocked_by_policy') text = 'Your organization doesn’t allow this connector here.';
-  else if (st === 'not_granted' || st === 'capability_disabled' || st === 'capability_removed') text = 'Google Calendar isn’t available in this view. Open Carrel in the Claude app or on claude.ai.';
-  else { text = 'Couldn’t load your events' + (GC.msg ? ': ' + GC.msg.slice(0, 140) : '.'); btn = `<button type="button" class="btn sm" data-act="gc-connect">Try again</button>`; }
-  return `<section class="panel" aria-labelledby="gc-h"><div class="sec-head"><h2 id="gc-h">Google Calendar</h2>${btn}</div><p class="cap">${esc(text)}</p></section>`;
-}
 Object.assign(ACT, {
   'gc-connect'() { gcConnect(false); },
   'gc-refresh'() { gcConnect(true); },

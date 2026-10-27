@@ -1,7 +1,6 @@
 /* P2 — Plan sheets. Keep existing plan/save contracts; only rework presentation. */
 const p2Error = sh => sh.err ? '<div class="p2-error" role="alert">'+esc(sh.err)+'</div>' : '';
 const errLine = p2Error; // Task editors still use this shared helper.
-const closeBtn = kIconBtn('close','Close','data-act="sheet-close"'); // Compatibility helper.
 const HM = /^\d{1,2}:\d{2}/;
 
 function p2Presets(bind, minutes) {
@@ -24,14 +23,6 @@ function p2DayButtons(days,actName){
         '" title="'+esc(name)+'" aria-pressed="'+checked+'" data-act="'+actName+'" data-d="'+d+'">'+
         esc(name.slice(0,1))+'</button>';
     }).join('')+'</div>';
-}
-function wdChips(days){return p2DayButtons(days,'q-day');} // Existing q-day action remains authoritative.
-function actSelect(id,bind,value,none){
-  const acts=ACTS.filter(a=>!a.archived||a.id===value);
-  return '<select id="'+esc(id)+'" class="k-select" data-bind="'+esc(bind)+'" aria-label="Activity">'+
-    (none?'<option value=""'+(!value?' selected':'')+'>None</option>':'')+
-    acts.map(a=>'<option value="'+esc(a.id)+'"'+(a.id===value?' selected':'')+'>'+esc(a.name)+'</option>').join('')+
-    '</select>';
 }
 function p2Input(label,bind,value,placeholder,id,max){
   return '<div class="p2-input-group"><label for="'+esc(id)+'">'+esc(label)+'</label>'+

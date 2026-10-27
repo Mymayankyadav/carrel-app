@@ -2,7 +2,7 @@
 const assert=require('assert'),fs=require('fs'),vm=require('vm'),path=require('path');
 const raw=fs.readFileSync(path.join(__dirname,'../ui/log.js'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'../ui/log.css'),'utf8');
-const start=raw.indexOf('/* T3 — the standalone Today log.');
+const start=raw.indexOf('function t3LogDate(');
 assert(start>=0,'T3 region exists');
 const source=raw.slice(start),MIN=60000,now=Date.now();
 const en={id:'x1',a:'math',s:now-90*MIN,e:now-45*MIN,day:'2026-10-27',note:'Integration',focus:3};

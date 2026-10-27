@@ -25,7 +25,7 @@ jobs:
           java-version: '21'
       - uses: gradle/actions/setup-gradle@v4
       - name: Install web dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: Validate native Settings bridge
         run: node web/test/native_redesign_test.js
       - name: Build web bundle

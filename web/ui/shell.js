@@ -1,12 +1,6 @@
 /* ---------- views: shell ---------- */
 /* R0a: global top bar removed; each screen now owns its header. */
 function vNav() { return kNav(UI.view); }
-function vNotices() {
-  if (S.conn === 'none') return `<div class="banner" style="margin-bottom:22px"><h3>Sign in to Carrel</h3><p>Your timers and log are saved to your own account so they follow you across devices.</p><div class="row"><button type="button" class="btn lamp" data-act="signin">Sign in with Google</button></div></div>`;
-  if (!S.owner) return `<div class="banner" style="margin-bottom:22px"><h3>This tracker is private</h3><p>Only the person who owns it can see or change its log.</p></div>`;
-  if (S.conn === 'readonly') return `<div class="banner warn" style="margin-bottom:22px"><h3>View only</h3><p>Can't save right now. Carrel will retry automatically.</p><div class="row"><button type="button" class="btn sm" data-act="a1-reconnect">Try again</button></div></div>`;
-  return '';
-}
 function canonicalView(v) {
   return ({calendar:'plan',week:'stats',patterns:'stats'})[v] || v || 'today';
 }
@@ -18,7 +12,7 @@ function vSyncLine() {
 }
 function vMain() {
   const stack=UI.pages||[];
-  if (S.conn === 'none' || !S.owner) return '<div class="k-screen">'+(VIEWS.welcome ? VIEWS.welcome() : vNotices())+'</div>';
+  if (S.conn === 'none' || !S.owner) return '<div class="k-screen">'+VIEWS.welcome()+'</div>';
   if (stack.length) {
     const top=stack[stack.length-1], page=PAGES[top.id];
     if(!page){console.warn('Unknown page:',top.id);return '';}
@@ -29,11 +23,7 @@ function vMain() {
   const view=canonicalView(UI.view), f=VIEWS[view];
   if(!f){console.warn('Unknown view:',view);return '';}
   const wide=view==='plan'?' wide':'';
-  const legacyStats=view==='stats' && typeof VIEWS.patterns==='function';
-  const tabs=legacyStats?kSeg({act:'r0-stats-pane',value:UI.statsPane||'week',
-    options:[{v:'week',label:'Week'},{v:'patterns',label:'Patterns'}]}):'';
-  const content=legacyStats && UI.statsPane==='patterns'?VIEWS.patterns():f();
-  return '<div class="k-screen'+wide+'">'+(view==='today'?vSyncLine():'')+tabs+content+'</div>';
+  return '<div class="k-screen'+wide+'">'+f()+'</div>';
 }
 function vSheet() {
   const sh=UI.sheet;
@@ -41,12 +31,7 @@ function vSheet() {
   const f=SHEETS[sh.type];
   if(!f){console.warn('Unknown sheet:',sh.type);return '';}
   const body=f(sh);
-  return '<div class="scrim k-sheet-bg" data-act="sheet-close"><div class="sheet k-sheet'+(sh.type==='setup'?' wide':'')+
-    '" role="dialog" aria-modal="true" aria-labelledby="sh-title" data-act="noop">'+body+'</div></div>';
-}
-function actPick(sel, bind) {
-  const list = ACTS.filter(a => !a.archived || a.id === sel);
-  return `<div class="pick" role="radiogroup" aria-label="Activity">${list.map(a => `<button type="button" role="radio" aria-checked="${a.id === sel}" class="${a.id === sel ? 'on' : ''}" style="--c:${a.color}" data-act="pick" data-bind-to="${bind}" data-v="${esc(a.id)}"><i class="dot"></i>${esc(a.name)}</button>`).join('')}</div>`;
+  return '<div class="scrim k-sheet-bg" data-act="sheet-close"><div class="sheet k-sheet" role="dialog" aria-modal="true" aria-labelledby="sh-title" data-act="noop">'+body+'</div></div>';
 }
 /* ---------- toast ---------- */
 let toastT = 0;
@@ -169,14 +154,14 @@ function focusSheet() {
   requestAnimationFrame(() => {
     const sh = document.querySelector('#sheet .sheet');
     if (!sh) return;
-    const f = sh.querySelector('input:not([type=checkbox]),textarea,select,button.btn.lamp');
+    const f = sh.querySelector('input:not([type=checkbox]),textarea,select,button.k-btn.primary');
     if (f && window.matchMedia('(pointer:fine)').matches) f.focus({ preventScroll: true });
     else { sh.setAttribute('tabindex', '-1'); sh.focus({ preventScroll: true }); }
   });
 }
 document.addEventListener('keydown', e => {
-  if (!UI.sheet || e.key !== 'Tab' || e.defaultPrevented) return;
-  const sh = document.querySelector('#sheet .sheet');
+  if (e.key !== 'Tab' || e.defaultPrevented) return;
+  const sh = document.querySelector('#pop [role="alertdialog"]') || document.querySelector('#sheet .sheet');
   if (!sh) return;
   const all = Array.from(sh.querySelectorAll('a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'))
     .filter(el => el.getClientRects().length && el.getAttribute('aria-hidden') !== 'true' && el.tabIndex >= 0);
@@ -209,21 +194,13 @@ function closeSheet(silent, fromHistory) {
 Object.assign(ACT, {
   notice() { noticeNow(); },
   'notice-drift'(el) { noticeDrift(+el.getAttribute('data-m')); },
-  'park-backlog'(el) { parkToBacklog(el.getAttribute('data-k'), el.getAttribute('data-id')); },
   'park-drop'(el) { const k = el.getAttribute('data-k'); commit('Dropped.', W().dis(k, el.getAttribute('data-id'), { dismissed: true }), { undo: true }); },
   noop() {},
-  view(el) { const v=el.getAttribute('data-v'); if(v==='week'||v==='patterns')UI.statsPane=v;
-    UI.view=canonicalView(v); UI.pages=[];UI.planMenu=false; if(UI.view==='today')UI.date=null;
+  view(el) { const v=el.getAttribute('data-v');
+    UI.view=canonicalView(v); UI.pages=[]; if(UI.view==='today')UI.date=null;
     if(UI.view==='plan')UI.cal.scrollTo=true; try{history.replaceState(null,'','#'+UI.view)}catch(e){}
     render();window.scrollTo(0,0); },
-  'r0-stats-pane'(el) { UI.statsPane=el.getAttribute('data-v')==='patterns'?'patterns':'week';render(); },
-  setup() { openSheet({ type: 'setup' }); },
   'sheet-close'(el, e) { if (e && e.target !== el && el.classList.contains('scrim')) return; closeSheet(); },
-  'day-prev'() { UI.date = addDaysKey(UI.date || todayKey(), -1); UI.openBlk = null; UI.planMenu = false; render(); },
-  'day-next'() { const k = addDaysKey(UI.date || todayKey(), 1); UI.date = k === todayKey() ? null : k; UI.openBlk = null; UI.planMenu = false; render(); },
-  'day-today'() { UI.date = null; render(); },
-  'day-pick'(el) { const v = el.value; if (/^\d{4}-\d{2}-\d{2}$/.test(v)) { UI.date = v === todayKey() ? null : v; render(); } },
-  'goto-day'(el) { const k = el.getAttribute('data-k'); UI.view = 'today'; UI.date = k === todayKey() ? null : k; try { history.replaceState(null, '', '#today'); } catch (e) { /* ignore */ } render(); window.scrollTo(0, 0); },
   start(el) { startActivity(el.getAttribute('data-id')); },
   stop() { stopTimer(); },
   break() { takeBreak(); },
@@ -242,21 +219,10 @@ Object.assign(ACT, {
     if (w.list().length) { commit(UI.pomoOn ? 'Pomodoro on for this session.' : 'Pomodoro off. The timer keeps running.', w, { undo: false }); return; }
     render();
   },
-  'pomo-preset'(el) {
-    UI.pomoPreset = el.value; store.set('pomoPreset', UI.pomoPreset);
-    const c = CUR, p = parsePreset(UI.pomoPreset);
-    if (c && c.pomo && c.pomo.phase === 'focus' && p) { const w = W(); w.update('state/current', { pomo: { focus: p.focus, short: p.short, long: p.long, every: p.every } }); commit(null, w, { undo: false }); return; }
-    render();
-  },
-  'start-from'(el) { UI.from = el.value; },
   'cur-note'(el) { const c = CUR; if (!c) return; const v = el.value.trim().slice(0, 200); if (v === (c.note || '')) return; const w = W(); w.update('state/current', { note: v }); commit(null, w, { undo: false }); },
   'edit-running'() { openEntrySheet('running'); },
   'edit-entry'(el) { openEntrySheet('edit', { id: el.getAttribute('data-id') }); },
-  'add-entry'() { openEntrySheet('add'); },
-  fill(el) { const s = +el.getAttribute('data-s'), ev = el.getAttribute('data-e'); openEntrySheet('add', { s, e: ev === 'now' ? Date.now() : +ev }); },
-  logmode(el) { UI.logMode = el.getAttribute('data-m'); store.set('logMode', UI.logMode); render(); },
   'guard-keep'() { const w = W(); w.update('state/current', { ack: isoLocal(Date.now()) }); UI.guardOpen = false; commit(null, w, { undo: false }); },
-  'guard-fix'() { UI.guardOpen = !UI.guardOpen; if (UI.guardOpen && CUR) { const s = parseT(CUR.start); UI.guardTime = msToHm(Math.min(Date.now(), s + 60 * MIN)); } render(); },
   'guard-save'() {
     const c = CUR; if (!c || !/^\d{1,2}:\d{2}/.test(UI.guardTime)) return;
     const s = parseT(c.start), now = Date.now();
@@ -269,23 +235,13 @@ Object.assign(ACT, {
   },
   'guard-seen'(el) { stopTimer({ at: +el.getAttribute('data-t') }); },
   'entry-save'() { saveEntrySheet(); },
-  'entry-del'() { deleteEntrySheet(); },
   'split-open'() {
     const sh = UI.sheet; const en = ENTRIES.find(e => e.id === sh.id); if (!en) return;
     const other = ACTS.find(a => !a.archived && a.id !== en.a);
     openSheet({ type: 'split', id: en.id, at: msToHm(en.s + (en.e - en.s) / 2), activity: other ? other.id : en.a, err: '' });
   },
   'split-save'() { saveSplit(); },
-  pick(el) { setBind(el.getAttribute('data-bind-to'), el.getAttribute('data-v')); render(); },
   'e-focus'(el) { const d = UI.sheet.d; const v = +el.getAttribute('data-v'); d.focus = d.focus === v ? null : v; render(); },
-  'e-nudge'(el) {
-    const d = UI.sheet.d, f = el.getAttribute('data-f'), dl = +el.getAttribute('data-d');
-    if (!/^\d{1,2}:\d{2}/.test(d[f] || '')) return;
-    const t = hmOnDay(d.date, d[f]) + dl * MIN;
-    d[f] = msToHm(t);
-    if (f === 'start') { const nk = dayKeyOf(t); if (nk !== d.date) d.date = nk; }
-    render();
-  },
   rate(el) {
     const t = UI.toast && UI.toast.rate; if (!t) return;
     const w = W(); w.day(t.day, { [t.id]: { focus: +el.getAttribute('data-v') } });
@@ -296,58 +252,16 @@ Object.assign(ACT, {
   undo() { undo(); },
   copy(el) { copyText(el); },
   // plan
-  'plan-menu'() { UI.planMenu = !UI.planMenu; UI.clearArmed = false; render(); },
-  'plan-end'(el) { const k = UI.date || todayKey(); if (!/^\d{1,2}:\d{2}/.test(el.value)) return; const w = W(); w.plan(k, { end: el.value }); commit(null, w, { undo: false }); },
-  'plan-start'(el) { const k = UI.date || todayKey(); if (!/^\d{1,2}:\d{2}/.test(el.value)) return; const w = W(); w.plan(k, { start: el.value }); commit(null, w, { undo: false }); },
-  'plan-extend'(el) { const k = UI.date || todayKey(); const w = W(); w.plan(k, { end: el.getAttribute('data-t') }); commit('Plan now runs until ' + fmtHM(el.getAttribute('data-t')) + '.', w); },
-  'plan-shrink'() { UI.planMenu = false; planShrink(UI.date || todayKey()); },
-  'plan-overflow'() { UI.planMenu = false; planOverflow(UI.date || todayKey()); },
-  'plan-wrap'() { UI.planMenu = false; const k = UI.date || todayKey(); const pm = planModelFor(k); const pick = {}; if (pm) pm.rows.forEach(r => { if (r.remaining > 0) pick[r.id] = true; }); openSheet({ type: 'wrap', k, pick, stop: false }); },
   'wrap-pick'(el) { UI.sheet.pick[el.getAttribute('data-id')] = el.checked; },
   'wrap-stop'(el) { UI.sheet.stop = el.checked; },
   'wrap-save'() { wrapUp(); },
-  'plan-clear'() {
-    if (!UI.clearArmed) { UI.clearArmed = true; render(); return; }
-    UI.clearArmed = false; UI.planMenu = false;
-    const k = UI.date || todayKey(); const w = W(); w.set('plans/' + k, { date: k, source: 'me', blocks: {} });
-    commit('Cleared the plan.', w);
-  },
   'carry-y'() { planCarryYesterday(); },
   'carry-n'() { const yk = addDaysKey(todayKey(), -1); const w = W(); w.plan(yk, { closed: true }); commit('Left yesterday’s plan as it was.', w); },
-  'addblk-open'() { UI.addBlk = true; render(); requestAnimationFrame(() => { const el = document.getElementById('ab-min'); if (el) el.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }); },
-  'addblk-close'() { UI.addBlk = false; render(); },
   'ab-min'(el) { UI.ab.minutes = +el.getAttribute('data-m'); render(); },
-  'blk-toggle'(el) { const id = el.getAttribute('data-id'); UI.openBlk = UI.openBlk === id ? null : id; render(); },
-  'blk-start'(el) {
-    const k = UI.date || todayKey(); const b = blocksOf(k)[el.getAttribute('data-id')]; if (!b) return;
-    if (k !== todayKey()) return;
-    UI.openBlk = null;
-    startActivity(b.activity, { block: el.getAttribute('data-id'), pomoPreset: b.pomo || undefined, force: true });
-  },
-  'blk-min'(el) { const k = UI.date || todayKey(), id = el.getAttribute('data-id'), b = blocksOf(k)[id]; if (!b) return; const m = Math.max(5, Math.min(720, (+b.minutes || 0) + +el.getAttribute('data-d'))); const w = W(); w.plan(k, { blocks: { [id]: { minutes: m } } }); commit(null, w); },
-  'blk-move'(el) { planReorder(UI.date || todayKey(), el.getAttribute('data-id'), +el.getAttribute('data-d')); },
-  'blk-status'(el) { const k = UI.date || todayKey(), id = el.getAttribute('data-id'), s = el.getAttribute('data-s'); const w = W(); w.plan(k, { blocks: { [id]: { status: s } } }); UI.openBlk = null; commit(s === 'skipped' ? 'Skipped the block.' : s === 'done' ? 'Marked the block done.' : 'Reopened the block.', w); },
-  'blk-unfix'(el) { const k = UI.date || todayKey(), id = el.getAttribute('data-id'); const w = W(); w.plan(k, { blocks: { [id]: { at: null } } }); commit('The block now fits wherever there’s room today.', w); },
-  'blk-tomorrow'(el) {
-    const k = UI.date || todayKey(), id = el.getAttribute('data-id'); const pm = planModelFor(k); const r = pm && pm.rows.find(x => x.id === id); if (!r) return;
-    const w = W();
-    w.plan(k, { blocks: { [id]: r.done > MIN ? { minutes: Math.round(r.done / MIN), status: 'done' } : { status: 'moved' } } });
-    const nk = carryTo(w, k, [{ activity: r.activity, title: r.title, minutes: Math.ceil(r.remaining / MIN), pomo: r.pomo }]);
-    UI.openBlk = null;
-    commit('Moved ' + fmtDur(r.remaining) + ' of ' + act(r.activity).name + ' to ' + shortDay(nk) + '.', w);
-  },
-  'blk-edit'(el) { openBlockSheet(UI.date || todayKey(), el.getAttribute('data-id')); },
   'block-save'() { saveBlockSheet(); },
-  'blk-del'(el) { const k = UI.date || todayKey(), id = el.getAttribute('data-id'); const w = W(); w.plan(k, { blocks: { [id]: null } }); UI.openBlk = null; commit('Deleted the block.', w); },
   // onboarding and activities
   'onb-chip'(el) { addActs([el.getAttribute('data-name')], 'study'); },
   'onb-done'() { saveSetting({ onboarded: true }, null); },
-  starter() { const w = W(); w.set('config/activities', { items: STARTER }); commit('Added the starter activities.', w); },
-  'act-color'(el) { const a = ACTMAP[el.getAttribute('data-id')]; if (!a) return; const i = PALETTE.findIndex(c => c.toUpperCase() === a.color.toUpperCase()); saveAct(a.id, { color: PALETTE[(i + 1) % PALETTE.length] }); },
-  'act-name'(el) { const a = ACTMAP[el.getAttribute('data-id')]; const v = el.value.trim().replace(/\s+/g, ' ').slice(0, 40); if (!a || !v || v === a.name) { if (a) el.value = a.name; return; } saveAct(a.id, { name: v }, 'Renamed to ' + v + '.'); },
-  'act-kind'(el) { const a = ACTMAP[el.getAttribute('data-id')]; const k = el.getAttribute('data-k'); if (!a || a.kind === k) return; saveAct(a.id, { kind: k }, a.name + ' now counts as ' + (k === 'study' ? 'study.' : 'life.')); },
-  'act-goal'(el) { const a = ACTMAP[el.getAttribute('data-id')]; if (!a) return; const h = parseFloat(el.value); saveAct(a.id, { goal: h > 0 ? Math.round(h * 60) : null }); },
-  'act-arch'(el) { const a = ACTMAP[el.getAttribute('data-id')]; if (!a) return; saveAct(a.id, { archived: !a.archived }, (a.archived ? 'Restored ' : 'Archived ') + a.name + '.'); },
   'act-move'(el) {
     const a = ACTMAP[el.getAttribute('data-id')]; if (!a) return;
     const list = ACTS.filter(x => x.kind === a.kind);
@@ -357,34 +271,12 @@ Object.assign(ACT, {
     const items = {}; list.forEach((x, n) => { items[x.id] = { order: n + 1 }; });
     const w = W(); w.update('config/activities', { items }, { items: {} }); commit(null, w, { undo: false });
   },
-  'na-kind'(el) { UI.newAct.kind = el.getAttribute('data-k'); renderSheet(); },
-  'show-arch'() { UI.showArchived = !UI.showArchived; renderSheet(); },
-  'preset-apply'(el) { const p = parsePreset(el.getAttribute('data-p')); if (p) saveSetting({ pomodoro: p }, null); },
-  'set-num'(el) {
-    const f = el.getAttribute('data-f'), v = +el.value;
-    if (!Number.isFinite(v)) return;
-    const lim = { focus: [1, 180], short: [1, 60], long: [1, 90], every: [2, 8], gap: [0, 60], guardHours: [1, 12] }[f];
-    if (!lim) return;
-    const val = clamp(Math.round(v), lim[0], lim[1]);
-    if (['focus', 'short', 'long', 'every'].includes(f)) saveSetting({ pomodoro: { [f]: val } }, null); else saveSetting({ [f]: val }, null);
-  },
   'set-time'(el) { if (/^\d{1,2}:\d{2}/.test(el.value)) saveSetting({ [el.getAttribute('data-f')]: el.value.slice(0, 5) }, null); },
-  'set-goal'(el) { const h = parseFloat(el.value); if (Number.isFinite(h) && h >= 0) saveSetting({ dailyGoal: Math.round(h * 60) }, null); },
-  'set-week'(el) { saveSetting({ weekStart: +el.value }, null); },
-  'set-clock'(el) { saveSetting({ clock: el.value }, null); },
   export(el) { exportData(el.getAttribute('data-f')); },
-  'ex-hide'() { UI.hideEx = true; store.set('hideEx', true); render(); },
   // week and patterns
-  'wk-prev'() { UI.weekOff++; render(); },
-  'wk-next'() { UI.weekOff = Math.max(0, UI.weekOff - 1); render(); },
-  'wk-this'() { UI.weekOff = 0; render(); },
-  pw(el) { UI.pweeks = +el.getAttribute('data-w'); render(); }
 });
 Object.assign(SUBMIT, {
-  'park-add'() { parkAdd(UI.parkText); },
   'onb-add'() { const names = String(UI.onbText || '').split(/[,;\n]/).map(s => s.trim()).filter(Boolean); if (!names.length) return; UI.onbText = ''; const el = document.getElementById('onb-text'); if (el) el.value = ''; addActs(names, 'study'); },
-  'act-add'() { const n = UI.newAct.name; if (!String(n).trim()) return; UI.newAct.name = ''; const el = document.getElementById('na-name'); if (el) el.value = ''; addActs([n], UI.newAct.kind); },
-  'blk-add'(f) { planAddBlock(f.getAttribute('data-k')); }
 });
 function addActs(names, kind) {
   const items = {};
@@ -443,7 +335,6 @@ document.addEventListener('keydown', e => {
     if (DRAG && DRAG.started) { cancelDrag(); e.preventDefault(); return; }
     if (UI.sheet) { closeSheet(); e.preventDefault(); return; }
     if (UI.desk) { exitDesk(); e.preventDefault(); return; }
-    if (UI.planMenu || UI.openBlk) { UI.planMenu = false; UI.openBlk = null; render(); return; }
   }
   const t = e.target;
   if (e.key === 'Enter' && t && t.id === 'cur-note') { t.blur(); return; }
@@ -467,11 +358,11 @@ document.addEventListener('keydown', e => {
   else if (lk === 'd') { if (UI.desk) exitDesk(); else enterDesk(); }
   else if (lk === 'n') { if (UI.view === 'plan') ACT['cal-new'](); else openEntrySheet('add'); }
   else if (lk === 't') ACT.view({ getAttribute: () => 'today' });
-  else if (lk === 'c') ACT.view({ getAttribute: () => 'calendar' });
-  else if (lk === 'w') ACT.view({ getAttribute: () => 'week' });
-  else if (lk === 'p') ACT.view({ getAttribute: () => 'patterns' });
-  else if (k === 'ArrowLeft') { if (UI.view === 'stats' && UI.statsPane !== 'patterns') ACT['wk-prev'](); else if (UI.view === 'today') ACT['day-prev'](); else if (UI.view === 'plan') ACT['cal-prev'](); else return; }
-  else if (k === 'ArrowRight') { if (UI.view === 'stats' && UI.statsPane !== 'patterns') ACT['wk-next'](); else if (UI.view === 'today') ACT['day-next'](); else if (UI.view === 'plan') ACT['cal-next'](); else return; }
+  else if (lk === 'c') ACT.view({ getAttribute: () => 'plan' });
+  else if (lk === 'w') ACT.view({ getAttribute: () => 'stats' });
+  else if (lk === 'p') openPage('stats','stats.patterns');
+  else if (k === 'ArrowLeft') { if (UI.view === 'stats') ACT['s1-prev'](); else if (UI.view === 'plan') ACT['cal-prev'](); else return; }
+  else if (k === 'ArrowRight') { if (UI.view === 'stats') ACT['s1-next'](); else if (UI.view === 'plan') ACT['cal-next'](); else return; }
   else return;
   e.preventDefault();
 });
@@ -485,7 +376,6 @@ window.addEventListener('hashchange', () => {
   const h = (location.hash || '').replace('#', '');
   if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) {
     const v=canonicalView(h);
-    if(h==='week'||h==='patterns')UI.statsPane=h;
     if(v===UI.view)return;
     UI.view=v;UI.pages=[];
     if(v==='today')UI.date=null;
@@ -497,10 +387,10 @@ window.addEventListener('hashchange', () => {
 /* ---------- boot ---------- */
 async function boot(hot) {
   hot = hot || {};
-  if (hot.view) {if(hot.view==='week'||hot.view==='patterns')UI.statsPane=hot.view;UI.view=canonicalView(hot.view);}
+  if (hot.view) UI.view=canonicalView(hot.view);
   if (hot.date) UI.date = hot.date;
   const h = (location.hash || '').replace('#', '');
-  if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) { if(h==='week'||h==='patterns')UI.statsPane=h;UI.view=canonicalView(h); }
+  if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) UI.view=canonicalView(h);
   S.windowFrom = addDaysKey(keyOfDate(new Date()), -WINDOW_DAYS);
   restorePending();
   recompute();
@@ -510,8 +400,5 @@ async function boot(hot) {
   await startSession();
 }
 
-/* R0a: registry bridge until the Phase-2 owners replace legacy sheets. */
-Object.assign(SHEETS,{qnew:sQnew,busy:sBusy,deadline:sDeadline,task:sTask});
-VIEWS.calendar=VIEWS.plan;
 document.addEventListener('keydown', e=>{if(e.key==='Escape'&&!e.defaultPrevented){if(goBack()){e.preventDefault();e.stopPropagation();}}},true);
 window.addEventListener('popstate',()=>{if(kIgnorePopstate){kIgnorePopstate--;return;}goBack(true);});

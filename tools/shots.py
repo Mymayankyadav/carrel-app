@@ -7,6 +7,7 @@ console errors or horizontal-overflow failures. The mock never writes to product
 import argparse
 import pathlib
 import sys
+import os
 
 from playwright.sync_api import sync_playwright
 
@@ -27,7 +28,7 @@ def main():
 
     errors = []
     with sync_playwright() as p:
-        browser = p.chromium.launch()
+        browser = p.chromium.launch(executable_path=os.environ.get('CARREL_CHROMIUM') or None)
         is_phone = args.width < 960
         page = browser.new_page(
             viewport={"width": args.width, "height": 844},
