@@ -151,3 +151,9 @@ textarea.inp{min-height:64px;resize:vertical;line-height:1.4}
 .toast .rate button:hover{background:color-mix(in oklab,var(--paper) 14%,transparent)}
 @media (min-width:860px){.toast{bottom:26px}}
 
+
+
+/* R0a bridge: legacy .scrim declares z-index:20 after kit.css and used to
+ * underlap the new z-index:30 navigation. An open modal must always block it. */
+.scrim.k-sheet-bg{z-index:50;background:var(--scrim)}
+.scrim.k-sheet-bg>.sheet.k-sheet{z-index:51}
