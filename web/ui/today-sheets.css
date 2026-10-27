@@ -1,1 +1,19 @@
-/* R0a empty CSS. Owned by the matching Phase-2 screen. */
+/* T2 Today sheets: kit tokens and 44px touch targets. */
+.t2-sheet{display:flex;flex-direction:column;gap:12px;min-width:0;padding-top:12px}
+.t2-section{font-size:var(--t-xs);font-weight:600;color:var(--text-2);padding:12px 0 4px}
+.t2-activity{min-height:56px;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;border-bottom:1px solid var(--line);color:var(--text);font-size:var(--t-sm);text-align:left;cursor:pointer}
+.t2-activity-left{display:flex;align-items:center;gap:10px;min-width:0}
+.t2-activity-left>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.t2-activity-right{font-size:var(--t-xs);color:var(--text-2);white-space:nowrap}
+.t2-act-dot{display:inline-block;background:var(--c);width:8px;height:8px;border-radius:50%;flex:none}
+.t2-start-heading{display:flex;align-items:center;min-height:40px}
+.t2-start-title{display:flex;align-items:center;gap:10px;font-size:var(--t-md);font-weight:500}
+.t2-sheet .k-field:has(.k-chips),.t2-sheet .k-field:has(.k-seg){display:flex;align-items:stretch;flex-direction:column;gap:10px}
+.t2-sheet .k-field .k-chips,.t2-sheet .k-field .k-seg{max-width:100%;flex-wrap:wrap}
+.t2-sheet .k-field:has(.k-input){gap:8px}
+.t2-park-input{width:100%;min-height:104px;resize:none}
+.t2-counter{align-self:flex-end;font-size:var(--t-xs);color:var(--text-2)}
+.t2-parked-row{display:flex;align-items:center;gap:6px;min-height:60px;border-bottom:1px solid var(--line)}
+.t2-parked-row>span{flex:1;min-width:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;overflow-wrap:anywhere;font-size:var(--t-sm)}
+.t2-parked-row .k-icon{min-width:44px;min-height:44px}
+.t2-sheet button:focus-visible,.t2-sheet textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
