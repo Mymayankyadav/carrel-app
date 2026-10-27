@@ -58,4 +58,32 @@ assert.ok(vSyncLine().includes('2 waiting'));
 runtime.syncState=()=> 'readonly';assert.ok(vSyncLine().includes("Can't save"));
 runtime.S.conn='none';assert.ok(vMain().includes('sign-in'));
 assert.ok(app.includes('Object.assign(ACT,'),'action registration preserved');
+
+/* Execute all module initializers, but not boot's asynchronous sign-in. */
+const startup=fs.readFileSync(path.join(__dirname,'../logic.js'),'utf8')+
+  String.fromCharCode(10)+manifest.js.filter(p=>p!=='boot.js')
+    .map(p=>fs.readFileSync(path.join(__dirname,'..',p),'utf8')).join(String.fromCharCode(10));
+const fakeDoc={
+  addEventListener(){}, getElementById(){return null;}, querySelector(){return null;},
+  documentElement:{style:{}}, body:{}, visibilityState:'visible'
+};
+const fakeWindow={
+  innerWidth:390,addEventListener(){},matchMedia(){return {matches:false}},
+  Capacitor:null
+};
+const startupCtx=vm.createContext({
+  window:fakeWindow,document:fakeDoc,
+  localStorage:{getItem(){return null},setItem(){},removeItem(){}},
+  navigator:{}, location:{hash:'',pathname:'/',origin:'https://example.test'},
+  history:{pushState(){},replaceState(){}},
+  requestAnimationFrame(){return 1},cancelAnimationFrame(){},
+  setTimeout(){return 1},clearTimeout(){},setInterval(){return 1},clearInterval(){},
+  console,Date,Intl,URL,Blob,Math,Set,Map,Promise
+});
+assert.doesNotThrow(()=>vm.runInContext(startup,startupCtx,{timeout:5000}),
+  'all module initializers run in manifest order');
+assert.equal(vm.runInContext('typeof SUBMIT',startupCtx),'object');
+assert.equal(vm.runInContext('typeof VIEWS.plan',startupCtx),'function');
+assert.equal(vm.runInContext('typeof SHEETS.entry',startupCtx),'function');
+
 console.log('SHELL TESTS PASSED');
