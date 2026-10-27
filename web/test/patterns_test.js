@@ -28,8 +28,12 @@ assert.equal(pm7.studyDays, 7, 'threshold counts distinct days, not hours or ses
 const app = require('./src').app;
 const css = require('./src').css;
 function section(name, after) {
-  const i=app.indexOf('function '+name+'('), j=app.indexOf('function '+after+'(',i);
-  assert(i >= 0 && j > i, 'found function '+name);
+  const i=app.indexOf('function '+name+'('), next=app.indexOf('function '+after+'(',i);
+  assert(i >= 0, 'found function '+name);
+  const match=/^function [A-Za-z_$]/gm;
+  match.lastIndex=i+9;
+  let m=match.exec(app);
+  const j=next>i ? (m?Math.min(next,m.index):next) : (m?m.index:app.length);
   return app.slice(i,j);
 }
 const context = { esc: s=>String(s), MIN, HOUR,
