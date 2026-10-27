@@ -1,0 +1,32 @@
+name: T3 Log browser QA
+on:
+  push:
+    branches: [redesign/t3-visual-qa]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  browser:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '22' }
+      - name: Install Chromium
+        run: |
+          npm install --no-audit --no-fund
+          python3 -m pip install --break-system-packages playwright pillow
+          python3 -m playwright install --with-deps chromium
+      - name: Build mock app
+        run: npm run build:web
+      - name: Exercise new log and editors
+        run: python3 tools/t3_smoke.py
+      - name: Preserve evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: t3-log-mobile-desktop-light-dark
+          path: t3-screens/
+          retention-days: 7
+          if-no-files-found: ignore
