@@ -37,6 +37,8 @@ class Store(ctx: Context) {
     var vibrateBreak: Boolean get() = p.getBoolean("vibrateBreak", false); set(v) { p.edit().putBoolean("vibrateBreak", v).apply() }
     var respectDnd: Boolean get() = p.getBoolean("respectDnd", true); set(v) { p.edit().putBoolean("respectDnd", v).apply() }
     var privacy: Boolean get() = p.getBoolean("privacy", false); set(v) { p.edit().putBoolean("privacy", v).apply() }
+    // The minimal notification defaults to only its essential timer controls.
+    var notifDistractions: Boolean get() = p.getBoolean("notifDistractions", false); set(v) { p.edit().putBoolean("notifDistractions", v).apply() }
 
     /** Vibrate once per deadline, across process restarts. */
     fun claimPulse(kind: PulseKind, deadline: Long): Boolean {
