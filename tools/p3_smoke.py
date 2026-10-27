@@ -24,9 +24,16 @@ with sync_playwright() as p:
             actual=page.evaluate("Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)")
             page.screenshot(path=str(out/(name+'-'+label+'.png')),full_page=True)
             if actual>width+1:
-                offenders=page.evaluate("""() => [...document.querySelectorAll('body *')]
-                  .map(e=>({tag:e.tagName.toLowerCase(),cls:e.className?.baseVal||e.className,txt:(e.innerText||'').slice(0,30),right:Math.round(e.getBoundingClientRect().right),width:Math.round(e.getBoundingClientRect().width)}))
-                  .filter(e=>e.right>innerWidth+1).sort((a,b)=>b.right-a.right).slice(0,16)""")
+                offenders=page.evaluate("""limit => ({
+                  viewport:{innerWidth,outerWidth,visual:visualViewport.width,document:document.documentElement.clientWidth},
+                  nodes:[...document.querySelectorAll('body *')]
+                    .map(e=>({tag:e.tagName.toLowerCase(),cls:typeof e.className==='string'?e.className:'',
+                      txt:(e.innerText||'').slice(0,30),left:Math.round(e.getBoundingClientRect().left),
+                      right:Math.round(e.getBoundingClientRect().right),
+                      scroll:e.scrollWidth,client:e.clientWidth,overflow:getComputedStyle(e).overflowX}))
+                    .filter(e=>e.right>limit+1||(e.scroll>e.client+2&&e.overflow!=='hidden'))
+                    .sort((a,b)=>b.right-a.right).slice(0,30)
+                })""",width)
                 print('OVERFLOW DETAILS',name,label,offenders,flush=True)
             assert actual<=width+1, '%s %s overflow: %s'%(name,label,actual)
         capture('deadlines')
