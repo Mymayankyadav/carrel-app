@@ -372,3 +372,19 @@ You own: `web/build.py`, `package.json`, `capacitor.config.json`, `.github/**`, 
 - Sync: `online` doesn't flush the queue; readonly is sticky; sign-out wipes unsaved writes; realtime DELETE uses a filter; unknown DB errors drop writes.
 - Build: single light `theme-color`; fonts come from the network.
 - DB: migration `004` not applied (per last commit message).
+
+---
+
+## 11. Integration result (27 Oct 2026)
+
+All 7 PRs (#1–#7) merged into `main` by fast-forward to `fix/a6-shell` (branches were stacked in merge order, so there were no conflicts).
+Build passes, all 7 test files pass, mock screenshots at 390 px show no console errors and no horizontal overflow in light and dark mode.
+Migration 004 was applied by A7 with the user's approval.
+
+### Follow-ups (not yet done)
+1. **Real-device checks (user):** Google sign-in recovery after "View only", two-device realtime deletes, dark status-bar colour, offline fonts in the APK, fold toggles while the timer re-renders.
+2. **A1:** a write that fails 10 times is still dropped. Consider keeping failed writes in a list the user can export or retry instead of dropping them.
+3. **A7:** fonts are downloaded from Google during each CI build. Pin them (vendor the files with checksums) so the look doesn't change between builds.
+4. **A7 / user:** Supabase advisor warns that leaked-password protection is off (WARN). `carrel_owner` has RLS with no policy (INFO, looks intentional). Decide whether to change either.
+5. **A4:** in Day view, a running log entry and its plan block for the same subject draw side by side with the same title (e.g. two "Chemistry" boxes at 6 pm). Consider hiding the plan block's remaining piece behind the running entry, or labelling it "planned".
+6. **A3:** the Log fold's summary shows the text "Expand or collapse". A chevron alone (with that text kept for screen readers) would look cleaner.
