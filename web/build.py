@@ -27,7 +27,7 @@ shell = """<div id="app">
 """
 
 # Keep Android's status bar in step with the system theme, even before JS boots.
-paper_colors = re.findall(r'--paper:\\s*(#[0-9A-Fa-f]{6})', css)
+paper_colors = re.findall(r'--paper:\s*(#[0-9A-Fa-f]{6})', css)
 if len(paper_colors) < 2:
     raise ValueError('Expected light and dark --paper colors in style.css')
 paper, dark_paper = paper_colors[:2]
@@ -36,8 +36,8 @@ def document(extra_head='', before_app='', vendor=True):
     v = '<script src="vendor/supabase.js"></script>\n' if vendor else ''
     return ('<!doctype html>\n<html lang="en"><head><meta charset="utf-8">'
             '<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">'
-            f'<meta name="theme-color" media="(prefers-color-scheme: light)" content="{paper}">\\n'
-            f'<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{dark_paper}">\\n' + head + extra_head +
+            f'<meta name="theme-color" media="(prefers-color-scheme: light)" content="{paper}">\n'
+            f'<meta name="theme-color" media="(prefers-color-scheme: dark)" content="{dark_paper}">\n' + head + extra_head +
             '<style>\n' + css + '\n</style></head><body>\n' + shell + before_app + v +
             '<script>\n"use strict";\n' + logic + '\n' + app + '\n</script>\n</body></html>\n')
 
