@@ -1,1 +1,37 @@
-/* R0a empty CSS. Owned by the matching Phase-2 screen. */
+/* P3 — Tasks page and compact editing sheets. */
+.p3-tasks{min-width:0;padding:12px 0 24px}
+.p3-tabs .k-seg{display:flex;width:100%}
+.p3-tabs .k-seg button{flex:1;min-width:0}
+.p3-all{display:flex;justify-content:flex-end;padding:8px 0 0}
+.p3-list{margin-top:16px}
+.p3-list .k-row{min-height:56px}
+.p3-list .k-row-left{min-width:0}
+.p3-list .k-row-text{min-width:0}
+.p3-list .k-row-sub{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.p3-count{font-size:var(--t-xs);color:var(--text-2);white-space:nowrap}
+.p3-count.urgent{color:var(--danger)}
+.p3-done{border-top:1px solid var(--line);margin-top:24px}
+.p3-done>summary{cursor:pointer;min-height:52px;display:flex;align-items:center;font-size:var(--t-sm);color:var(--text-2)}
+.p3-taskrow{display:grid;grid-template-columns:minmax(0,1fr) 48px;align-items:center;border-bottom:1px solid var(--line)}
+.p3-taskrow .k-row{border:0;min-width:0}
+.p3-taskrow>.k-icon{min-width:44px;min-height:44px}
+.p3-high,.p3-high .i{color:var(--danger)}
+.p3-high .i{width:18px;height:18px}
+.p3-sheet{padding:8px 16px 18px;display:flex;flex-direction:column;gap:12px;overflow:auto;overscroll-behavior:contain}
+.p3-sheet>.k-input{min-height:48px;width:100%;flex:none}
+.p3-sheet>.k-field{min-height:52px}
+.p3-sheet .k-chips{flex-wrap:wrap;gap:8px}
+.p3-sheet .k-act-pick{min-width:0;flex:1}
+.p3-sheet .k-field>span:first-child{font-size:var(--t-sm);flex:none}
+.p3-sheet .k-input[type="time"],.p3-sheet .k-input[type="date"]{width:auto;max-width:170px;min-height:44px;text-align:right}
+.p3-dual{display:grid;grid-template-columns:1fr 1fr;gap:8px;width:100%}
+.p3-dual .k-btn{min-width:0}
+.p3-days{display:flex;gap:5px;justify-content:flex-end;flex-wrap:wrap}
+.p3-day{width:36px;height:40px;min-width:36px;border-radius:99px;border:1px solid var(--line);color:var(--text-2);background:var(--surface);cursor:pointer;font-size:var(--t-xs)}
+.p3-day.active{background:var(--text);border-color:var(--text);color:var(--bg)}
+.p3-error{color:var(--danger);font-size:var(--t-xs)}
+.p3-sheet .k-collapse{width:100%}
+.p3-sheet .k-collapse-body{display:flex;flex-direction:column;gap:12px}
+.p3-tasks button:focus-visible,.p3-sheet button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+@media(pointer:coarse){.p3-day{min-width:44px;width:44px;min-height:44px}}
+@media(max-width:390px){.p3-sheet{padding-inline:12px}.p3-days{gap:2px}.p3-day{width:34px;min-width:34px}}
