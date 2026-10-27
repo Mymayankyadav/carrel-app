@@ -31,7 +31,7 @@ Only T2-owned `web/ui/today-sheets.{js,css}`, `web/ui/focus.{js,css}`, its test 
 - [x] Source checked against existing `startActivity`, `parkAdd`, `parkToBacklog`, `guard-save`, `guard-seen`, shell routing and kit contracts.
 - [x] Focus keyboard-hidden, browser Back and Escape regressions addressed (device Back still requires hardware acceptance).
 - [x] T2-focused Node unit test added.
-- [x] Full web build and Node suite passed at [GitHub Actions #40555713218](https://github.com/Mymayankyadav/carrel-app/actions/runs/40555713218) on final tested feature commit `2043425`.
+- [x] Full web build and Node suite passed at [GitHub Actions #40558517182](https://github.com/Mymayankyadav/carrel-app/actions/runs/40558517182); previous passing feature run #40555713218. The later source change closes Fix stop after a valid corrected-stop action and rejects a stale Last open shortcut.
 - [ ] 390px light/dark and desktop Chromium screenshots / tap, long-press and sheet actions.
 - [ ] Physical Android wake lock, Back, keyboard, touch and notification interactions.
 
