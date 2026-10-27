@@ -21,7 +21,7 @@ const env={
  ACT,VIEWS,PAGES,UI,ACTS,ACTMAP:{math:ACTS[0]},
  MIN,HOUR,ENTRIES:seven,CFG:{weekStart:1,dailyGoal:60},Date,Math,Object,
  todayKey:()=> '2026-10-27',weekStartKey:()=> '2026-10-26',
- dateOfKey:L.dateOfKey,weekdayOfKey:L.weekdayOfKey,addDaysKey:L.addDaysKey,
+ dateOfKey:L.dateOfKey,weekdayOfKey:()=>1,addDaysKey:L.addDaysKey,
  rowWeekday:()=> 'Monday',DF:()=>({format:()=> 'Oct'}),shortDay:k=>k,longDay:k=>k,
  ensureRange:()=>{},aggregate:()=>({'2026-10-26':{acts:{math:2*HOUR},study:2*HOUR}}),
  isStudyId:id=>id==='math',act:()=>ACTS[0],kSafeColour:s=>s,
