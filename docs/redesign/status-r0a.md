@@ -33,9 +33,13 @@ The original global function signatures remain available across the ordered, con
 
 ## Verification
 
-- GitHub Actions web build and all `web/test/*_test.js` tests: **passed** at commit `0fe88c2500288b12fdedd8bab3269c12b2063d26` (run 40522496225).
-- The local environment cannot clone GitHub or run browser screenshots; screenshot captures and visual acceptance remain pending. No claim of on-device Android testing.
-- The old screen bodies remain deliberately untouched for Phase 2, so the final minimalist wireframes are **not yet achieved**.
+- **Web build and Node suite:** passed on `c1b0320d` (CI run 40528128114); all module initializers and the combined script parse.
+- **Actual Chromium screenshots:** 390px light/dark, 1280px light/dark, component gallery, entry sheet and plan sheet generated without console errors or horizontal scrolling (run 40527266377).
+- **Actual Chromium interactions:** four-tab navigation, legacy Week/Patterns switch, opening entry editor, Escape and browser Back passed (run 40527266377).
+- **High-priority regression caught and corrected:** legacy `.scrim` had `z-index:20`, causing bottom tabs (`z-index:30`) to remain clickable while a sheet was open. Fixed with `.scrim.k-sheet-bg{z-index:50}` and added a browser hit-test; the latest rerun is tracked at run 40528128076.
+- **Legacy route compatibility:** restored calendar drag guard, plan shortcuts, Google Calendar date range and access to both old Week and Patterns until their Phase-2 replacements.
+- **Silence policy:** removed long-press vibration in both the R0b kit branch and R0a working branch. Only the optional Pomodoro-end pulse may vibrate.
+- **Android hardware:** remains untested; this is browser evidence only, not Android device validation. Phase-2 screens are not yet redesigned.
 
 ## Requests and known follow-ups
 
@@ -43,7 +47,7 @@ The original global function signatures remain available across the ordered, con
 2. **R5:** Wire native Android back through `goBack()`, verify modal behavior on a device, and perform the notification redesign separately.
 3. **W1/T1/P1/S1/G1/G2:** Replace legacy screen content and help text as specified in §16 of the redesign plan. Do not delete old aliases until Phase 3.
 4. **R0a integration:** Browser back when a dialog/menu is open on top of a page needs a full device/browser interaction test; the history entries are currently created for pages and sheets, not for ephemeral menus.
-5. **Integrator:** Test opening a sheet while an existing sheet is visible, then using browser and Android back.
+5. **Integrator:** Test opening a sheet while an existing sheet is visible, then using browser and Android back. Browser modal nav click-through is protected by `tools/r0_smoke.py`.
 
 ## Acceptance checklist (§20.2)
 
@@ -54,6 +58,6 @@ The original global function signatures remain available across the ordered, con
 - [x] Kit allows one primary action for newly built screens.
 - [x] `goBack()` handles menu/dialog → sheet → page → Today, with browser/in-app history regression tests.
 - [ ] Empty-state visual acceptance — Phase 2.
-- [ ] No horizontal overflow — screenshot script updated but not executed yet.
+- [x] No horizontal overflow at 390px/1280px in browser screenshot runs (full final wireframes remain pending).
 - [x] Build and all JavaScript tests pass in CI.
 - [x] R0a touches only the modularization, shell integration, regression tests, screenshot tool, build/workflow and status documentation; no data model changes.
