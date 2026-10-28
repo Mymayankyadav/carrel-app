@@ -121,10 +121,11 @@ ctx.dayKeyOf=()=> '2026-10-28';
 ctx.W=()=>({update(path,payload,ensure){
   writes.push({path,payload,ensure});return this;
 }});
-ctx.commit=()=>true;
+ctx.commit=(message,operations,options)=>{ctx.lastCommitOptions=options;return true;};
 ctx.toast=(message,options)=>{ctx.toastResult={message,options}};
 ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(async()=>{
   assert.equal(writes.length,1);
+  assert.equal(ctx.lastCommitOptions.undo,false,'automatic metadata cannot occupy Undo');
   assert.equal(writes[0].path,'usage/2026-10-28');
   assert.equal(writes[0].payload.sessions.entry1.apps.Instagram.min,6);
   assert.equal(ctx.toastResult.options.action.act,'l6-usage-log');
