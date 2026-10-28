@@ -107,6 +107,7 @@ function vCalendar(){
     kIconBtn('next','Next '+(view==='week'?'week':'day'),'data-act="cal-next"')+
     kIconBtn('jump','Today','data-act="cal-today"')+
     kIconBtn('tasks','Tasks','data-act="p1-open-tasks"')+
+    kIconBtn('add','New plan item','data-act="cal-new"')+
     kIconBtn('more','Plan options','data-act="p2-plan-menu" data-k="'+esc(anchor)+'"')+
     '</header>';
   const toggle='<div class="p1-toggle">'+kSeg({act:'cal-view',value:view,
@@ -117,7 +118,7 @@ function vCalendar(){
   return '<div class="p1-plan">'+header+toggle+
     (anchor===tk?p1Carry():'')+note+over+
     '<div class="p1-timeline">'+vCalGrid(days,now,tk,models,null)+'</div>'+
-    '<button type="button" class="p1-fab" data-act="cal-new" aria-label="New plan item" title="New plan item">'+icon('add')+'</button>'+
+    '<button type="button" class="p1-fab" data-act="l9-open" data-type="block" aria-label="Quick add plan block" title="Quick add plan block">'+icon('add')+'</button>'+
     '</div>';
 }
 function planFocus(k,id){
