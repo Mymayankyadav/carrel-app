@@ -1,6 +1,6 @@
 # QA — account-switch and offline queue isolation
 
-Branch: `v2/qa-account-switch-isolation`. Scope: ORC/QA-owned sync/auth hardening; no schema, native code, UI surface, permissions or new network destinations.
+Branch: `v2/qa-account-switch-isolation`. Scope: ORC/QA-owned sync/auth hardening; no schema, native code, new permissions or network destinations; one conditional Account recovery row is added.
 
 ## Failure mode
 
@@ -17,8 +17,8 @@ A `SIGNED_IN` event can switch users without `SIGNED_OUT`. Previously `openDb` c
 ## Acceptance
 
 - [ ] Full web build and Node suite, v2 smoke scripts, browser acceptance, two-tap navigation audit
-- [ ] Existing four-viewport screenshots reviewed (no UI changes)
+- [ ] Existing four-viewport screenshots reviewed, including conditional Account recovery row
 - [ ] Review the conditional Account recovery row and its confirmation UX in browser QA
-- [ ] No native device acceptance claimed; L6 PR #44 remains draft until physical-device gate #52
+- [x] No native device acceptance claimed; L6 PR #44 remains draft until physical-device gate #52
 
 No production documents were modified.
