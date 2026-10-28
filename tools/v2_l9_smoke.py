@@ -21,29 +21,24 @@ with sync_playwright() as p:
             expect(page.locator('#sheet')).to_contain_text('Quick add')
             page.screenshot(path=str(out/f'{width}-{theme}-preview.png'),full_page=True)
             page.locator('[data-act="l9-save"]').click()
-            print('L9 DEBUG block', page.evaluate("""(date) => ({
-              date, sheet:UI.sheet, errors:[],
-              plans: Object.keys(V.plans), records:((V.plans[date]||{}).blocks||{}),
-              pending:S.pending.length, toast:UI.toast, conn:S.conn
-            })""", planned_date),flush=True)
-            assert page.evaluate("""(date) => {
+            page.wait_for_function("""(date) => {
                const k=date;
                return Object.values(((V.plans[k]||{}).blocks)||{})
                  .some(b=>b && b.title==='Read paper' && b.at==='14:30');
-            }""",planned_date),'block should be saved'
+            }""",arg=planned_date)
             page.evaluate("l9OpenCapture('write notes 45m by fri')")
             page.locator('[data-act="l9-save"]').click()
-            assert page.evaluate("""() => Object.values(((V.planning.backlog||{}).items)||{})
-                 .some(t=>t&&t.title==='Write notes'&&t.minutes===45)"""),'task should be saved'
+            page.wait_for_function("""() => Object.values(((V.planning.backlog||{}).items)||{})
+                 .some(t=>t&&t.title==='Write notes'&&t.minutes===45)""")
             page.evaluate("l9OpenCapture('exam tomorrow 9am')")
             exam_date=page.evaluate("l9CaptureResult(UI.sheet).date")
             page.locator('[data-act="l9-save"]').click()
-            assert page.evaluate("""(date) => Object.values(((V.planning.deadlines||{}).items)||{})
-                 .some(d=>d&&d.date===date&&d.kind==='exam')""",exam_date),'deadline should be saved'
+            page.wait_for_function("""(date) => Object.values(((V.planning.deadlines||{}).items)||{})
+                 .some(d=>d&&d.date===date&&d.kind==='exam')""",arg=exam_date)
             page.evaluate("l9OpenCapture('Ask for a weekly plan','ask')")
             page.locator('[data-act="l9-save"]').click()
-            assert page.evaluate("""() => Object.values(V.coach||{})
-                 .some(c=>c&&c.kind==='ask'&&c.from==='me'&&c.v===1)"""),'coach question should be saved'
+            page.wait_for_function("""() => Object.values(V.coach||{})
+                 .some(c=>c&&c.kind==='ask'&&c.from==='me'&&c.v===1)""")
             assert not errors,errors
             page.screenshot(path=str(out/f'{width}-{theme}-saved.png'),full_page=True)
             page.close()
