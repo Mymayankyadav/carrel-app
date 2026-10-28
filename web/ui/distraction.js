@@ -36,7 +36,11 @@ function l6OnNoticed(){
   if(!CUR||!canWrite())return;
   noticeNow(); // existing single durable urge record; never double-log on Back.
   if(!UI.notice)return;
-  openSheet({type:'urge',until:Date.now()+60000,entry:CUR.id});
+  const until=Date.now()+60000;
+  // noticeNow's legacy 6-second chip would otherwise expire before this
+  // sixty-second exercise ends, making Log drift impossible.
+  UI.notice.until=until+15000;
+  openSheet({type:'urge',until,entry:CUR.id});
   if(typeof setTimeout==='function')setTimeout(()=>{
     if(UI.sheet&&UI.sheet.type==='urge')renderSheet();
   },60050);
@@ -65,9 +69,9 @@ Object.assign(ACT,{
   },
   'l6-urge-log'(){
     if(!UI.sheet||UI.sheet.type!=='urge')return;
-    if(UI.notice)UI.notice.until=Date.now()+10000;
+    if(UI.notice)UI.notice.until=Date.now()+15000;
     closeSheet();
-    if(typeof setTimeout==='function')setTimeout(()=>{if(!UI.sheet)render();},10100);
+    render();
   }
 });
 CARDS.distraction={
