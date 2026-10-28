@@ -78,6 +78,9 @@ with sync_playwright() as playwright:
                 '#nav [data-v="plan"]','[data-act="cal-new"]'],
                 {'view':'plan'},report)
             assert report['routes'][-1]['state']['sheet'], 'Plan add did not open a sheet'
+            visit(page,'Plan / Tasks',[
+                '#nav [data-v="plan"]','[data-act="p1-open-tasks"]'],
+                {'page':'tasks'},report)
 
             # Settings overview links are data-driven and may vary by platform
             # (e.g. Notifications appears only in native builds).
@@ -124,6 +127,10 @@ with sync_playwright() as playwright:
                     'Snoozing card did not remove it',first)
             report['unreached_pages']=sorted(
                 set(report['registered_pages'])-set(report['reached_pages']))
+            # These are reported, not waved through as two-tap successes:
+            # the developer kit is internal, settings.notifications is native,
+            # settings.activity requires Settings > Activities > Edit, and
+            # stats.insights is an old optional detail replaced by the main tab.
             assert not errors, errors
             output=OUT/f'{width}-{theme}.json'
             output.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')
