@@ -48,7 +48,10 @@ function startActivity(aid, o) {
   if ([1,2,3].includes(+o.energy)) nc.energy=+o.energy;
   if (Number.isInteger(o.flowBreakMin) && o.flowBreakMin>=5 && o.flowBreakMin<=20) nc.flowBreakMin=o.flowBreakMin;
   w.set('state/current', nc, { prevId: cur ? cur.id : null });
-  commit(label, w);
+  const saved=commit(label,w);
+  if(saved&&cur&&act(cur.activity).kind==='study'&&
+    at-parseT(cur.start)>=10*MIN&&typeof l6AfterStudyStop==='function')
+    l6AfterStudyStop(cur.id,parseT(cur.start),at,cur.activity);
 }
 function stopTimer(o) {
   o = o || {};
@@ -77,6 +80,8 @@ function stopTimer(o) {
     typeof lab==='function' && lab('recall') &&
     typeof SHEETS!=='undefined' && typeof SHEETS.sessionEnd==='function';
   const saved=commit(msg,w,{rate:!needsRecall&&!brief&&a.kind==='study'?{day:dayKeyOf(cs),id:c.id}:null});
+  if(saved&&!brief&&a.kind==='study'&&end-cs>=10*MIN&&typeof l6AfterStudyStop==='function')
+    l6AfterStudyStop(c.id,cs,end,c.activity);
   if (saved && needsRecall) openSheet({type:'sessionEnd',day:dayKeyOf(cs),id:c.id,
     subject:c.activity,focus:0,topics:[],recall:''});
 }
