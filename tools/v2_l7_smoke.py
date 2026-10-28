@@ -36,7 +36,7 @@ with sync_playwright() as p:
             expect(page.locator('#main')).to_contain_text('minimum')
             page.screenshot(path=str(out/f'{width}-{theme}-streak.png'),full_page=True)
             page.evaluate("UI.pages=[];UI.view='settings';render();pushPage('settings.day')")
-            expect(page.locator('[data-key="minDay"]')).to_be_visible()
+            expect(page.locator('[data-key="minDay"][data-d="5"]')).to_be_visible()
             assert not errors,errors
             page.close()
     browser.close()
