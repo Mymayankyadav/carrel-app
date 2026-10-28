@@ -88,12 +88,20 @@ function makeDb(sb, uid, opts) {
     return { code: 'unavailable', message: msg };
   }
   async function call(fn) {
+    const gone = () => ({ code: 'unavailable', message: 'Database adapter closed' });
     for (let i = 0; i < 2; i++) {
+      if (closed) throw gone();
       let res;
       try { res = await fn(); } catch (e) { throw { code: 'unavailable', message: String((e && e.message) || e) }; }
+      // A delayed JWT error must never refresh a new account's session or
+      // replay the old account's RPC after teardown.
+      if (closed) throw gone();
       if (!res.error) return res.data;
       const m = mapErr(res.error);
-      if (m.auth && i === 0 && opts.refresh) { try { await opts.refresh(); continue; } catch (e) { /* fall through */ } }
+      if (m.auth && i === 0 && opts.refresh) {
+        try { await opts.refresh(); if (closed) throw gone(); continue; }
+        catch (e) { /* fall through to the original auth error */ }
+      }
       throw m;
     }
   }
