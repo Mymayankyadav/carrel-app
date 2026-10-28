@@ -20,7 +20,7 @@ with sync_playwright() as p:
             page.evaluate("""() => {
               const a=ACTS.find(x=>x.kind==='study'&&!x.archived);
               if(!a)throw Error('No mock study activity');
-              V.coach={
+              S.base.coach={
                 'mock-coach':{
                   v:1,kind:'plan',from:'claude',status:'new',
                   at:isoLocal(Date.now()),
@@ -31,8 +31,9 @@ with sync_playwright() as p:
                 },
                 malformed:{v:1,kind:'plan',from:'unsafe',status:'new',title:'Ignored'}
               };
-              UI.pages=[];UI.view='insights';render();
+              recompute();UI.pages=[];UI.view='insights';render();
             }""")
+            page.wait_for_function("S.base.coach['mock-coach'] && V.coach['mock-coach']")
             expect(page.locator('#main [data-act="l10-open"]')).to_be_visible()
             expect(page.locator('#main')).to_contain_text('From Claude')
             page.screenshot(path=str(out/f'{width}-{theme}-inbox.png'),full_page=True)
