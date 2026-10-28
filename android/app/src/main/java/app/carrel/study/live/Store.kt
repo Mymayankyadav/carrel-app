@@ -15,7 +15,12 @@ class Store(ctx: Context) {
     var refresh: String get() = p.getString("refresh", "") ?: ""; private set(v) { p.edit().putString("refresh", v).apply() }
     var expiresAt: Long get() = p.getLong("expiresAt", 0); private set(v) { p.edit().putLong("expiresAt", v).apply() }
     fun setSession(a: String, r: String, exp: Long) { p.edit().putString("access", a).putString("refresh", r).putLong("expiresAt", exp).apply() }
-    fun clearSession() { p.edit().remove("access").remove("refresh").remove("expiresAt").remove("active").remove("queue").remove("undoOid").apply() }
+    fun clearSession() { p.edit()
+        .remove("access").remove("refresh").remove("expiresAt")
+        .remove("active").remove("queue").remove("undoOid")
+        .remove("todayStudyMs").remove("todayKey").remove("todayAsOf")
+        .remove("studyRunning").remove("lastStudyId").remove("topActivities")
+        .remove("pendingIncoming").apply() }
     fun hasSession() = access.isNotBlank() && refresh.isNotBlank()
 
     var active: State?
