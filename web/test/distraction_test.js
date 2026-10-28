@@ -25,6 +25,8 @@ const ctx={
   kBtn:(label,attrs)=>label+attrs,
   fmtClock:ms=>String(Math.ceil(ms/1000)),
   fmtDur:ms=>Math.round(ms/60000)+'m',
+  parseT:iso=>Date.parse(iso),
+  entryEnd:(en,now)=>en.e==null?now:en.e,
   addDaysKey:(day,n)=>{
     const d=new Date(day+'T12:00:00Z');
     d.setUTCDate(d.getUTCDate()+n);
@@ -74,6 +76,25 @@ ctx.UI.sheet={type:'urge'};
 ctx.ACT['l6-urge-back']();
 assert.equal(closed,2);
 assert.equal(ctx.UI.notice,null);
+const {l6UsageTrimPlan}=ctx.module.exports;
+const recorded={date:'2026-10-28',entries:{
+  entry1:{activity:'physics',start:'2026-10-28T09:00:00Z',end:'2026-10-28T09:20:00Z',note:'proofs'}
+}};
+const detected={id:'entry1',day:'2026-10-28',activity:'physics',
+  at:Date.parse('2026-10-28T09:20:00Z'),min:6};
+let plan=l6UsageTrimPlan(detected,{'2026-10-28':recorded},[],Date.now());
+assert.equal(plan.min,6);
+assert.equal(plan.from,Date.parse('2026-10-28T09:14:00Z'));
+assert.equal(l6UsageTrimPlan({...detected,min:21},{'2026-10-28':recorded},[],Date.now()),null,
+  'never erase a full session');
+assert.equal(l6UsageTrimPlan({...detected,at:detected.at-60000},{'2026-10-28':recorded},[],Date.now()),null,
+  'stale session end requires manual review');
+assert.equal(l6UsageTrimPlan(detected,{'2026-10-28':recorded},
+  [{id:'other',s:Date.parse('2026-10-28T09:16:00Z'),e:detected.at}],Date.now()),null,
+  'overlapping later entries must not be overwritten');
+assert.equal(l6UsageTrimPlan(detected,{'2026-10-28':{entries:{}}},[],Date.now()),null,
+  'deleted session must not be reconstructed');
+
 const {l6SummariseUsage}=ctx.module.exports;
 const safe=l6SummariseUsage([
   {pkg:'com.instagram.android',min:6,opens:2},
