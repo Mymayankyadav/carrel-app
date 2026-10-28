@@ -1,1 +1,33 @@
-/* Carrel v2 reserved for lane implementation: ui/subjects.css */
+/* L4 Subjects: quiet hierarchy, 44px minimum interaction targets. */
+.l4-view,.l4-detail{display:grid;gap:12px;}
+.l4-heading{display:flex;align-items:center;justify-content:space-between;min-height:48px;margin-bottom:8px;}
+.l4-heading h1{margin:0}
+.l4-subject{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:4px 12px 12px}
+.l4-subject-link{width:100%;min-height:65px;display:flex;align-items:center;gap:12px;padding:4px 0;color:var(--text);background:transparent;border:0;font:inherit;text-align:left;cursor:pointer}
+.l4-subject-link .k-dot{width:10px;height:10px}
+.l4-subject-desc{min-width:0;display:flex;flex:1;flex-direction:column;gap:4px}
+.l4-subject-desc strong{font-weight:600;font-size:15px}
+.l4-subject-desc small{font-size:12px;color:var(--text-2);line-height:1.35}
+.l4-subject-total{font-size:13px;color:var(--text-2);white-space:nowrap;font-variant-numeric:tabular-nums}
+.l4-subject-link .i{width:16px;height:16px;color:var(--text-2)}
+.l4-goal{height:3px;width:100%;border-radius:4px;overflow:hidden;background:var(--line)}
+.l4-goal span{display:block;height:100%;border-radius:4px}
+.l4-detail{padding:0 0 20px}
+.l4-detail .k-group{margin-top:12px}
+.l4-detail .k-row{max-width:100%}
+.l4-add-topic{display:flex;justify-content:flex-start}
+.l4-topic-sheet{display:grid;gap:16px}
+.l4-topic-sheet .k-field{min-height:52px}
+.l4-topic-sheet .k-seg{flex-wrap:wrap;max-width:100%}
+.l4-topic-note{font-size:13px;color:var(--text-2);margin:0}
+.l4-error{font-size:13px;color:var(--danger)}
+.l4-reviews{display:grid;gap:0}
+.l4-review{padding:12px 0;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.l4-review strong{font-size:15px;font-weight:600}
+.l4-review small{display:block;margin-top:3px;color:var(--text-2);font-size:12px}
+.l4-rating{display:flex;gap:4px;flex-wrap:wrap}
+.l4-rating .k-btn{min-width:44px}
+.l4-review-card{display:flex;align-items:center;gap:12px;width:100%;min-height:52px;border:0;background:transparent;color:var(--text);font:inherit;cursor:pointer;text-align:left}
+.l4-review-card span{flex:1;color:var(--text-2);font-size:13px}
+.l4-review-card .i{width:16px;height:16px}
+@media(max-width:360px){.l4-subject-link{gap:8px}.l4-subject-total{font-size:12px}.l4-topic-sheet .k-field{flex-wrap:wrap}}

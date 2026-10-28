@@ -15,7 +15,7 @@ with sync_playwright() as p:
    page.wait_for_function('S.loaded.current && ACTS.length > 0')
    assert page.locator('#nav .k-nav-item').count()==4
    page.locator('#nav [data-v="subjects"]').click()
-   expect(page.get_by_text('Coming soon')).to_be_visible()
+   expect(page.locator('.l4-heading')).to_contain_text('Subjects')
    page.screenshot(path=str(out/f'{width}-{theme}-subjects.png'))
    page.locator('#nav [data-v="insights"]').click()
    expect(page.locator('#nav [data-v="insights"]')).to_have_attribute('aria-current','page')

@@ -15,7 +15,7 @@ const ctx=vm.createContext({
 vm.runInContext(src,ctx,{timeout:5000});
 const run=s=>vm.runInContext(s,ctx,{timeout:5000});
 for(const id of ['today','plan','subjects','insights'])assert.ok(run("kNav('"+id+"')").includes('data-v="'+id+'"'));
-assert.ok(run('VIEWS.subjects()').includes('Coming soon'));
+assert.ok(run('VIEWS.subjects()').includes('Subjects'));
 assert.strictEqual(run("canonicalView('stats')"),'insights');
 assert.strictEqual(run("typeof watchColl"),'function');
 assert.ok(run("PAGES['settings.labs']"));
