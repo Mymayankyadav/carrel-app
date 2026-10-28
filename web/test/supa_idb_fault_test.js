@@ -7,7 +7,7 @@ const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 function fakeIndexedDb() {
   const records = new Map();
   const state = { abortPuts: 1, abortDeletes: 1, putAttempts: 0,
-    deleteAttempts: 0, overlapping: false, active: false };
+    deleteAttempts: 0, getAttempts: 0, overlapping: false, active: false };
   const indexedDB = {
     open() {
       const request = {};
@@ -22,6 +22,7 @@ function fakeIndexedDb() {
               const run = (kind, key, val) => {
                 const q = {};
                 queueMicrotask(() => {
+                  if (kind === 'get') state.getAttempts++;
                   if (kind === 'put') state.putAttempts++;
                   if (kind === 'del') state.deleteAttempts++;
                   const fail = (kind === 'put' && state.abortPuts-- > 0) ||
@@ -112,6 +113,16 @@ function fakeSb() {
     third.close();
     assert.equal(await third.clear(), true, 'later deletion can recover');
     assert.equal(idb.records.has('docs:u2'), false);
+
+    // A signed-out cleanup must not read private cached documents or
+    // require a Supabase client, session, or realtime channel.
+    idb.records.set('docs:u3', [['days/old', { secret: 'cached' }]]);
+    const reads = idb.state.getAttempts;
+    const diskOnly = makeDb(null, 'u3', { idb: true, clearOnly: true });
+    diskOnly.close();
+    assert.equal(await diskOnly.clear(), true);
+    assert.equal(idb.records.has('docs:u3'), false);
+    assert.equal(idb.state.getAttempts, reads, 'cleanup never hydrates cache');
   } finally {
     global.indexedDB = oldIdb;
     global.setTimeout = oldTimeout;
