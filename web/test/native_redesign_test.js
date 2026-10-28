@@ -103,10 +103,13 @@ async function main() {
   receive.ctx.l8FlushIncoming();
   assert.deepEqual(incoming.opened, ['maths 45m']);
   assert.deepEqual(incoming.acked, ['share1']);
+  receive.ctx.l8ReceiveIncoming({id:'share1',kind:'capture',value:'maths 45m'});
+  assert.deepEqual(incoming.opened, ['maths 45m'], 'native event and replay must not duplicate capture');
   receive.ctx.l8ReceiveIncoming({id:'start1',kind:'start',value:'phy'});
   receive.ctx.l8ReceiveIncoming({id:'start2',kind:'start',value:'life'});
   receive.ctx.l8ReceiveIncoming({id:'start3',kind:'start',value:'last'});
-  assert.deepEqual(incoming.started, ['phy','phy'], 'never start a life activity');
+  receive.ctx.l8ReceiveIncoming({id:'start1',kind:'start',value:'phy'});
+  assert.deepEqual(incoming.started, ['phy','phy'], 'never start twice for the same Intent');
   assert.deepEqual(incoming.acked, ['share1','start1','start2','start3']);
 
   console.log('native_redesign_test: all bridge and settings checks passed');
