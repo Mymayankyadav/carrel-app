@@ -112,6 +112,15 @@ function l6DriftRow(){
 }
 let l6UsageConsentRevision=0;
 let l6UsagePrefsBusy=false;
+function l6ClearUsageOffer(){
+  UI.l6Detected=null;
+  // A persistent toast must not keep a dead Log action after its 2-minute
+  // window, sign-out, permission revocation or an allowlist edit.
+  if(UI.toast&&UI.toast.action&&UI.toast.action.act==='l6-usage-log'){
+    UI.toast=null;
+    if(typeof renderToast==='function')renderToast();
+  }
+}
 function l6SummariseUsage(apps,minutes){
   const allowed=new Map(l6UsageApps),out=Object.create(null);
   let total=0,leader=null;
@@ -149,10 +158,14 @@ async function l6AfterStudyStop(id,start,end,activity){
     const w=W().update('usage/'+day,data,{v:1,date:day,sessions:{}});
     // Automatic metadata must not consume the user's next Undo (e.g. Stop).
     if(!commit(null,w,{undo:false}))return;
-    UI.l6Detected={id,day,activity,start,at:end,min:safe.total,until:Date.now()+120000};
+    const offer={id,day,activity,start,at:end,min:safe.total,until:Date.now()+120000};
+    UI.l6Detected=offer;
     const name=typeof ACTMAP!=='undefined'&&ACTMAP[activity]?ACTMAP[activity].name:'study';
     toast(safe.leader.label+' '+safe.leader.min+'m during '+name,
       {action:{label:'Log',act:'l6-usage-log'},persist:true});
+    if(typeof setTimeout==='function')setTimeout(()=>{
+      if(UI.l6Detected===offer)l6ClearUsageOffer();
+    },120050);
   }catch(e){ /* Never interrupt saving the study entry if usage access changed. */ }
 }
 ACT['l6-drift-toggle']=async ()=>{
@@ -163,7 +176,7 @@ ACT['l6-drift-toggle']=async ()=>{
   // Update immediately: a pending native query cannot still opt us in
   // during the asynchronous bridge round-trip.
   NP.detectDrift=next;
-  if(!next)UI.l6Detected=null;
+  if(!next)l6ClearUsageOffer();
   changed();
   let nativeSaved=false;
   try{
@@ -207,6 +220,7 @@ ACT['l6-use-app']=async el=>{
   if(values.has(pkg))values.delete(pkg);else values.add(pkg);
   ++l6UsageConsentRevision;
   NP.usagePackages=[...values];
+  l6ClearUsageOffer();
   changed();
   l6UsagePrefsBusy=true;
   try{
@@ -236,11 +250,14 @@ function l6UsageTrimPlan(found, days, entries, now) {
 }
 ACT['l6-usage-log']=()=>{
   const found=UI.l6Detected;
-  if(!found||Date.now()>found.until||!canWrite())return;
+  if(!found||Date.now()>found.until||!NP.detectDrift||!NP.usageAccess||!canWrite()){
+    if(found)l6ClearUsageOffer();
+    return;
+  }
   const drift=ACTS.find(a=>a.role==='drift'&&!a.archived);
   if(!drift){toast('Add a Drift activity in Settings first.');return;}
   const plan=l6UsageTrimPlan(found,V.days,ENTRIES,Date.now());
-  if(!plan){UI.l6Detected=null;toast('Session changed. Review it in Log to mark drift.');return;}
+  if(!plan){l6ClearUsageOffer();toast('Session changed. Review it in Log to mark drift.');return;}
   const w=W();
   w.day(found.day,{[found.id]:{end:isoLocal(plan.from)}});
   w.day(dayKeyOf(plan.from),{[uid('e')]:{
@@ -251,7 +268,7 @@ ACT['l6-usage-log']=()=>{
     type:'drift',at:isoLocal(plan.to),driftMin:plan.min,text:null,activity:found.activity,
     entry:found.id,src:'usage',applied:true
   });
-  if(commit('Logged '+plan.min+'m of drift.',w,{undo:true}))UI.l6Detected=null;
+  if(commit('Logged '+plan.min+'m of drift.',w,{undo:true}))l6ClearUsageOffer();
 };
 
 
