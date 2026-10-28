@@ -44,6 +44,12 @@ const runtime={
   syncState:()=> 'live',icon:()=>'',kBtn:()=>'<button>Retry</button>',
   kPageHead:()=>'<header>Tasks</header>',unused:()=>'',console
 };
+const nav = vm.runInNewContext(between('function vNav()', 'function canonicalView(v)')+
+  '\n vNav', {S:runtime.S,UI:runtime.UI,kNav:()=>'<nav>tabs</nav>'});
+assert.equal(nav(),'<nav>tabs</nav>');
+runtime.S.conn='none';assert.equal(nav(),'','signed-out view hides unavailable navigation');
+runtime.S.conn='live';runtime.S.owner=false;assert.equal(nav(),'','private view hides navigation');
+runtime.S.owner=true;
 const section=between('function canonicalView(v)',"function vSheet()");
 const ctx=vm.createContext(runtime);
 const render=vm.runInContext(section+'\n[vMain,vSyncLine,canonicalView]',ctx);
