@@ -93,11 +93,11 @@ function l1GoalRing(studied){
   const goal=+CFG.dailyGoal||0,p=l1GoalFraction(studied,goal),pct=Math.round(p*100);
   const label=fmtDur(studied)+' of '+fmtDur(goal*MIN)+' daily goal';
   const circumference=2*Math.PI*11;
-  return '<button type="button" class="l1-goal" data-act="l1-insights" aria-label="'+esc(label)+'" title="'+esc(label)+'">'+
+  return '<span class="l1-goal-wrap"><button type="button" class="l1-goal" data-act="l1-insights" aria-label="'+esc(label)+'" title="'+esc(label)+'">'+
     '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true" focusable="false">'+
     '<circle cx="14" cy="14" r="11" class="l1-goal-track"></circle>'+
     '<circle cx="14" cy="14" r="11" class="l1-goal-value" stroke-dasharray="'+(circumference*p).toFixed(2)+' '+circumference.toFixed(2)+'"></circle></svg>'+
-    '<span class="l1-goal-text">'+esc(fmtDur(studied))+'</span></button>';
+    '</button><button type="button" class="l1-goal-log t1-log-link" data-act="t1-log" aria-label="Open today log">'+esc(fmtDur(studied))+'</button></span>';
 }
 /* T1 — minimalist Today view; dedicated actions retain existing write contracts. */
 function t1Picks(){
@@ -133,7 +133,7 @@ function t1Timer(now,pm){
       kBtn('Start','data-act="l1-start-block" data-id="'+esc(row.id)+'" data-activity="'+esc(row.activity)+'"',{kind:'primary',icon:'start'}):
       !hasBlocks?kBtn('Plan my day','data-act="l1-plan-day"',{kind:'primary',icon:'plan'}):
       '<div class="t1-idle-label">Not tracking</div>';
-    const ritual=V.rituals&&V.rituals[todayKey()]&&V.rituals[todayKey()].morning;
+    const ritual=typeof V!=='undefined'&&V.rituals&&V.rituals[todayKey()]&&V.rituals[todayKey()].morning;
     const intent=ritual&&ritual.intent?'<p class="l1-intent">'+esc(ritual.intent)+'</p>':'';
     return '<section class="t1-timer t1-idle" aria-label="Timer">'+
       (rating||done||idleHero)+intent+
