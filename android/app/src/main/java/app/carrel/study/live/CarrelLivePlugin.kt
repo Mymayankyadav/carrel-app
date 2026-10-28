@@ -96,16 +96,33 @@ class CarrelLivePlugin : Plugin() {
         call.resolve()
     }
 
-    /** { state: <liveStateOf output>, id: <timer id or null> } from the web view. */
+    /** The web view owns the authoritative read projection; surfaces cache it. */
     @com.getcapacitor.PluginMethod
     fun setState(call: PluginCall) {
         val st = call.getObject("state")
         val id = call.getString("id")
+        val total = (call.getLong("todayStudyMs", 0L) ?: 0L).coerceAtLeast(0)
+        val day = call.getString("todayKey", "") ?: ""
+        val study = call.getBoolean("studyRunning", false) ?: false
+        val last = call.getString("lastStudyId", "") ?: ""
+        val tops = call.getArray("topActivities")?.toString() ?: "[]"
         call.resolve()
         live.io.execute {
-            val json = try { JSONObject(st.toString()) } catch (e: Exception) { null }
+            val store = live.store
+            store.todayStudyMs = total
+            store.todayKey = day
+            store.todayAsOf = System.currentTimeMillis()
+            store.studyRunning = study
+            store.lastStudyId = last.take(100)
+            if (tops != store.topActivities) {
+                store.topActivities = tops.take(4000)
+                CarrelShortcuts.refresh(context)
+            }
+            val json = try { JSONObject(st.toString()) } catch (_: Exception) { null }
             if (json != null && id != null) json.put("id", id)
             live.engine.setState(stateFromJson(json))
+            // Totals can change while the timer state remains identical.
+            live.engine.render()
         }
     }
 
