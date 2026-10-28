@@ -10,7 +10,7 @@ Personal study timer and planner. Web app (vanilla JS) wrapped as an Android app
 | `android/` | Capacitor Android project + native live timer / notification (`app/src/main/java/app/carrel/study/live/`). |
 | `supabase/migrations/` | Database schema (already applied). |
 | `tools/` | `patch_android.py` (used by the Android CI build), `shots.py` (phone screenshots of the mock app). |
-| `docs/` | Current plan: `PLAN-redesign.md`. Older plans live in git history. |
+| `docs/` | Current plan and agent protocol: `PLAN-v2.md`. Older plans live in git history. |
 
 ## Build and test
 ```bash
@@ -22,4 +22,4 @@ python3 tools/redesign_smoke.py           # Playwright/Chromium; mock-only integ
 ```
 CI: `ci.yml` (PRs), `web.yml` (main → GitHub Pages + in-app web update), `android.yml` (APK release).
 
-Redesign integration and verification: [docs/redesign/INTEGRATION.md](docs/redesign/INTEGRATION.md). Browser screenshots are retained by the Redesign acceptance workflow. Native/build-input changes on main also create a signed APK release; ordinary web-only changes update Pages and compatible installed apps.
+Browser screenshots are retained by the Redesign acceptance workflow. Native/build-input changes on main also create a signed APK release; ordinary web-only changes update Pages and compatible installed apps.
