@@ -136,7 +136,7 @@ assert.equal(UI.sheet,null);
 
 ACT['p2-plan-menu']({getAttribute:k=>k==='data-k'?'2026-10-27':null});
 assert(events.includes('menu'));
-assert(['Copy to tomorrow','Wrap up','Plan ends at…','Clear plan'].every(x=>ctx.items.some(i=>i.label===x)),'legacy menu actions retained');
+assert(['Copy to tomorrow','Shut down','Plan ends at…','Clear plan'].every(x=>ctx.items.some(i=>i.label===x)),'menu retains actions with v2 shutdown replacement');
 ACT['p2-menu-clear']({getAttribute:k=>k==='data-k'?'2026-10-27':null});
 assert.deepStrictEqual(writes.at(-1).slice(0,2),['set','plans/2026-10-27']);
 assert.equal(commits.at(-1),'Cleared plan.');
