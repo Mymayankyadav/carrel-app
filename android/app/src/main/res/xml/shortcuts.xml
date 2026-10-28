@@ -9,6 +9,5 @@
             android:targetPackage="app.carrel.study"
             android:targetClass="app.carrel.study.MainActivity"
             android:data="app.carrel.study://capture" />
-        <categories android:name="android.shortcut.conversation" />
     </shortcut>
 </shortcuts>
