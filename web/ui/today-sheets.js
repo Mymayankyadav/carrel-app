@@ -32,12 +32,22 @@ function sStart(sh){
   const a=ACTMAP[sh.act],name=a?a.name:'Activity';
   const modes=kChips({act:'t2-from',value:sh.from||'now',options:t2StartOffsets()});
   const pomp=!!sh.pomo;
+  const intention=a&&a.kind==='study'?kCollapse('l5-intention','Intention (optional)',
+    kField('What will you finish?',kText({bind:'sheet.intent',value:sh.intent||'',
+      placeholder:'One clear outcome',attrs:'maxlength="80" aria-label="Session intention"'}))+
+    kField('If…',kText({bind:'sheet.ifText',value:sh.ifText||'',attrs:'maxlength="80" aria-label="If condition"'}))+
+    kField('Then…',kText({bind:'sheet.thenText',value:sh.thenText||'',attrs:'maxlength="80" aria-label="Then action"'})))
+      .replace('<summary>','<summary data-act="l5-intention-toggle">'):'';
+  const energy=a&&a.kind==='study'&&typeof lab==='function'&&lab('energy')?
+    kField('Energy',kSeg({act:'l5-energy',value:String(sh.energy||0),
+      options:[{v:'1',label:'Low'},{v:'2',label:'Okay'},{v:'3',label:'High'}]})):'';
   return kSheetHead(name)+
     '<div class="k-sheet-body t2-sheet">'+
     kField('Start',modes)+
     kField('Pomodoro',kSwitch({act:'t2-pomo',on:pomp,label:'Pomodoro'}))+
     (pomp?kField('Length',kSeg({act:'t2-preset',value:sh.preset||'25/5',
       options:[{v:'25/5',label:'25/5'},{v:'50/10',label:'50/10'},{v:'90/20',label:'90/20'}]})):'')+
+    intention+energy+
     '</div>'+kSheetFoot(kBtn('Start','data-act="t2-confirm-start"',{kind:'primary',icon:'start'}));
 }
 function sPark(){
@@ -71,8 +81,41 @@ function sFixStop(){
     (valid?kChips({act:'t2-seen',value:'',options:[{v:String(seen),label:'Last open '+fmtT(seen)}]}):'')+
     '</div>'+kSheetFoot(kBtn('Save','data-act="t2-stop-save"',{kind:'primary'}));
 }
+/* L5 — post-session recall; all writes use W()/commit so they queue offline. */
+function l5ReviewTopics(subject){
+  return Object.entries(V.topics||{}).filter(([,t])=>t&&!t.archived&&t.subject===subject&&t.title)
+    .map(([id,t])=>({id,title:String(t.title)})).slice(0,40);
+}
+function l5SessionPayload(sh){
+  const focus=+sh.focus;
+  if(![1,2,3].includes(focus))return null;
+  const valid=new Set(l5ReviewTopics(sh.subject).map(t=>t.id));
+  const topics=Array.isArray(sh.topics)?[...new Set(sh.topics)].filter(id=>valid.has(id)).slice(0,20):[];
+  return {focus,topics,recall:String(sh.recall||'').trim().slice(0,280)};
+}
+function l5SessionEndSheet(sh){
+  const choices=kSeg({act:'l5-recall-focus',value:String(sh.focus||0),
+    options:[{v:'1',label:'Scattered'},{v:'2',label:'Okay'},{v:'3',label:'Deep'}]});
+  const topics=l5ReviewTopics(sh.subject),selected=Array.isArray(sh.topics)?sh.topics:[];
+  return kSheetHead('Session reflection')+
+    '<div class="k-sheet-body t2-sheet l5-session-sheet">'+
+    kField('How focused were you?',choices)+
+    (topics.length?kField('Topics studied',kChips({act:'l5-recall-topic',multi:true,value:selected,
+      options:topics.map(t=>({v:t.id,label:t.title}))})):'')+
+    kField('What did you learn? (optional)',
+      '<textarea class="k-textarea" data-bind="sheet.recall" maxlength="280" rows="3" '+
+        'aria-label="Recall note" placeholder="Recall from memory, in your own words">'+esc(sh.recall||'')+'</textarea>')+
+    '</div>'+kSheetFoot(kBtn('Skip','data-act="l5-recall-skip"',{kind:'text'})+
+    kBtn('Save','data-act="l5-recall-save"'+(!l5SessionPayload(sh)?' disabled':''),{kind:'primary'}));
+}
 Object.assign(SHEETS,{start:sStart,activities:sActivities,park:sPark,parked:sParked,fixstop:sFixStop});
+SHEETS.sessionEnd=l5SessionEndSheet;
 Object.assign(ACT,{
+  // Keep the disclosure state synchronously before editable fields trigger morphing.
+  'l5-intention-toggle'(el){
+    const d=el.closest&&el.closest('details');
+    UI.open=UI.open||{};UI.open['l5-intention']=d?!d.open:true;
+  },
   't2-start-opts'(el){
     const id=el.getAttribute('data-id'),a=ACTMAP[id];
     if(!a||a.archived)return;
@@ -98,6 +141,31 @@ Object.assign(ACT,{
     const sh=UI.sheet,v=el.getAttribute('data-v');
     if(sh&&sh.type==='start'&&PRESETS[v]){sh.preset=v;renderSheet();}
   },
+  'l5-energy'(el){
+    const sh=UI.sheet,n=+el.getAttribute('data-v');
+    if(sh&&sh.type==='start'&&[1,2,3].includes(n)){sh.energy=n;renderSheet();}
+  },
+  'l5-recall-focus'(el){
+    const sh=UI.sheet,n=+el.getAttribute('data-v');
+    if(sh&&sh.type==='sessionEnd'&&[1,2,3].includes(n)){sh.focus=n;renderSheet();}
+  },
+  'l5-recall-topic'(el){
+    const sh=UI.sheet,id=el.getAttribute('data-v');
+    if(!sh||sh.type!=='sessionEnd'||!l5ReviewTopics(sh.subject).some(t=>t.id===id))return;
+    const selected=new Set(sh.topics||[]);
+    if(selected.has(id))selected.delete(id);else selected.add(id);
+    sh.topics=[...selected];renderSheet();
+  },
+  'l5-recall-skip'(){if(UI.sheet&&UI.sheet.type==='sessionEnd')closeSheet();},
+  'l5-recall-save'(){
+    const sh=UI.sheet;if(!sh||sh.type!=='sessionEnd')return;
+    const entry=V.days[sh.day]&&V.days[sh.day].entries&&V.days[sh.day].entries[sh.id];
+    if(!entry||entry.activity!==sh.subject){closeSheet();toast('Session no longer available.');return;}
+    const payload=l5SessionPayload(sh);if(!payload)return;
+    const w=W().day(sh.day,{[sh.id]:payload});
+    for(const id of payload.topics)w.update('topics/'+id,{last:sh.day});
+    if(commit('Reflection saved.',w,{undo:true}))closeSheet();
+  },
   't2-confirm-start'(){
     const sh=UI.sheet;if(!sh||sh.type!=='start'||!ACTMAP[sh.act])return;
     const now=Date.now(),last=lastEntry();
@@ -107,6 +175,13 @@ Object.assign(ACT,{
     const id=sh.act,opts={at};
     if(sh.pomo)opts.pomoPreset=PRESETS[sh.preset]?sh.preset:'25/5';
     else opts.pomoRaw=null;
+    if(ACTMAP[id].kind==='study'){
+      opts.intent=String(sh.intent||'').trim().slice(0,80);
+      const condition=String(sh.ifText||'').trim().slice(0,80),
+        then=String(sh.thenText||'').trim().slice(0,80);
+      if(condition&&then)opts.ifThen={if:condition,then};
+      if(typeof lab==='function'&&lab('energy')&&[1,2,3].includes(+sh.energy))opts.energy=+sh.energy;
+    }
     closeSheet(true);startActivity(id,opts);
   },
   't2-save-park'(){

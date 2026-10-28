@@ -1,5 +1,9 @@
 /* F1: additive Labs flags with defaults. */
-const LABS={};
+const LABS={
+  flowtime:{label:'Adaptive breaks',def:true},
+  recall:{label:'Session recall',def:true},
+  energy:{label:'Start-of-session energy check',def:false}
+};
 function lab(name){
  const v=CFG.labs&&CFG.labs[name];
  return v==null?!!(LABS[name]&&LABS[name].def):!!v;

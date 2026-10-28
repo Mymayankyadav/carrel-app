@@ -152,8 +152,9 @@ function t1Timer(now,pm){
   else if(ps&&ps.phase==='break')status=isDue?"Break's over":'Back to '+esc(c.ret&&c.ret.activity?act(c.ret.activity).name:'study');
   else if(ps)status='Focus '+ps.cycle+(ps.every?' of '+ps.every:'')+' · '+fmtDur(Math.max(0,ps.left))+' left';
   const block=pm&&c.block&&pm.rows?pm.rows.find(r=>r.id===c.block):null;
-  const note=(c.note||'').trim()||(block&&block.title)||'';
-  const extra=note?'<div class="t1-note">'+esc(note)+'</div>':'';
+  const note=(c.note||'').trim()||(block&&block.title)||(c.intent||'').trim()||'';
+  const extra=(note?'<div class="t1-note">'+esc(note)+'</div>':'')+
+    (c.intent&&note!==c.intent?'<div class="l5-running-intent">'+esc(c.intent)+'</div>':'');
   let buttons='';
   if(g)buttons=kBtn('Still going','data-act="guard-keep"',{kind:'primary'})+kBtn('Fix stop','data-act="t1-fixstop"',{kind:'tonal'});
   else if(isBreak){
@@ -165,7 +166,11 @@ function t1Timer(now,pm){
     '<span class="t1-timer-tools">'+kIconBtn('edit','Edit running entry','data-act="edit-running"')+
     kIconBtn('focus','Focus mode','data-act="desk"')+'</span></header>'+
     extra+time+(status?'<p class="t1-status">'+status+'</p>':'')+progress+
-    '<div class="t1-actions">'+buttons+'</div></section>';
+    '<div class="t1-actions">'+buttons+'</div>'+
+    (typeof l5FlowBreakChip==='function'?l5FlowBreakChip(c,now,ps):'')+
+    (typeof l5BreakCountdown==='function'?l5BreakCountdown(c,now,ps):'')+
+    (typeof l5BreakChoices==='function'?l5BreakChoices(c,now):'')+
+    '</section>';
 }
 function t1Notice(){
   if(!CUR||act(CUR.activity).kind!=='study')return '';

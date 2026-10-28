@@ -171,7 +171,8 @@ function normEntries(v, cur) {
       const s = parseT(x.start), e = parseT(x.end);
       if (s == null || e == null || e <= s) continue;
       seen.add(id);
-      out.push({ id, day, a: x.activity, s, e, note: x.note || '', focus: x.focus || null, block: x.block || null, pomo: x.pomo || null });
+      out.push({ id, day, a: x.activity, s, e, note: x.note || '', focus: x.focus || null, block: x.block || null, pomo: x.pomo || null,
+        intent:x.intent||'',ifThen:x.ifThen||null,energy:x.energy||null,recall:x.recall||'',topics:Array.isArray(x.topics)?x.topics:[] });
     }
   }
   if (cur) {
@@ -200,7 +201,12 @@ function lastEntry() {
 }
 function entryDoc(o) { return { activity: o.a, start: isoLocal(o.s), end: isoLocal(o.e), note: o.note || '', focus: o.focus || null, block: o.block || null, pomo: o.pomo || null }; }
 function entryFromCur(c, end) {
-  return { activity: c.activity, start: c.start, end: isoLocal(end), note: c.note || '', focus: null, block: c.block || null, pomo: c.pomo && c.pomo.phase === 'focus' ? { phase: c.pomo.phaseStart, target: c.pomo.focus } : null };
+  const entry={ activity: c.activity, start: c.start, end: isoLocal(end), note: c.note || '', focus: null, block: c.block || null,
+    pomo: c.pomo && c.pomo.phase === 'focus' ? { phase: c.pomo.phaseStart, target: c.pomo.focus } : null };
+  if (typeof c.intent==='string' && c.intent.trim()) entry.intent=c.intent.trim().slice(0,80);
+  if (c.ifThen && typeof c.ifThen==='object') entry.ifThen=c.ifThen;
+  if ([1,2,3].includes(+c.energy)) entry.energy=+c.energy;
+  return entry;
 }
 function pomoState(now) {
   const c = CUR;

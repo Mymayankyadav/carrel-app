@@ -18,3 +18,9 @@
 
 /* Do not cover a T2 editor's fields with a transient timer Undo snackbar. */
 body:has(#sheet .t2-sheet) #toast{opacity:0;pointer-events:none}
+
+/* L5: preserve compact session reflection on narrow phones. */
+.l5-session-sheet{gap:16px}
+.l5-session-sheet .k-seg{display:flex;flex-wrap:wrap}
+.l5-session-sheet .k-chip{min-height:44px;max-width:100%;overflow-wrap:anywhere}
+.l5-session-sheet textarea{width:100%;resize:vertical;min-height:84px}

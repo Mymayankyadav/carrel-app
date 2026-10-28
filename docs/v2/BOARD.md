@@ -6,7 +6,7 @@
 | L2 | 2 | todo | `v2/l2` | | Rituals |
 | L3 | 1 | merged | `v2/l3` | [#29](https://github.com/Mymayankyadav/carrel-app/pull/29) | Scheduler, preview, unit and browser tests green |
 | L4 | 1 | merged | `v2/l4` | [#33](https://github.com/Mymayankyadav/carrel-app/pull/33) | Subjects, topic recall, spacing and browser acceptance green |
-| L5 | 1 | todo | `v2/l5` | | Focus |
+| L5 | 1 | doing | `v2/l5` | [#37](https://github.com/Mymayankyadav/carrel-app/pull/37) | Flowtime, intent, energy and recall integrated; browser verification ongoing |
 | L6 | 2 | todo | `v2/l6` | | Distraction |
 | L7 | 2 | todo | `v2/l7` | | Insights |
 | L8 | 1 | todo | `v2/l8` | | Android surfaces |

@@ -39,6 +39,14 @@ function startActivity(aid, o) {
   else if (cur && cur.pomo && cur.pomo.phase === 'focus' && a.kind === 'study') pomo = cur.pomo;
   else if (UI.pomoOn && a.kind === 'study') pomo = newPomo(parsePreset(UI.pomoPreset) || PRESETS['25/5'], at);
   const nc = { running: true, id: uid('e'), activity: aid, start: isoLocal(at), note: '', block: o.block || null, pomo, ret: o.ret || null, ack: null };
+  // L5 optional session fields travel with state/current in this same atomic write.
+  if (typeof o.intent === 'string' && o.intent.trim()) nc.intent = o.intent.trim().slice(0,80);
+  if (o.ifThen && typeof o.ifThen === 'object') {
+    const condition=String(o.ifThen.if||'').trim().slice(0,80),action=String(o.ifThen.then||'').trim().slice(0,80);
+    if (condition && action) nc.ifThen={if:condition,then:action};
+  }
+  if ([1,2,3].includes(+o.energy)) nc.energy=+o.energy;
+  if (Number.isInteger(o.flowBreakMin) && o.flowBreakMin>=5 && o.flowBreakMin<=20) nc.flowBreakMin=o.flowBreakMin;
   w.set('state/current', nc, { prevId: cur ? cur.id : null });
   commit(label, w);
 }
@@ -65,7 +73,12 @@ function stopTimer(o) {
       if (r && r.st === 'active' && r.remaining > 2 * MIN) msg += ' ' + fmtDur(r.remaining) + ' of this block stays in your plan.';
     }
   }
-  commit(msg, w, { rate: !brief && a.kind === 'study' ? { day: dayKeyOf(cs), id: c.id } : null });
+  const needsRecall=!brief && a.kind==='study' && end-cs>=10*MIN &&
+    typeof lab==='function' && lab('recall') &&
+    typeof SHEETS!=='undefined' && typeof SHEETS.sessionEnd==='function';
+  const saved=commit(msg,w,{rate:!needsRecall&&!brief&&a.kind==='study'?{day:dayKeyOf(cs),id:c.id}:null});
+  if (saved && needsRecall) openSheet({type:'sessionEnd',day:dayKeyOf(cs),id:c.id,
+    subject:c.activity,focus:0,topics:[],recall:''});
 }
 function takeBreak(o) {
   const c = CUR, br = breakAct(), at = o && o.at != null ? o.at : Date.now();
@@ -78,7 +91,9 @@ function takeBreak(o) {
     const cyc = +c.pomo.cycle || 1, every = +c.pomo.every || 4;
     pomo = Object.assign({}, c.pomo, { phase: 'break', phaseStart: isoLocal(now), breakLen: cyc % every === 0 ? (+c.pomo.long || 15) : (+c.pomo.short || 5) });
   }
-  startActivity(br.id, { at: now, pomoRaw: pomo, ret: { activity: c.activity, block: c.block || null } });
+  startActivity(br.id, { at: now, pomoRaw: pomo, ret: { activity: c.activity, block: c.block || null },
+    flowBreakMin: o && o.flowBreakMin });
+  if(typeof l5BreakStarted==='function'&&CUR&&act(CUR.activity).role==='break')l5BreakStarted();
 }
 function backFromBreak() {
   const c = CUR;
