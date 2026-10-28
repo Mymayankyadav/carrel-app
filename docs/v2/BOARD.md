@@ -11,5 +11,5 @@
 | L7 | 2 | merged | `v2/l7` | [#41](https://github.com/Mymayankyadav/carrel-app/pull/41) | Goal ring, advice, focus/estimate pages, ISO-week streaks; web/browser CI green |
 | L8 | 1 | merged | `v2/l8` | [#42](https://github.com/Mymayankyadav/carrel-app/pull/42) | Widgets, tile, shortcuts, share and Live Update; unsigned Android QA green, signed release/device QA tracked |
 | L9 | 1 | merged | `v2/l9` | [#31](https://github.com/Mymayankyadav/carrel-app/pull/31) | Parser, Quick Capture UI, browser tests green; ORC entrypoints in integration |
-| L10 | 2 | todo | `v2/l10` | | Coach |
+| L10 | 2 | merged | `v2/l10` | [#47](https://github.com/Mymayankyadav/carrel-app/pull/47) | Validated Claude inbox, copy prompts, read-only SQL views; CI and Supabase verification green |
 | QA | 1–3 | doing | `v2/qa` | | ORC reviewing CI, browser evidence and regressions |
