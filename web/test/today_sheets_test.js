@@ -7,7 +7,7 @@ const path = require('node:path');
 const read = name => fs.readFileSync(path.join(__dirname, '../ui/', name), 'utf8');
 const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR, now = Date.now();
 const entry = { e: now - 10 * MIN };
-const calls = [], ACT = {}, SHEETS = {};
+const calls = [], ACT = {}, SHEETS = {}, V = {topics:{},days:{}};
 let parked = [{ id: 'p1', text: 'Check theorem statement' }];
 let aggregates = 0;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
@@ -18,7 +18,7 @@ const ACTMAP = { math: { id:'math', name:'Math <proofs>', color:'#3D7EA6', kind:
   break: { id:'break', name:'Break', color:'#4E5A86', kind:'life', role:'break' },
   archived: { id:'archived', name:'Hidden', color:'#333333', kind:'study', archived:true } };
 const kButton = (label, attrs='') => '<button '+attrs+'>'+label+'</button>';
-const ctx = { ACT, SHEETS, UI, CUR:null, DAY, ACTMAP, ACTS: Object.values(ACTMAP), ENTRIES:[],
+const ctx = { ACT, SHEETS, UI, V, CUR:null, DAY, ACTMAP, ACTS: Object.values(ACTMAP), ENTRIES:[],
   MIN, HOUR, PRESETS: {'25/5':{},'50/10':{},'90/20':{}},
   CFG: { pomodoro: { focus:25,short:5 } },
   aggregate: () => { aggregates++; return { '2026-10-27':{acts:{ math:90*MIN, break:20*MIN }} }; },
@@ -29,6 +29,9 @@ const ctx = { ACT, SHEETS, UI, CUR:null, DAY, ACTMAP, ACTS: Object.values(ACTMAP
   kSheetHead: (title,actions='')=>'<header>'+esc(title)+actions+'</header>',
   kSheetFoot: html=>'<footer>'+html+'</footer>',
   kField: (title,html)=>'<label>'+title+html+'</label>',
+  kCollapse:(_id,label,body)=>'<details>'+label+body+'</details>',
+  kText:o=>'<input data-bind="'+o.bind+'" value="'+esc(o.value||'')+'">',
+  lab:key=>key!=='energy',
   kChips: o=>'<div class="k-chips">'+o.options.map(x=>
     kButton(esc(x.label),'data-act="'+(o.act||'noop')+'" data-v="'+esc(x.v)+'"')).join('')+'</div>',
   kSwitch: o=>kButton('toggle','data-act="'+o.act+'" aria-checked="'+o.on+'"'),
@@ -37,6 +40,9 @@ const ctx = { ACT, SHEETS, UI, CUR:null, DAY, ACTMAP, ACTS: Object.values(ACTMAP
   kBtn: kButton, kTime:o=>'<input type="time" data-bind="'+o.bind+'" value="'+o.hm+'">',
   kEmpty:s=>'<div>'+s+'</div>',
   startActivity:(id,opts)=>calls.push(['start',id,opts]), parkAdd:s=>calls.push(['park',s]),
+  W:()=>({ops:[],day(){this.ops.push('day');return this;},update(){this.ops.push('topic');return this;}}),
+  commit:(_msg,w)=>{calls.push(['commit',w.ops]);return true;},
+  toast:msg=>calls.push(['toast',msg]),
   parkToBacklog:()=>{ calls.push('backlog'); parked=[]; },
   openPage:(tab,page)=>calls.push(['page',tab,page]),
   openSheet:sh=>{ UI.sheet=sh; calls.push(['open',sh.type]); },
@@ -51,7 +57,7 @@ ACT['guard-seen']=el=>calls.push(['guard-seen',el.getAttribute('data-t')]);
 ACT['guard-save']=()=>calls.push('guard-save');
 vm.createContext(ctx);
 vm.runInContext(read('today-sheets.js'),ctx,{filename:'today-sheets.js'});
-assert.deepEqual(Object.keys(SHEETS).sort(),['activities','fixstop','park','parked','start']);
+assert.deepEqual(Object.keys(SHEETS).sort(),['activities','fixstop','park','parked','sessionEnd','start']);
 let activities = SHEETS.activities();
 assert.equal(aggregates,1,'compute todays logged totals only once');
 assert(activities.includes('Math &lt;proofs&gt;') && activities.includes('90m'));
@@ -65,15 +71,21 @@ let options = SHEETS.start(UI.sheet);
 assert(options.includes('After last') && options.includes('data-act="t2-confirm-start"'));
 assert.equal((options.match(/Math &lt;proofs&gt;/g)||[]).length,1,'Start sheet title is not repeated');
 assert(options.includes('50/10') && !options.includes('Cancel'));
+assert(options.includes('Intention (optional)'),'optional intention disclosure added');
 ACT['t2-from']({getAttribute:()=> 'last'});
 assert.equal(UI.sheet.from,'last');
 ACT['t2-preset']({getAttribute:()=> '50/10'});
 assert.equal(UI.sheet.preset,'50/10');
+UI.sheet.intent='Prove compactness';
+UI.sheet.ifText='If I am stuck';UI.sheet.thenText='then read the definition';
 ACT['t2-confirm-start']();
 let started = calls.filter(x=>Array.isArray(x)&&x[0]==='start').at(-1);
 assert.equal(started[1],'math');
 assert.equal(started[2].at,entry.e);
 assert.equal(started[2].pomoPreset,'50/10');
+assert.equal(started[2].intent,'Prove compactness');
+assert.equal(started[2].ifThen.if,'If I am stuck');
+assert.equal(started[2].ifThen.then,'then read the definition');
 assert.equal(UI.sheet,null);
 entry.e=now-13*HOUR;
 ACT['t2-start-opts']({getAttribute:()=> 'math'});
@@ -123,9 +135,27 @@ assert.equal(UI.sheet,null,'valid custom time closes the edit sheet');
 ACT['t2-edit-activities']();
 assert.deepEqual(calls.at(-1),['page','settings','settings.activities']);
 
+
+// L5 reflection writes include sanitized topic ids and one atomic write set.
+V.topics={t1:{subject:'math',title:'Topology',archived:false},
+  alien:{subject:'archived',title:'Other',archived:false}};
+V.days['2026-10-27']={entries:{e1:{activity:'math',start:'2026-10-27T12:00:00+05:30'}}};
+const reflection={type:'sessionEnd',id:'e1',day:'2026-10-27',subject:'math',
+  focus:2,topics:['t1','alien','t1'],recall:'Open covers'};
+UI.sheet=reflection;
+assert(SHEETS.sessionEnd(reflection).includes('Session reflection'));
+assert(SHEETS.sessionEnd(reflection).includes('Topics studied'));
+ACT['l5-recall-save']();
+assert.equal(UI.sheet,null,'valid reflection closes');
+assert.deepEqual(calls.filter(x=>Array.isArray(x)&&x[0]==='commit').at(-1)[1],['day','topic']);
+UI.sheet={...reflection,focus:0};ACT['l5-recall-save']();
+assert(UI.sheet!==null,'rating is required for Save');
+UI.sheet={...reflection};ACT['l5-recall-skip']();
+assert.equal(UI.sheet,null,'Skip closes without writing');
+
 let focusPop = null, focusEscape = null;
 const focusHistory = [];
-const focusCtx={ UI, CUR:{activity:'math',start:now-HOUR}, Date,
+const focusCtx={ ACT:{}, UI, CUR:{activity:'math',start:now-HOUR}, Date, MIN,
   act:id=>ACTMAP[id], parseT:()=>now-HOUR, pomoState:()=>null,
   fmtClock:()=> '1:00:00', icon:name=>'<svg>'+name+'</svg>',
   esc, clamp:(x,a,b)=>Math.max(a,Math.min(b,x)), Math,
