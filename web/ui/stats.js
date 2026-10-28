@@ -135,7 +135,7 @@ function vStats(){
     '</header>';
   const overview=l7WeekData(p,agg);
   const summary='<div class="s1-summary l7-summary"><div><strong>'+esc(fmtDur(total))+'</strong>'+
-    '<span>'+esc(fmtDur(total/elapsed))+' a day · '+esc(fmtDur(overview.goal))+' weekly goal</span></div>'+
+    '<span>'+esc(fmtDur(total/elapsed))+' a day · '+esc(fmtDur(overview.goal))+' '+(p.month?'4-week':'weekly')+' goal</span></div>'+
     l7GoalRing(total,overview.goal)+'</div>';
   const chart=total?s1Bars(p,buckets):kEmpty(p.month?'No study logged':'No study logged this week');
   const subjects=s1SubjectRows(agg);
