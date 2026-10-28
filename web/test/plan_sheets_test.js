@@ -57,7 +57,7 @@ const ctx={
  kEmpty:x=>x
 };
 vm.createContext(ctx);vm.runInContext(source,ctx);
-assert.deepStrictEqual(Object.keys(SHEETS).sort(),['block','fit','planend','qnew','wrap']);
+assert(['block','fit','planend','qnew','wrap'].every(id=>typeof SHEETS[id]==='function'),'legacy sheets remain after v2 extensions');
 assert(!source.includes('Tap again to delete'),'P2 removes two-tap deletion');
 assert(!source.includes('Cancel</button>'),'P2 sheets have no Cancel button');
 
@@ -136,7 +136,7 @@ assert.equal(UI.sheet,null);
 
 ACT['p2-plan-menu']({getAttribute:k=>k==='data-k'?'2026-10-27':null});
 assert(events.includes('menu'));
-assert.deepStrictEqual(Array.from(ctx.items,x=>x.label),['Copy to tomorrow','Wrap up','Plan ends at…','Clear plan']);
+assert(['Copy to tomorrow','Wrap up','Plan ends at…','Clear plan'].every(x=>ctx.items.some(i=>i.label===x)),'legacy menu actions retained');
 ACT['p2-menu-clear']({getAttribute:k=>k==='data-k'?'2026-10-27':null});
 assert.deepStrictEqual(writes.at(-1).slice(0,2),['set','plans/2026-10-27']);
 assert.equal(commits.at(-1),'Cleared plan.');
