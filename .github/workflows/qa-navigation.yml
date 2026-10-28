@@ -1,0 +1,49 @@
+name: V2 navigation reachability audit
+on:
+  pull_request:
+    paths:
+      - 'web/**'
+      - 'tools/**'
+      - '.github/workflows/qa-navigation.yml'
+  push:
+    branches: [main]
+    paths:
+      - 'web/**'
+      - 'tools/**'
+      - '.github/workflows/qa-navigation.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  navigation:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: npm ci --no-audit --no-fund
+      - run: python3 -m pip install playwright==1.56.0
+      - name: Select browser
+        run: |
+          CHROME=$(command -v google-chrome || command -v chromium || true)
+          if [ -n "$CHROME" ]; then
+            echo "CARREL_CHROMIUM=$CHROME" >> "$GITHUB_ENV"
+          else
+            python3 -m playwright install chromium
+          fi
+      - run: npm run build:web
+      - name: Verify real-click navigation in all four viewports
+        run: python3 tools/v2_qa_navigation_smoke.py
+      - name: Preserve navigation evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v2-navigation-audit
+          path: screenshots/nav-audit
+          if-no-files-found: ignore
+          retention-days: 14
