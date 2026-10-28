@@ -4,11 +4,12 @@
 .l6-urge-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible;}
 .l6-urge-ring circle{fill:none;stroke-width:5;stroke-linecap:round;}
 .l6-urge-ring .l6-track{stroke:var(--line,rgba(120,130,126,.18));}
-.l6-urge-ring .l6-progress{stroke:var(--accent,#0F766E);transition:stroke-dashoffset .25s linear;}
+.l6-urge-ring .l6-progress{stroke:var(--accent,#0F766E);animation:l6-urge-progress 60s linear forwards;animation-delay:calc(-1 * var(--l6-elapsed,0s));}
+@keyframes l6-urge-progress{from{stroke-dashoffset:0;}to{stroke-dashoffset:157;}}
 .l6-urge-ring>span{font-size:29px;font-weight:650;letter-spacing:-1px;}
 .l6-urge-label{text-align:center;color:var(--muted,inherit);font-size:13px;}
 .l6-drift-card{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;}
 .l6-drift-main{font-size:13px;line-height:1.5;}
 .l6-drift-main strong{font-weight:650;}
 .l6-spark{flex:none;color:var(--accent,#0F766E);fill:currentColor;}
-@media(prefers-reduced-motion:reduce){.l6-urge-ring .l6-progress{transition:none;}}
+@media(prefers-reduced-motion:reduce){.l6-urge-ring .l6-progress{animation:none;}}
