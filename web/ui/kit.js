@@ -113,6 +113,8 @@ ACT['k-flow-next']=()=>{
   const sh=UI.sheet;if(!sh||!Array.isArray(sh.flowSteps)||!sh.flowSteps.length)return;
   const step=sh.flowSteps[sh.step||0];
   if(step&&typeof step.canNext==='function'&&!step.canNext())return;
+  // Optional transactional guard for steps that must persist on Accept.
+  if(step&&typeof step.onNext==='function'&&step.onNext()===false)return;
   if(sh.step<sh.flowSteps.length-1){sh.step++;render();}
   else if(typeof sh.done==='function')sh.done();
 };

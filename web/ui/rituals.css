@@ -1,1 +1,24 @@
-/* Carrel v2 reserved for lane implementation: ui/rituals.css */
+/* L2 rituals: one focused decision at a time, kit tokens only. */
+.l2-flow{display:flex;flex-direction:column;gap:10px;padding:8px 0 12px}
+.l2-summary{font-size:var(--t-sm);color:var(--text-2);font-weight:600;padding:6px 0}
+.l2-candidate{display:flex;align-items:center;min-height:56px;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);color:var(--text)}
+.l2-candidate input{accent-color:var(--accent);width:20px;height:20px;flex:none}
+.l2-candidate>span{display:flex;flex:1;flex-direction:column;gap:3px;min-width:0}
+.l2-candidate strong{font-size:var(--t-sm);font-weight:600;overflow-wrap:anywhere}
+.l2-candidate small{font-size:var(--t-xs);color:var(--text-2)}
+.l2-candidate time{font-size:var(--t-xs);color:var(--text-2);white-space:nowrap}
+.l2-preview-ribbon{height:8px;background:var(--line);border-radius:4px;position:relative;overflow:hidden;margin:12px 0}
+.l2-preview-ribbon i{position:absolute;height:100%;background:var(--c,var(--accent));border-radius:2px}
+.l2-totals{display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;justify-items:start;align-items:start;padding:10px 0}
+.l2-totals strong{font-size:var(--t-lg);font-weight:600}
+.l2-totals span{font-size:var(--t-xs);color:var(--text-2)}
+.l2-leftover{display:flex;flex-direction:column;gap:10px;padding:10px 0;border-bottom:1px solid var(--line)}
+.l2-leftover>div:first-child{display:flex;justify-content:space-between;align-items:center;gap:12px}
+.l2-leftover strong{font-size:var(--t-sm);font-weight:600;overflow-wrap:anywhere}
+.l2-leftover span{font-size:var(--t-xs);color:var(--text-2)}
+.l2-leftover .k-seg{width:100%;display:flex}
+.l2-leftover .k-seg>button{flex:1;min-width:0;min-height:44px}
+.l2-card{display:flex;gap:12px;align-items:center;justify-content:space-between;flex-wrap:wrap;font-size:var(--t-sm)}
+.l2-card .k-btn{min-height:44px}
+.l2-flow .k-field{display:flex;flex-direction:column;gap:8px}
+@media(max-width:390px){.l2-card{align-items:stretch}.l2-card .k-btn{width:100%}}

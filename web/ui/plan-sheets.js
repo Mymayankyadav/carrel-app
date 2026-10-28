@@ -228,7 +228,7 @@ function p2OpenPlanMenu(el,k){
   const items=[
     {icon:'autoplan',label:'Auto-plan',act:'l3-auto-open',attrs:'data-k="'+esc(day)+'"'},
     {icon:'copy',label:'Copy to tomorrow',act:'p2-menu-copy',attrs:'data-k="'+esc(day)+'"'},
-    {icon:'wrap',label:'Wrap up',act:'p2-menu-wrap',attrs:'data-k="'+esc(day)+'"'},
+    {icon:'wrap',label:'Shut down',act:'p2-menu-wrap',attrs:'data-k="'+esc(day)+'"'},
     {icon:'later',label:'Plan ends at…',act:'p2-menu-end',attrs:'data-k="'+esc(day)+'"'}
   ];
   if(hasPlan)items.push({icon:'delete',label:'Clear plan',act:'p2-menu-clear',
@@ -393,7 +393,8 @@ Object.assign(ACT,{
   },
   'p2-menu-wrap'(el){
     const k=el.getAttribute('data-k')||UI.cal.anchor||todayKey();
-    p2OpenWrap(k);
+    if(typeof l2OpenShutdown==='function')l2OpenShutdown(k);
+    else p2OpenWrap(k);
   },
   'p2-menu-end'(el){
     const k=el.getAttribute('data-k')||UI.cal.anchor||todayKey();
