@@ -132,7 +132,8 @@ button.k-row{width:100%;padding:0;text-align:left;border-top:0;border-left:0;bor
   .k-screen{margin-left:max(72px,calc(50% - 248px));margin-right:auto}
 }
 @keyframes k-rise{from{opacity:.85;translate:0 25px}to{opacity:1;translate:0 0}}
-@keyframes k-enter{from{opacity:0;translate:12px 0}to{opacity:1;translate:0 0}}
+/* Enter vertically: horizontal translate on full-width .k-screen.k-page\n   temporarily expanded a 390px viewport to 402px during its animation. */
+@keyframes k-enter{from{opacity:0;translate:0 8px}to{opacity:1;translate:0 0}}
 @media (prefers-reduced-motion:reduce){
   .k-sheet,.k-page,.k-toast{animation:none}
   .k-switch-thumb,.k-collapse>summary .i{transition:none}
