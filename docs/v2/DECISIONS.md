@@ -9,3 +9,4 @@
 2026-10-28 · L2 · Morning scheduling has an explicit preview and Accept before any planned blocks are written · Avoids surprise plan mutations; shutdown replaces the Plan menu's Wrap up while retaining the legacy writer as fallback.
 2026-10-28 · L10 · Preserve the v3 meta/guide via an additive doc_merge of v2 fields instead of replacing it · Protect pre-existing sync instructions while publishing Claude read/write rules.
 2026-10-28 · L6 · Keep Android Usage Access detection opt-in and PR #44 in draft for device privacy checks · Aggregate foreground app use can be approximate and requires explicit user acknowledgement before reclassifying study time.
+2026-10-29 · QA/ORC · Merge overlapping free windows before auto-planning; reject non-finite and invalid exam-plan inputs and cap day capacity to 24h · Prevent double-booking, inflated availability, and unbounded loops without touching user data.
