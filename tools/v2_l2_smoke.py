@@ -15,15 +15,20 @@ with sync_playwright() as p:
       page.goto((root/'web/test/carrel-test.html').as_uri())
       page.wait_for_function("S.loaded.current && S.loaded.rituals && S.loaded.planning && ACTS.length>0")
       day=page.evaluate("""() => {
-        const k=todayKey();
-        // Control the mock's busy baseline so the preview has placement capacity.
+        const k=addDaysKey(todayKey(),1);
+        // Use a future day so the test does not depend on the runner clock.
         const w=W();
         w.set('plans/'+k,{date:k,source:'me',blocks:{}});
         w.update('planning/backlog',{items:{
           qa_l2:{title:'L2 realistic planning',activity:'physics',minutes:35,prio:1,
             order:999,created:isoLocal(Date.now())}}},{items:{}});
         commit(null,w,{undo:false});
-        l2OpenMorning(k);return k;
+        l2OpenMorning(k);
+        // Test one specific candidate; other suggested work is covered by unit tests.
+        for(const id of Object.keys(UI.sheet.picks))
+          UI.sheet.picks[id]=id==='backlog:qa_l2';
+        renderSheet();
+        return k;
       }""")
       expect(page.locator('#sheet')).to_contain_text('Pick today')
       assert page.evaluate("UI.sheet.type==='morning'&&UI.sheet.candidates.some(t=>t.id==='backlog:qa_l2')")
@@ -31,6 +36,12 @@ with sync_playwright() as p:
       page.locator('#sheet [data-act="k-flow-next"]').click()
       assert page.evaluate('UI.sheet.step===1')
       expect(page.locator('#sheet')).to_contain_text('proposed block')
+      state=page.evaluate("""() => ({
+        selected:UI.sheet.candidates.filter(t=>UI.sheet.picks[t.id]).map(t=>t.title),
+        free:l3FreeIntervals(UI.sheet.k),proposal:UI.sheet.proposal,
+        plan:V.plans[UI.sheet.k],now:Date.now(),today:todayKey()
+      })""")
+      assert state['proposal']['blocks'],f"no free planned blocks: {state}"
       page.screenshot(path=str(out/f'{width}-{theme}-preview.png'),full_page=True)
       page.locator('#sheet [data-act="k-flow-next"]').click()
       assert page.evaluate('UI.sheet.step===2 && UI.sheet.accepted')
