@@ -2,8 +2,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const js=fs.readFileSync(path.join(__dirname,'../ui/today.js'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'../ui/today.css'),'utf8');
-const marker='/* T1 — minimalist Today view;';
-assert(js.includes(marker),'T1 view source present');
+const marker='/* L1: goal ring and earliest eligible planned work';
+assert(js.includes(marker),'L1 and T1 view source present');
 const code=js.slice(js.indexOf(marker)),MIN=60000,HOUR=3600000,now=Date.now();
 const ACT={},VIEWS={},calls=[];
 const UI={lastRate:null,notice:null,back:null,guardTime:'',desk:false};
@@ -18,6 +18,9 @@ const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&
 const pm={rows:[{id:'b1',title:'A proof',activity:'maths',remaining:45*MIN,st:'open',pieces:[[now+10*MIN,now+55*MIN]],at:null}],over:10*MIN};
 const base={
   ACT,VIEWS,UI,S,ACTS,ENTRIES:[],Math,Date,MIN,HOUR,
+  CFG:{dailyGoal:120},V:{rituals:{}},SHEETS:{},
+  ribbon:()=>'<button data-act="l1-ribbon">timeline</button>',
+  renderTopCards:()=>'<section data-card="reviews">Due reviews</section>',
   CUR:null,
   act:id=>A[id]||A.maths,isStudyId:id=>id==='maths'||id==='chem',
   aggregate:()=>({'2026-10-27':{study:90*MIN}}),
@@ -47,7 +50,9 @@ vm.runInContext(code,base,{filename:'today-t1.js'});
 assert.equal(typeof VIEWS.today,'function');
 let html=VIEWS.today();
 assert(html.includes('t1-today')&&html.includes('90m')&&html.includes('t1-timer'));
-assert(html.includes('Not tracking')&&html.includes('Resume Mathematics'));
+assert(html.includes('Up next')&&html.includes('A proof')&&html.includes('Resume Mathematics'));
+assert(html.includes('l1-goal')&&html.includes('data-act="l1-ribbon"')&&html.includes('data-card="reviews"'));
+assert(html.includes('data-act="l1-start-block"')&&html.includes('data-act="l1-insights"'));
 assert.equal((html.match(/class="t1-chip"[^>]*data-id="maths"/g)||[]).length,0,
   'idle study has no duplicate switch chip');
 assert.equal((html.match(/class="t1-tile"[^>]*data-id="maths"/g)||[]).length,1,
@@ -71,7 +76,7 @@ base.pomoState=()=>({left:19*MIN,phase:'focus',ps:now-6*MIN,len:25*MIN,end:now+1
 html=VIEWS.today();
 assert(html.includes('Focus 2 of 4')&&html.includes('t1-progress'));
 assert(html.includes('data-act="stop"')&&html.includes('data-act="break"'));
-assert(html.includes('data-act="notice"')&&!html.includes('class="t1-tiles"'));
+assert(html.includes('data-act="l1-noticed"')&&!html.includes('class="t1-tiles"'));
 assert(html.includes('data-act="edit-running"')&&html.includes('data-act="desk"'));
 base.pomoState=()=>({left:-MIN,phase:'focus',ps:now-26*MIN,len:25*MIN,end:now-MIN,cycle:2,every:4});
 html=VIEWS.today();
@@ -93,5 +98,10 @@ ACT['t1-rate']({getAttribute:()=> '3'});
 assert(calls.some(x=>Array.isArray(x)&&x[0]==='day'&&x[2].focus1.focus===3));
 assert(UI.lastRate===null && UI.t1RateDoneUntil>0,'rating is one tap and closes prompt');
 assert(css.includes('.t1-today')&&css.includes('.t1-tiles')&&css.includes('.t1-next-row'));
+assert.equal(base.l1GoalFraction(60*MIN,120),0.5);
+assert.equal(base.l1GoalFraction(180*MIN,120),1);
+assert.equal(base.l1GoalFraction(0,0),0);
+ACT['l1-start-block']({getAttribute:k=>k==='data-id'?'b1':'maths'});
+assert.equal(calls.at(-1)[0],'resume');
 assert(css.includes('min-height:44px')&&css.includes('var(--surface)'));
 console.log('T1 TODAY TESTS PASSED');
