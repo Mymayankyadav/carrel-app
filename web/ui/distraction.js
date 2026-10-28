@@ -13,7 +13,7 @@ function l6DriftWeek(docs, start) {
   return {days,total:days.reduce((a,b)=>a+b,0)};
 }
 function l6WeekStats(now) {
-  const today=todayKey(),weekday=new Date(now).getDay();
+  const today=todayKey(),weekday=new Date(dayStartMs(today)+12*60*MIN).getDay();
   const monday=addDaysKey(today,-((weekday+6)%7));
   const current=l6DriftWeek(V.distractions||{},monday);
   const prev=l6DriftWeek(V.distractions||{},addDaysKey(monday,-7));
@@ -49,7 +49,7 @@ function l6UrgeSheet(sh){
     '<div class="k-sheet-body l6-urge-body">'+
       '<div class="l6-urge-ring" role="timer" aria-label="Sixty-second urge-surf timer" aria-live="off">'+
         '<svg viewBox="0 0 64 64" aria-hidden="true"><circle class="l6-track" cx="32" cy="32" r="25"></circle>'+
-          '<circle class="l6-progress" cx="32" cy="32" r="25" stroke-dasharray="157" stroke-dashoffset="'+arc+'"></circle></svg>'+
+          '<circle class="l6-progress" cx="32" cy="32" r="25" stroke-dasharray="157" stroke-dashoffset="'+arc+'" style="--l6-elapsed:'+(elapsed/1000).toFixed(2)+'s"></circle></svg>'+
         '<span data-tk="cd" data-to="'+sh.until+'">'+fmtClock(left)+'</span>'+
       '</div>'+
       '<div class="l6-urge-label">'+(seconds?'Notice the urge. You can let it pass.':'Ready when you are.')+'</div>'+
@@ -123,7 +123,7 @@ async function l6AfterStudyStop(id,start,end,activity){
     !NP.usageAccess||!canWrite()||end-start<10*MIN||end<=start)return;
   try{
     const reply=await CL.sessionUsage({startMs:start,endMs:end});
-    if(!NP.detectDrift||!canWrite())return; // consent can be revoked during query
+    if(!NP.detectDrift||!NP.usageAccess||!canWrite())return; // consent can be revoked during query
     const safe=l6SummariseUsage(reply&&reply.apps,Math.floor((end-start)/MIN));
     if(safe.total<2||!safe.leader)return;
     const day=dayKeyOf(start);
@@ -170,27 +170,42 @@ ACT['l6-use-app']=async el=>{
     Object.assign(NP,p);changed();
   }catch(e){toast('Could not update app list.');}
 };
+/** Never edit stale/overlapping sessions based on an approximate app-usage
+ * total. The native API reports aggregate minutes, not an exact time trace. */
+function l6UsageTrimPlan(found, days, entries, now) {
+  if(!found||!found.id||!Number.isFinite(found.at)||!Number.isFinite(found.min))return null;
+  const raw=days&&days[found.day]&&days[found.day].entries&&days[found.day].entries[found.id];
+  if(!raw||raw.activity!==found.activity)return null;
+  const s=parseT(raw.start),e=parseT(raw.end);
+  if(!Number.isFinite(s)||!Number.isFinite(e)||e<=s||Math.abs(e-found.at)>2000)return null;
+  const minutes=Math.floor(found.min);
+  if(minutes<1||minutes>=Math.floor((e-s)/MIN))return null;
+  const begin=e-minutes*MIN;
+  // Only trim an exact, still-present logged entry. A new overlapping session
+  // or a modified end time must be handled via the regular Log editor instead.
+  if((entries||[]).some(x=>x.id!==found.id&&x.s<e&&entryEnd(x,now)>begin))return null;
+  return {from:begin,to:e,min:minutes};
+}
 ACT['l6-usage-log']=()=>{
   const found=UI.l6Detected;
   if(!found||Date.now()>found.until||!canWrite())return;
-  const min=Math.min(found.min,24*60),drift=ACTS.find(a=>a.role==='drift'&&!a.archived);
+  const drift=ACTS.find(a=>a.role==='drift'&&!a.archived);
   if(!drift){toast('Add a Drift activity in Settings first.');return;}
-  const at=found.at,start=at-min*MIN;
-  if(start>=at||!Number.isFinite(start))return;
+  const plan=l6UsageTrimPlan(found,V.days,ENTRIES,Date.now());
+  if(!plan){UI.l6Detected=null;toast('Session changed. Review it in Log to mark drift.');return;}
   const w=W();
-  // The native result only gives aggregate minutes, not exact interruption
-  // times. Attribute them to the END of the known focus session.
-  w.day(found.day,{[found.id]:{end:isoLocal(start)}});
-  w.day(dayKeyOf(start),{[uid('e')]:{
-    activity:drift.id,start:isoLocal(start),end:isoLocal(at),
-    note:'detected app use',focus:null,block:null,pomo:null
+  w.day(found.day,{[found.id]:{end:isoLocal(plan.from)}});
+  w.day(dayKeyOf(plan.from),{[uid('e')]:{
+    activity:drift.id,start:isoLocal(plan.from),end:isoLocal(plan.to),
+    note:'detected app use (approximate)',focus:null,block:null,pomo:null
   }});
-  w.dis(found.day,uid('d'),{
-    type:'drift',at:isoLocal(at),driftMin:min,text:null,activity:found.activity,
+  w.dis(dayKeyOf(plan.to),uid('d'),{
+    type:'drift',at:isoLocal(plan.to),driftMin:plan.min,text:null,activity:found.activity,
     entry:found.id,src:'usage',applied:true
   });
-  if(commit('Logged '+min+'m of drift.',w,{undo:true}))UI.l6Detected=null;
+  if(commit('Logged '+plan.min+'m of drift.',w,{undo:true}))UI.l6Detected=null;
 };
 
+
 if(typeof module!=='undefined'&&module.exports)
-  module.exports={l6DriftWeek,l6DriftRank,l6SummariseUsage};
+  module.exports={l6DriftWeek,l6DriftRank,l6SummariseUsage,l6UsageTrimPlan};
