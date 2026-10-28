@@ -1,10 +1,10 @@
 # Carrel v2 implementation board
 | Lane | Phase | Status | Branch | PR | Notes |
 |---|---|---|---|---|---|
-| F1 | 0 | review | `v2/f1` | pending | Foundations, CI pending |
+| F1 | 0 | merged | `v2/f1` | [#27](https://github.com/Mymayankyadav/carrel-app/pull/27) | Green web + browser CI; merged 28 Oct |
 | L1 | 1 | todo | `v2/l1` | | Today |
 | L2 | 2 | todo | `v2/l2` | | Rituals |
-| L3 | 1 | todo | `v2/l3` | | Scheduler |
+| L3 | 1 | doing | `v2/l3` | | Smart scheduler and Plan integration |
 | L4 | 1 | todo | `v2/l4` | | Subjects |
 | L5 | 1 | todo | `v2/l5` | | Focus |
 | L6 | 2 | todo | `v2/l6` | | Distraction |
