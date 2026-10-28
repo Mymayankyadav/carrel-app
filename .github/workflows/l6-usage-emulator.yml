@@ -7,6 +7,9 @@ on:
       - 'web/native.js'
       - '.github/workflows/l6-usage-emulator.yml'
   workflow_dispatch:
+concurrency:
+  group: l6-usage-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: read
 jobs:
