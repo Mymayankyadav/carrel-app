@@ -69,9 +69,13 @@ function restorePending() {
 function importLegacyPending() {
   const key = pendingStoreKey(), arr = store.get('pending');
   if (!key || !Array.isArray(arr) || !arr.length) return 0;
-  const valid = o => o && typeof o.path === 'string' &&
-    /^[a-z]+\\/[^/]+$/.test(o.path) && ['set','update','delete'].includes(o.kind) &&
-    (o.kind === 'delete' || (o.data && typeof o.data === 'object' && !Array.isArray(o.data)));
+  const valid = o => {
+    if (!o || typeof o.path !== 'string') return false;
+    const parts = o.path.split('/');
+    return parts.length === 2 && /^[a-z]+$/.test(parts[0]) && !!parts[1] &&
+      ['set','update','delete'].includes(o.kind) &&
+      (o.kind === 'delete' || (o.data && typeof o.data === 'object' && !Array.isArray(o.data)));
+  };
   if (!arr.every(valid)) return -1;
   const ops = arr.map(o => ({ oid: ++opSeq, path: o.path, kind: o.kind,
     data: o.data, ensure: o.ensure || null, cond: o.cond || null, tries: 1 }));
