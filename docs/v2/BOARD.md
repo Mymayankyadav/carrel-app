@@ -2,7 +2,7 @@
 | Lane | Phase | Status | Branch | PR | Notes |
 |---|---|---|---|---|---|
 | F1 | 0 | merged | `v2/f1` | [#27](https://github.com/Mymayankyadav/carrel-app/pull/27) | Green web + browser CI; merged 28 Oct |
-| L1 | 1 | doing | `v2/l1` | | Today v2 implemented; PR and CI evidence in progress |
+| L1 | 1 | merged | `v2/l1` | [#35](https://github.com/Mymayankyadav/carrel-app/pull/35) | Ring, hero, ribbon, smart stack; full CI + four-viewport smoke green |
 | L2 | 2 | todo | `v2/l2` | | Rituals |
 | L3 | 1 | merged | `v2/l3` | [#29](https://github.com/Mymayankyadav/carrel-app/pull/29) | Scheduler, preview, unit and browser tests green |
 | L4 | 1 | merged | `v2/l4` | [#33](https://github.com/Mymayankyadav/carrel-app/pull/33) | Subjects, topic recall, spacing and browser acceptance green |
