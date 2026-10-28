@@ -120,7 +120,7 @@ ctx.W=()=>({update(path,payload,ensure){
 }});
 ctx.commit=()=>true;
 ctx.toast=(message,options)=>{ctx.toastResult={message,options}};
-ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(()=>{
+ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(async()=>{
   assert.equal(writes.length,1);
   assert.equal(writes[0].path,'usage/2026-10-28');
   assert.equal(writes[0].payload.sessions.entry1.apps.Instagram.min,6);
