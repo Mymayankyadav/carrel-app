@@ -165,7 +165,7 @@ function t1Today(){
   const agg=aggregate(ENTRIES,now,k,k)[k]||{study:0,acts:{}};
   const head='<header class="t1-day-head"><span>'+esc(stampText(k))+'</span><span class="f1-head-actions">'+
     '<button type="button" class="t1-log-link" data-act="t1-log" aria-label="Open today log">'+
-    esc(fmtDur(agg.study))+icon('open')+'</button>'+kIconBtn('settings','Settings','data-act="open-settings"')+'</span></header>';
+    esc(fmtDur(agg.study))+icon('open')+'</button>'+kIconBtn('add','Quick add','data-act="l9-open"')+kIconBtn('settings','Settings','data-act="open-settings"')+'</span></header>';
   if(!S.loaded.activities)return '<div class="t1-today">'+head+kEmpty('Opening…')+'</div>';
   if(w1NeedsSetup())return w1FirstRun();
   const pm=planModelFor(k,now);
