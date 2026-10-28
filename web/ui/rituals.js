@@ -1,5 +1,5 @@
 /* L2 — Morning and shutdown rituals. All writes use the existing undoable queue. */
-function l2MorningDone(k){return !!(V.rituals&&V.rituals[k]&&V.rituals[k].morning);}
+function l2HasMorning(k){return !!(V.rituals&&V.rituals[k]&&V.rituals[k].morning);}
 function l2ShutdownDone(k){return !!(V.rituals&&V.rituals[k]&&V.rituals[k].shutdown);}
 function l2Minutes(items,picks){
   return items.reduce((n,x)=>n+(picks[x.id]?Math.max(0,+x.minutes||0):0),0);
@@ -123,8 +123,8 @@ function l2MorningIntent(sh){
     kField('Then… (optional)',kText({bind:'sheet.thenText',value:sh.thenText||'',
       attrs:'maxlength="80" aria-label="Then action"'}))+'</div>';
 }
-function l2MorningDone(sh){
-  if(!sh.accepted||l2MorningDone(sh.k))return false;
+function l2SaveMorning(sh){
+  if(!sh.accepted||l2HasMorning(sh.k))return false;
   const cond=String(sh.ifText||'').trim().slice(0,80),then=String(sh.thenText||'').trim().slice(0,80);
   const morning={at:isoLocal(Date.now()),picks:sh.candidates.filter(x=>sh.picks[x.id]).map(x=>x.id),
     intent:String(sh.intent||'').trim().slice(0,120)};
@@ -141,12 +141,12 @@ function l2MorningSheet(sh){
       canNext:()=>!!(sh.proposal&&sh.proposal.blocks.length),onNext:()=>l2AcceptMorning(sh)},
     {title:'Today’s intention',body:()=>l2MorningIntent(sh),next:'Done'}
   ];
-  sh.done=()=>l2MorningDone(sh);
+  sh.done=()=>l2SaveMorning(sh);
   return kFlow(sh,steps);
 }
 function l2OpenMorning(k){
   k=k||todayKey();
-  if(l2MorningDone(k)){toast('Morning plan already saved.');return;}
+  if(l2HasMorning(k)){toast('Morning plan already saved.');return;}
   const candidates=l2Candidates(k),picks={};
   candidates.forEach(t=>{picks[t.id]=!!t.pick;});
   openSheet({type:'morning',k,step:0,candidates,picks,accepted:false,proposal:null,
@@ -254,7 +254,7 @@ Object.assign(ACT,{
 /* cards.js is loaded after rituals.js. Register at DOM ready as in L4. */
 if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded',()=>{
   CARDS.morning={rank:ctx=>{
-    if(l2MorningDone(ctx.k))return 0;
+    if(l2HasMorning(ctx.k))return 0;
     if(ctx.now<dayStartMs(ctx.k)||ctx.now>=dayStartMs(ctx.k)+4*HOUR)return 0;
     const pm=planModelFor(ctx.k,ctx.now);
     return pm&&pm.rows.some(r=>r.remaining>0)?0:95;
