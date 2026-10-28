@@ -31,3 +31,9 @@
 .s2-metrics span{font-size:var(--t-xs);color:var(--text-2)}
 .s2-insight{font-size:var(--t-sm);line-height:1.5;padding:16px 0;border-bottom:1px solid var(--line)}
 @media(max-width:380px){.s2-subject-bars{gap:7px}.s2-heat-row{gap:1px}}
+
+/* L7: focused detail page numbers and existing kit rows. */
+.l7-detail{display:flex;flex-direction:column;gap:16px}
+.l7-detail .k-group{margin:0}
+.l7-metric{display:flex;flex-direction:column;gap:4px;font-size:var(--t-xl);font-weight:600;margin:8px 0 16px}
+.l7-metric span{font-size:var(--t-sm);font-weight:400;color:var(--text-2)}
