@@ -1,1 +1,30 @@
-/* Carrel v2 reserved for lane implementation: ui/ribbon.css */
+/* L1 goal ring, planned hero and 24-hour timeline */
+.l1-goal-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-width:52px}
+.l1-goal{border:0;background:transparent;padding:2px;min-width:44px;min-height:33px;display:grid;place-items:center;cursor:pointer;color:var(--text)}
+.l1-goal-track,.l1-goal-value{fill:none;stroke-width:3}
+.l1-goal-track{stroke:var(--line)}
+.l1-goal-value{stroke:var(--accent);stroke-linecap:round;transform:rotate(-90deg);transform-origin:14px 14px}
+.l1-goal-text{font-size:var(--t-xs);font-weight:600}
+.l1-goal-log{border:0;background:transparent;color:var(--text-2);font-size:var(--t-xs);min-height:24px;cursor:pointer}
+.l1-idle-next{display:flex;flex-direction:column;gap:4px}
+.l1-idle-next strong{font-size:var(--t-lg);font-weight:600;overflow-wrap:anywhere}
+.l1-idle-next>span,.l1-idle-label,.l1-intent{font-size:var(--t-sm);color:var(--text-2)}
+.l1-intent{margin:0}
+.l1-ribbon-button{display:block;width:100%;border:0;background:transparent;color:var(--text-2);padding:6px 0;cursor:pointer;text-align:left;min-height:44px}
+.l1-ribbon-button:focus-visible,.l1-goal:focus-visible,.l1-goal-log:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.l1-ribbon-track{height:8px;border-radius:4px;background:var(--line);display:block;position:relative;isolation:isolate}
+.l1-ribbon-segment{position:absolute;top:0;height:100%;border-radius:2px}
+.l1-ribbon-busy{background:repeating-linear-gradient(45deg,transparent,transparent 2px,var(--text-2) 2px,var(--text-2) 3px);opacity:.3}
+.l1-ribbon-plan{outline:1px solid var(--c,var(--accent));outline-offset:-1px;z-index:2}
+.l1-ribbon-entry{background:var(--c,var(--accent));z-index:3}
+.l1-ribbon-now{position:absolute;top:-3px;bottom:-3px;width:2px;background:var(--text);z-index:4}
+.l1-ribbon-labels{display:flex;justify-content:space-between;align-items:center;font-size:var(--t-xs);margin-top:7px}
+.l1-card-link{display:flex;flex-direction:column;gap:8px;border:0;background:transparent;width:100%;padding:0;text-align:left;color:var(--text);cursor:pointer;min-height:44px}
+.l1-card-heading{display:flex;align-items:center;gap:8px;font-size:var(--t-sm);min-width:0}
+.l1-card-heading strong{flex:1;min-width:0;overflow-wrap:anywhere}
+.l1-card-heading .i{width:18px;height:18px;flex:none}
+.l1-card-heading small{font-size:var(--t-xs);color:var(--text-2);white-space:nowrap}
+.l1-card-heading .l1-urgent{color:var(--danger)}
+.l1-card-progress{height:3px;width:100%;border-radius:2px;background:var(--line);overflow:hidden}
+.l1-card-progress i{display:block;height:100%;background:var(--accent)}
+@media(max-width:350px){.l1-card-heading{flex-wrap:wrap}.l1-ribbon-labels{font-size:11px}}
