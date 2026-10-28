@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.ParcelFileDescriptor
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -25,6 +26,24 @@ class UsageAccessInstrumentedTest {
             android.os.ParcelFileDescriptor.AutoCloseInputStream(it).bufferedReader().use { stream ->
                 stream.readText()
             }
+        }
+    }
+
+    @Test fun nativeConsentIsNeverInheritedAcrossSignOut() {
+        val store = Store(context)
+        try {
+            assertFalse(store.detectDrift)
+            store.detectDrift = true
+            store.usagePackages = listOf("com.instagram.android", "com.instagram.android",
+                "com.example.unapproved")
+            assertTrue(store.detectDrift)
+            assertEquals(listOf("com.instagram.android"), store.usagePackages)
+            store.clearSession()
+            assertFalse("Signing out must disable tracking", store.detectDrift)
+            assertEquals("The previous user's app choices cannot survive sign-out",
+                UsageReader.DEFAULT_PACKAGES, store.usagePackages)
+        } finally {
+            store.clearSession()
         }
     }
 
