@@ -83,6 +83,7 @@ const recorded={date:'2026-10-28',entries:{
   entry1:{activity:'physics',start:'2026-10-28T09:00:00Z',end:'2026-10-28T09:20:00Z',note:'proofs'}
 }};
 const detected={id:'entry1',day:'2026-10-28',activity:'physics',
+  start:Date.parse('2026-10-28T09:00:00Z'),
   at:Date.parse('2026-10-28T09:20:00Z'),min:6};
 let plan=l6UsageTrimPlan(detected,{'2026-10-28':recorded},[],Date.now());
 assert.equal(plan.min,6);
@@ -91,6 +92,8 @@ assert.equal(l6UsageTrimPlan({...detected,min:21},{'2026-10-28':recorded},[],Dat
   'never erase a full session');
 assert.equal(l6UsageTrimPlan({...detected,at:detected.at-60000},{'2026-10-28':recorded},[],Date.now()),null,
   'stale session end requires manual review');
+assert.equal(l6UsageTrimPlan({...detected,start:detected.start+60000},{'2026-10-28':recorded},[],Date.now()),null,
+  'stale session start requires manual review');
 assert.equal(l6UsageTrimPlan(detected,{'2026-10-28':recorded},
   [{id:'other',s:Date.parse('2026-10-28T09:16:00Z'),e:detected.at}],Date.now()),null,
   'overlapping later entries must not be overwritten');
