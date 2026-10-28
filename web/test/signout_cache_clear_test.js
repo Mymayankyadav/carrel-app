@@ -65,7 +65,8 @@ const session = id => ({user:{id}});
 
   // A new sign-in for the same account must not hydrate the failed cache.
   ctx.openDb(session('alice'));
-  assert.equal(adapters[1].opts.idb,false);
+  assert.equal(adapters[1].opts.idb,true);
+  assert.equal(adapters[1].opts.skipHydrate,true);
   const callsBefore = clearCalls.length;
   await ctx.ACT['a1-retry-cache-clear']();
   assert.equal(clearCalls.length,callsBefore,'no retry may erase a signed-in cache');
