@@ -63,7 +63,9 @@ const session = id => ({user:{id}});
 (async () => {
   // Legacy unowned queues must remain recoverable but NEVER auto-replayed.
   storage.set('pending', [{path:'days/old',kind:'set',data:{secret:'unknown'}}]);
+  ctx.UI.view = 'plan';
   ctx.openDb(session('alice'));
+  assert.equal(ctx.UI.view, 'plan', 'first sign-in preserves requested tab');
   assert.equal(S.pending.length, 0);
   assert.equal(storage.has('pending'), true);
 
@@ -102,6 +104,10 @@ const session = id => ({user:{id}});
   assert.equal(S.pending[0].data.secret, 'alice');
   assert.equal(requests.at(-1).uid, 'alice');
   assert.equal(requests.at(-1).data.secret, 'alice');
+  requests.find(r => r.uid === 'bob').resolve();
+  await flush();
+  assert.equal(S.uid, 'alice');
+  assert.equal(S.pending.length, 1, 'late Bob success cannot remove Alice queue');
 
   // Explicit sign-out discards only the current account's unsaved queue.
   ctx.teardownDb(true);
