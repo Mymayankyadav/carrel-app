@@ -36,6 +36,7 @@ function g2Day(){
     g2Time('planEnd',CFG.planEnd,'Plans end by')+
     kField('Gap between blocks',g2Nudge('gap',CFG.gap,5,0,60,x=>x+'m'))+
     kField('Daily goal',g2Nudge('dailyGoal',CFG.dailyGoal,30,0,960,x=>x===0?'—':(x/60)+'h'))+
+    kField('Minimum streak day',g2Nudge('minDay',CFG.minDay||25,5,5,120,x=>x+'m'))+
     '<details class="g2-details"><summary class="g2-summary">Week starts on<span>'+
       esc(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][+CFG.weekStart||0])+icon('expand')+
       '</span></summary>'+g2RadioRows(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((n,i)=>({label:n,value:String(i)})),String(+CFG.weekStart||0),'g2-week')+'</details>'+
@@ -51,10 +52,21 @@ function g2Calendar(){
   return '<div class="g2-page">'+rows+
     (!connected?kRow({label:'Connect',icon:'add',attrs:'data-act="gc-connect"' }):'')+'</div>';
 }
+/* L10: copy-only, chat-initiated prompts. No model API is called by Carrel. */
+const l10Prompts=[
+  ['Plan my day','Use the Supabase connector for Carrel. Read meta/guide in public.docs, then plan my day: read week_summary and topics_due and write one coach plan proposal for today.'],
+  ['Plan my week','Use the Supabase connector for Carrel. Read meta/guide in public.docs, then plan my week: inspect week_summary, current plans, and deadlines, and write one coach plan proposal for a suitable day.'],
+  ['Weekly review','Use the Supabase connector for Carrel. Read meta/guide in public.docs, then write my weekly review as one coach review. Use actual study and planned data; do not invent results.'],
+  ['Exam plan','Use the Supabase connector for Carrel. Read meta/guide in public.docs, then make an exam plan for the subject I specify. Inspect topics_due, deadlines and existing activities; write one coach proposal after checking the subject ID.']
+];
 function g2Claude(){
-  return '<div class="g2-page g2-prompts">'+PROMPTS.map(([p])=>
-    '<div class="g2-prompt"><span>'+esc(p)+'</span>'+kIconBtn('copy','Copy prompt','data-act="copy" data-text="'+esc(p)+'"')+'</div>').join('')+'</div>';
+  return '<div class="g2-page g2-prompts">'+l10Prompts.map(([label,prompt])=>
+    '<div class="g2-prompt"><span>'+esc(label)+'</span>'+
+    kIconBtn('copy','Copy '+label+' prompt','data-act="copy" data-text="'+esc(prompt)+'"')+
+    '</div>').join('')+
+    '<div class="s2-muted">Open a Claude chat and paste a prompt. Carrel never sends data to an LLM API.</div></div>';
 }
+
 function g2Data(){
   if(!S.dl)return '<div class="g2-page">'+kEmpty('Export not available here')+'</div>';
   return '<div class="g2-page">'+
@@ -102,10 +114,11 @@ Object.assign(ACT,{
   },
   'g2-nudge'(el){
     const k=el.getAttribute('data-key'),d=+el.getAttribute('data-d');
-    const spec={guardHours:[1,12],gap:[0,60],dailyGoal:[0,960],
+    const spec={guardHours:[1,12],gap:[0,60],dailyGoal:[0,960],minDay:[5,120],
       'pomo.focus':[1,180],'pomo.short':[1,60],'pomo.long':[1,90],'pomo.every':[2,8]};
     if(!spec[k]||!Number.isFinite(d))return;
-    const n=k.startsWith('pomo.')?+CFG.pomodoro[k.slice(5)]:+CFG[k];
+    const n=k.startsWith('pomo.')?+CFG.pomodoro[k.slice(5)]:
+      k==='minDay'?(+CFG.minDay||25):+CFG[k];
     const val=Math.max(spec[k][0],Math.min(spec[k][1],n+d));
     if(!Number.isFinite(val)||val===n)return;
     if(k.startsWith('pomo.'))saveSetting({pomodoro:{[k.slice(5)]:val}});

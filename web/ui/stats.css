@@ -30,3 +30,23 @@
 .s1-bar-col:focus-visible,.s1-period-title:focus-visible,.s1-subject:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 @media(max-width:420px){.s1-bar-grid{gap:6px}.s1-header .k-seg{width:auto}}
 @media(min-width:480px){.s1-chart-area .s1-bar-grid{grid-template-columns:repeat(7,minmax(0,1fr))}}
+
+/* L7: goal ring, actionable suggestions and a low-clutter insights hierarchy. */
+.l7-summary{flex-direction:row;align-items:center;justify-content:space-between;gap:20px}
+.l7-summary>div:first-child{display:flex;flex-direction:column;gap:6px}
+.l7-summary>div:first-child>span{font-size:var(--t-xs);color:var(--text-2)}
+.l7-goal{position:relative;width:86px;height:86px;display:grid;place-items:center;flex:none}
+.l7-goal svg{position:absolute;inset:0}
+.l7-goal strong{font-size:var(--t-sm);font-weight:600}
+.l7-ring-track,.l7-ring-value{fill:none;stroke-width:6}
+.l7-ring-track{stroke:var(--line)}
+.l7-ring-value{stroke:var(--accent);stroke-linecap:round;transform:rotate(-90deg);transform-origin:50px 50px}
+.l7-insights .k-group{margin-top:20px}
+.l7-advice{display:flex;align-items:center;gap:8px;min-height:56px;padding:10px 0;border-bottom:1px solid var(--line)}
+.l7-advice>span{flex:1;font-size:var(--t-sm);overflow-wrap:anywhere}
+.l7-advice .k-btn{min-height:44px;flex:none}
+.l7-advice .k-icon{flex:none}
+.l7-freshstart{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.l7-freshstart .k-btn{min-height:44px}
+.l7-goal-sheet{display:flex;flex-direction:column;gap:20px;padding:16px 0}
+@media(max-width:400px){.l7-summary{gap:10px}.l7-goal{width:70px;height:70px}.l7-goal svg{width:70px;height:70px}.l7-advice{flex-wrap:wrap}.l7-advice>span{flex:1 0 100%}}

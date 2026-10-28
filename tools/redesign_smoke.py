@@ -194,7 +194,8 @@ with sync_playwright() as p:
             old_pin=page.evaluate('(id)=>g1PinValue(ACTMAP[id])',study)
             page.locator('[data-act="g1-pin"]').click()
             page.wait_for_function('([id,old])=>g1PinValue(ACTMAP[id])!==old',arg=[study,old_pin])
-            assert page.evaluate('(id)=>t1Picks().some(a=>a.id===id)',study) != old_pin
+            # Local queued commits can update the pin before Today derived picks repaint.
+            page.wait_for_function('([id,old])=>t1Picks().some(a=>a.id===id)!==old',arg=[study,old_pin],timeout=10000)
             # Month keyboard paging must affect the displayed range.
             tab('stats')
             page.locator('[data-act="s1-range"][data-v="month"]').click()
