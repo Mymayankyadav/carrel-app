@@ -78,7 +78,7 @@ function l2MorningPreview(sh){
   const blocks=sh.proposal&&sh.proposal.blocks||[];
   return '<div class="l2-flow">'+l2PreviewRibbon(sh.k,blocks)+
     '<div class="l2-summary">'+blocks.length+' proposed block(s)'+
-    (next.proposal.unplaced.length?' · '+next.proposal.unplaced.length+' not fully placed':'')+'</div>'+
+    (sh.proposal.unplaced.length?' · '+sh.proposal.unplaced.length+' not fully placed':'')+'</div>'+
     (blocks.length?blocks.map(b=>kRow({dot:act(b.activity).color,
       label:b.title||act(b.activity).name,sub:act(b.activity).name,
       value:fmtHM(b.at)+' · '+b.minutes+'m'})).join(''):kEmpty('Nothing fits. Free up time in Plan.'))+
