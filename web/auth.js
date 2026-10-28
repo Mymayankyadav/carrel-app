@@ -125,6 +125,19 @@ Object.assign(ACT, {
   'a1-reconnect'() {
     clearTimeout(recoverT); recoverT = 0;
     recoverAuth(0);
+  },
+  async 'a1-recover-legacy-pending'() {
+    const uid = S.uid, old = store.get('pending');
+    if (!uid || !S.db || S.conn === 'readonly' || !Array.isArray(old) || !old.length) return;
+    const ok = await confirmDialog({
+      title: 'Older offline edits',
+      text: old.length + ' unsent edits from an older version have no account label. Restore only if they belong to this signed-in account.',
+      ok: 'Restore here', danger: true
+    });
+    if (!ok || S.uid !== uid || !S.db || S.conn === 'readonly') return;
+    const count = importLegacyPending();
+    toast(count > 0 ? count + ' edits queued for this account.' :
+      'Could not restore. Older edits were kept on this device.');
   }
 });
 document.addEventListener('visibilitychange', () => {
