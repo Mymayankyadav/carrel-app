@@ -76,6 +76,59 @@ function s2Insights() {
   return '<div class="s2-page"><div class="s2-insights">'+ins.map(x=>
     '<div class="s2-insight">'+esc(x.text)+'</div>').join('')+'</div></div>';
 }
+/* L7: dedicated focus, estimate-accuracy and flexible-streak detail pages. */
+function l7FocusStats(){
+  const hours={},subjects={};
+  for(const e of ENTRIES){
+    if(!e||e.e==null||e.e<=e.s||![1,2,3].includes(+e.focus)||!isStudyId(e.a))continue;
+    const minutes=(e.e-e.s)/MIN;
+    const h=new Date(e.s).getHours();
+    for(const [map,key] of [[hours,h],[subjects,e.a]]){
+      const rec=map[key]||(map[key]={sum:0,min:0,n:0});
+      rec.sum+=+e.focus*minutes;rec.min+=minutes;rec.n++;
+    }
+  }
+  return {hours,subjects};
+}
+function l7FocusPage(){
+  const stats=l7FocusStats(),hours=Object.keys(stats.hours).map(Number).sort((a,b)=>a-b);
+  const rows=hours.map(h=>{
+    const x=stats.hours[h];
+    return kRow({label:fmtHourS(h),value:(x.sum/x.min).toFixed(1)+' / 3'});
+  }).join('');
+  const subjects=Object.entries(stats.subjects).sort((a,b)=>b[1].min-a[1].min)
+    .map(([id,x])=>kRow({dot:act(id).color,label:act(id).name,
+      value:(x.sum/x.min).toFixed(1)+' / 3'})).join('');
+  return '<div class="s2-page l7-detail">'+
+    (rows?kGroup('Focus by hour',rows):kEmpty('Rate a few study sessions to see your focus patterns.'))+
+    (subjects?kGroup('By subject',subjects):'')+'</div>';
+}
+function l7EstimatePage(){
+  const reports=ACTS.filter(a=>a.kind==='study'&&!a.archived).map(a=>{
+    const hist=typeof l3History==='function'?l3History(a.id):[];
+    return {a,hist,factor:estimateFactor(hist),accuracy:l7Accuracy(hist)};
+  }).filter(x=>x.hist.length);
+  if(!reports.length)return kEmpty('Complete planned study blocks to measure estimate accuracy.');
+  const overall=l7Accuracy(reports.flatMap(x=>x.hist));
+  return '<div class="s2-page l7-detail"><div class="l7-metric">'+
+    (overall==null?'—':overall+'%')+'<span>Overall estimate accuracy</span></div>'+
+    kGroup('By subject',reports.map(x=>kRow({dot:x.a.color,label:x.a.name,
+      sub:x.hist.length+' tracked session(s)',value:'×'+x.factor.toFixed(1)})).join(''))+
+    '</div>';
+}
+function l7StreakPage(){
+  const min=+CFG.minDay||25,st=flexibleStreak(l7Days(),min,+CFG.weekStart||0);
+  const tk=todayKey(),keys=Object.keys(st.status).filter(k=>k<=tk).sort().slice(-14);
+  const label={met:'Study',freeze:'Freeze',miss:'Rest'};
+  return '<div class="s2-page l7-detail"><div class="l7-metric">'+st.count+
+    '<span>Consecutive study or frozen days · '+min+'m minimum</span></div>'+
+    kGroup('Recent days',keys.reverse().map(k=>kRow({label:shortDay(k),
+      value:label[st.status[k]]||'Rest'})).join(''))+'</div>';
+}
+PAGES['stats.focus']={title:'Focus',render:l7FocusPage};
+PAGES['stats.estimates']={title:'Estimates',render:l7EstimatePage};
+PAGES['stats.streak']={title:'Streak',render:l7StreakPage};
+
 PAGES['stats.subject']={
   title:params=>(ACTMAP[params&&params.id]||{}).name||'Subject',
   render:s2Subject,
