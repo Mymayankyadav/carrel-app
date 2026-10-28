@@ -52,6 +52,10 @@ function nativeBoot() {
   updateBoot();
   CL.addListener('session', s => { if (sb && s && s.refresh) sb.auth.setSession({ access_token: s.access, refresh_token: s.refresh }).catch(() => {}); });
   CL.addListener('action', () => { if (S.db && S.db.refresh) S.db.refresh(); });
+  if (CL.consumeIncoming) {
+    CL.addListener('incoming', l8ReceiveIncoming);
+    CL.consumeIncoming().then(l8ReceiveIncoming).catch(() => {});
+  }
   CL.getPrefs().then(p => { Object.assign(NP, p); changed(); }).catch(() => {});
   if (!store.get('notifAsked')) {
     store.set('notifAsked', 1);
@@ -73,7 +77,25 @@ function nativeSync() {
   }
   const br = breakAct();
   const state = liveStateOf(CUR, { rev: 0, act: id => act(id), breakId: br ? br.id : null, blockTitle });
-  const payload = { state, id: CUR ? CUR.id : null };
+  // Give native surfaces a deterministic 14-day shortlist and today's study
+  // total. No additional server read: the app already holds these entries.
+  const now=Date.now(),day=todayKey();
+  const today=aggregate(ENTRIES,now,day,day)[day];
+  const start=dayStartMs(addDaysKey(day,-13)),scores={};
+  for(const en of ENTRIES){
+    if(!ACTMAP[en.a]||ACTMAP[en.a].kind!=='study'||ACTMAP[en.a].archived)continue;
+    const ms=Math.max(0,Math.min(entryEnd(en,now),now)-Math.max(en.s,start));
+    scores[en.a]=(scores[en.a]||0)+ms;
+  }
+  const topActivities=Object.keys(scores).sort((a,b)=>scores[b]-scores[a])
+    .slice(0,3).map(id=>({id,name:ACTMAP[id].name}));
+  const recentStudy=l8LastStudyId();
+  const payload = { state, id: CUR ? CUR.id : null,
+    todayStudyMs:Math.max(0,Math.floor((today&&today.study)||0)),
+    todayKey:day,
+    studyRunning:!!(CUR&&ACTMAP[CUR.activity]&&ACTMAP[CUR.activity].kind==='study'),
+    lastStudyId:CUR&&ACTMAP[CUR.activity]&&ACTMAP[CUR.activity].kind==='study'?CUR.activity:recentStudy,
+    topActivities };
   const sig = JSON.stringify(payload);
   if (sig === nsSig) return;
   nsSig = sig;
@@ -210,4 +232,47 @@ if (NATIVE && CAP.App) {
       if (r.error) toast('Sign-in failed: ' + r.error.message);
     }
   });
+}
+
+/* L8: Android shares/shortcuts are delivered by the native plugin with durable ack.
+ * Never write a task just because the user shared text; open Quick Capture to review. */
+let l8Incoming = null, l8Retry = null;
+const l8HandledIds = new Set();
+function l8ReceiveIncoming(item) {
+  if (!item || !item.id || !['capture','start'].includes(item.kind)) return;
+  if (l8HandledIds.has(item.id) || (l8Incoming && l8Incoming.id === item.id)) return;
+  l8Incoming = item;
+  l8FlushIncoming();
+}
+function l8LastStudyId() {
+  const entries=typeof ENTRIES!=='undefined'&&Array.isArray(ENTRIES)?ENTRIES:[];
+  const last=entries.filter(e=>ACTMAP[e.a]&&ACTMAP[e.a].kind==='study'&&!ACTMAP[e.a].archived)
+    .sort((a,b)=>entryEnd(b,Date.now())-entryEnd(a,Date.now()))[0];
+  if(last)return last.a;
+  const recent=typeof lastEntry==='function'?lastEntry():null;
+  if(recent&&ACTMAP[recent.a]&&ACTMAP[recent.a].kind==='study'&&!ACTMAP[recent.a].archived)return recent.a;
+  return (ACTS.find(a=>a.kind==='study'&&!a.archived)||{}).id||'';
+}
+function l8FlushIncoming() {
+  if (!l8Incoming) return;
+  if (typeof S === 'undefined' || !S.db || !S.loaded || !S.loaded.activities ||
+      !S.loaded.current || typeof UI === 'undefined') {
+    if (!l8Retry && typeof setTimeout === 'function')
+      l8Retry = setTimeout(() => { l8Retry = null; l8FlushIncoming(); }, 500);
+    return;
+  }
+  const item = l8Incoming;
+  l8Incoming = null;
+  l8HandledIds.add(item.id);
+  // Bound the dedup window; IDs are per received Android Intent.
+  if (l8HandledIds.size > 32) l8HandledIds.delete(l8HandledIds.values().next().value);
+  if (item.kind === 'capture') {
+    if (typeof l9OpenCapture === 'function') l9OpenCapture(String(item.value || '').slice(0,500));
+  } else if (item.kind === 'start') {
+    const id = item.value === 'last' ? l8LastStudyId() : item.value;
+    if (id && ACTMAP[id] && ACTMAP[id].kind === 'study' && !ACTMAP[id].archived && typeof startActivity === 'function') {
+      startActivity(id);
+    } else if (typeof toast === 'function') toast('That subject is not available.');
+  }
+  if (CL && CL.ackIncoming) CL.ackIncoming({id:item.id}).catch(() => {});
 }

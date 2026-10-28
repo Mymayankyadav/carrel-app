@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_vertical"
+    android:orientation="horizontal"
+    android:padding="10dp"
+    android:background="@drawable/widget_background">
+    <ImageView android:id="@+id/widget_dot"
+        android:layout_width="10dp" android:layout_height="10dp"
+        android:src="@drawable/widget_dot" android:contentDescription="@null" />
+    <LinearLayout android:layout_width="0dp" android:layout_height="match_parent"
+        android:layout_weight="1" android:gravity="center_vertical"
+        android:paddingStart="10dp" android:orientation="vertical">
+        <TextView android:id="@+id/widget_name"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:ellipsize="end" android:maxLines="1" android:text="Not tracking"
+            android:textSize="15sp" android:textStyle="bold"
+            android:textColor="@color/widget_text" />
+        <TextView android:id="@+id/widget_today"
+            android:layout_width="match_parent" android:layout_height="wrap_content"
+            android:text="Today 0m" android:textSize="11sp"
+            android:textColor="@color/widget_secondary" />
+    </LinearLayout>
+    <Chronometer android:id="@+id/widget_elapsed"
+        android:layout_width="wrap_content" android:layout_height="wrap_content"
+        android:paddingEnd="12dp" android:textSize="18sp"
+        android:textStyle="bold" android:textColor="@color/widget_text" />
+    <TextView android:id="@+id/widget_action"
+        android:layout_width="54dp" android:layout_height="44dp"
+        android:gravity="center" android:background="@drawable/widget_action"
+        android:text="Start" android:textSize="13sp" android:textStyle="bold"
+        android:textColor="@color/widget_accent" />
+</LinearLayout>

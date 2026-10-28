@@ -22,6 +22,13 @@ import org.json.JSONObject
 class CarrelLivePlugin : Plugin() {
     companion object {
         @Volatile private var instance: CarrelLivePlugin? = null
+        @JvmStatic
+        fun emitIncoming(raw: JSONObject) {
+            instance?.notifyListeners("incoming", JSObject()
+                .put("id", raw.optString("id"))
+                .put("kind", raw.optString("kind"))
+                .put("value", raw.optString("value")))
+        }
         fun emitSession(s: Store) {
             instance?.notifyListeners("session", JSObject().put("access", s.access).put("refresh", s.refresh).put("expiresAt", s.expiresAt))
         }
@@ -35,6 +42,29 @@ class CarrelLivePlugin : Plugin() {
         instance = this
         schedulePeriodic(context)
         live.io.execute { live.engine.render() }
+    }
+
+    /** Cold-start-safe handoff: do not remove until JS acknowledges handling. */
+    @com.getcapacitor.PluginMethod
+    fun consumeIncoming(call: PluginCall) {
+        val raw = live.store.p.getString("pendingIncoming", null)
+        val item = runCatching { JSONObject(raw ?: "{}") }.getOrNull()
+        call.resolve(JSObject()
+            .put("id", item?.optString("id") ?: "")
+            .put("kind", item?.optString("kind") ?: "")
+            .put("value", item?.optString("value") ?: ""))
+    }
+
+    @com.getcapacitor.PluginMethod
+    fun ackIncoming(call: PluginCall) {
+        val id = call.getString("id") ?: ""
+        val p = live.store.p
+        val raw = p.getString("pendingIncoming", null)
+        val pending = runCatching { JSONObject(raw ?: "{}") }.getOrNull()
+        if (id.isNotBlank() && id == pending?.optString("id")) {
+            p.edit().remove("pendingIncoming").apply()
+        }
+        call.resolve()
     }
 
     @com.getcapacitor.PluginMethod
@@ -63,20 +93,37 @@ class CarrelLivePlugin : Plugin() {
 
     @com.getcapacitor.PluginMethod
     fun clearSession(call: PluginCall) {
-        live.io.execute { live.store.clearSession(); live.engine.render() }
+        live.io.execute { live.store.clearSession(); CarrelShortcuts.refresh(context); live.engine.render() }
         call.resolve()
     }
 
-    /** { state: <liveStateOf output>, id: <timer id or null> } from the web view. */
+    /** The web view owns the authoritative read projection; surfaces cache it. */
     @com.getcapacitor.PluginMethod
     fun setState(call: PluginCall) {
         val st = call.getObject("state")
         val id = call.getString("id")
+        val total = (call.getLong("todayStudyMs", 0L) ?: 0L).coerceAtLeast(0)
+        val day = call.getString("todayKey", "") ?: ""
+        val study = call.getBoolean("studyRunning", false) ?: false
+        val last = call.getString("lastStudyId", "") ?: ""
+        val tops = call.getArray("topActivities")?.toString() ?: "[]"
         call.resolve()
         live.io.execute {
-            val json = try { JSONObject(st.toString()) } catch (e: Exception) { null }
+            val store = live.store
+            store.todayStudyMs = total
+            store.todayKey = day
+            store.todayAsOf = System.currentTimeMillis()
+            store.studyRunning = study
+            store.lastStudyId = last.take(100)
+            if (tops != store.topActivities) {
+                store.topActivities = tops.take(4000)
+                CarrelShortcuts.refresh(context)
+            }
+            val json = try { JSONObject(st.toString()) } catch (_: Exception) { null }
             if (json != null && id != null) json.put("id", id)
             live.engine.setState(stateFromJson(json))
+            // Totals can change while the timer state remains identical.
+            live.engine.render()
         }
     }
 
