@@ -94,8 +94,10 @@ const session = id => ({user:{id}});
   assert.equal(storage.get('pending:alice')[0].data.secret, 'alice');
   assert.equal(requests.length, 1, 'Alice queue never replayed as Bob');
   const aliceTimezoneTimer = [...intervals.values()][0];
+  S.loaded.settings = true; S.base.settings = {};
   aliceTimezoneTimer();
   assert.equal(savedSettings.length, 0, 'old timezone setup cannot write to Bob');
+  S.loaded.settings = false;
 
   // An old auth error must not put Bob into read-only mode.
   requests[0].reject({code:'not_granted'});
