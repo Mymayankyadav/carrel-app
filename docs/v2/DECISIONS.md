@@ -4,3 +4,4 @@
 2026-10-28 · F1 · Labs registry starts empty · Do not expose incomplete features.
 2026-10-28 · L3 · Smart scheduler requires explicit preview/Accept, uses 10% capacity buffer and 25-minute minimum blocks · Prevents unexpected plan edits and unusable study fragments.
 2026-10-28 · ORC · Quick Capture replaces the Plan FAB, while the previous Plan block editor remains accessible in the header · Preserve existing v1 capabilities per B3.
+2026-10-28 · L1 · Keep two compact upcoming Plan links after the ribbon · A ribbon summarizes the day but does not directly focus an individual plan block; existing one-tap Plan focus remains useful.
