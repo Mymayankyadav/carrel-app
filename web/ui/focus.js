@@ -32,6 +32,8 @@ function vDesk(){
     '<div class="desk-in" style="transform:translate('+UI.deskShift[0]+'px,'+UI.deskShift[1]+'px)">'+
     '<div class="desk-act">'+esc(label)+'</div>'+time+bar+
     (phase?'<div class="desk-sub">'+esc(phase)+'</div>':'')+
+    (c&&c.intent?'<div class="desk-sub">'+esc(c.intent)+'</div>':'')+
+    (typeof l5BreakCountdown==='function'?'<div class="desk-sub">'+l5BreakCountdown(c,now,ps)+'</div>':'')+
     '<div class="desk-ctl'+(hidden?' hid':'')+'">'+controls+
     '<button type="button" data-act="desk-exit" aria-label="Exit focus" title="Exit focus">'+icon('unfocus')+'</button>'+
     '</div></div></div>';
