@@ -93,8 +93,12 @@ function l7FocusStats(){
 function l7FocusPage(){
   const stats=l7FocusStats(),hours=Object.keys(stats.hours).map(Number).sort((a,b)=>a-b);
   const rows=hours.map(h=>{
-    const x=stats.hours[h];
-    return kRow({label:fmtHourS(h),value:(x.sum/x.min).toFixed(1)+' / 3'});
+    const x=stats.hours[h],avg=x.sum/x.min,pct=Math.max(0,Math.min(100,Math.round(avg/3*100)));
+    return '<div class="l7-focus-hour" role="group" aria-label="'+
+      esc(fmtHourS(h)+' average focus '+avg.toFixed(1)+' out of 3')+'">'+
+      '<span class="l7-focus-label">'+esc(fmtHourS(h))+'</span>'+
+      '<span class="l7-focus-track"><i style="width:'+pct+'%"></i></span>'+
+      '<span class="l7-focus-value">'+avg.toFixed(1)+'</span></div>';
   }).join('');
   const subjects=Object.entries(stats.subjects).sort((a,b)=>b[1].min-a[1].min)
     .map(([id,x])=>kRow({dot:act(id).color,label:act(id).name,
