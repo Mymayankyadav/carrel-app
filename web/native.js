@@ -89,13 +89,12 @@ function nativeSync() {
   }
   const topActivities=Object.keys(scores).sort((a,b)=>scores[b]-scores[a])
     .slice(0,3).map(id=>({id,name:ACTMAP[id].name}));
-  const recent=lastEntry();
+  const recentStudy=l8LastStudyId();
   const payload = { state, id: CUR ? CUR.id : null,
     todayStudyMs:Math.max(0,Math.floor((today&&today.study)||0)),
     todayKey:day,
     studyRunning:!!(CUR&&ACTMAP[CUR.activity]&&ACTMAP[CUR.activity].kind==='study'),
-    lastStudyId:CUR&&ACTMAP[CUR.activity]&&ACTMAP[CUR.activity].kind==='study'?CUR.activity:
-      recent&&ACTMAP[recent.a]&&ACTMAP[recent.a].kind==='study'?recent.a:'',
+    lastStudyId:CUR&&ACTMAP[CUR.activity]&&ACTMAP[CUR.activity].kind==='study'?CUR.activity:recentStudy,
     topActivities };
   const sig = JSON.stringify(payload);
   if (sig === nsSig) return;
@@ -244,6 +243,15 @@ function l8ReceiveIncoming(item) {
   l8Incoming = item;
   l8FlushIncoming();
 }
+function l8LastStudyId() {
+  const entries=typeof ENTRIES!=='undefined'&&Array.isArray(ENTRIES)?ENTRIES:[];
+  const last=entries.filter(e=>ACTMAP[e.a]&&ACTMAP[e.a].kind==='study'&&!ACTMAP[e.a].archived)
+    .sort((a,b)=>entryEnd(b,Date.now())-entryEnd(a,Date.now()))[0];
+  if(last)return last.a;
+  const recent=typeof lastEntry==='function'?lastEntry():null;
+  if(recent&&ACTMAP[recent.a]&&ACTMAP[recent.a].kind==='study'&&!ACTMAP[recent.a].archived)return recent.a;
+  return (ACTS.find(a=>a.kind==='study'&&!a.archived)||{}).id||'';
+}
 function l8FlushIncoming() {
   if (!l8Incoming) return;
   if (typeof S === 'undefined' || !S.db || !S.loaded || !S.loaded.activities ||
@@ -257,8 +265,7 @@ function l8FlushIncoming() {
   if (item.kind === 'capture') {
     if (typeof l9OpenCapture === 'function') l9OpenCapture(String(item.value || '').slice(0,500));
   } else if (item.kind === 'start') {
-    const last = typeof lastEntry === 'function' ? lastEntry() : null;
-    const id = item.value === 'last' ? (last && last.a) || (ACTS.find(a=>a.kind==='study'&&!a.archived)||{}).id : item.value;
+    const id = item.value === 'last' ? l8LastStudyId() : item.value;
     if (id && ACTMAP[id] && ACTMAP[id].kind === 'study' && !ACTMAP[id].archived && typeof startActivity === 'function') {
       startActivity(id);
     } else if (typeof toast === 'function') toast('That subject is not available.');
