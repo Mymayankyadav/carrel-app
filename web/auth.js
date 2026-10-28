@@ -105,7 +105,7 @@ function openDb(session) {
   S.uid = session.user.id; S.user = session.user;
   // Never hydrate an old on-device snapshot while a failed sign-out
   // deletion is pending for this account. Network data remains available.
-  S.db = makeDb(sb, S.uid, { idb: !a1CleanupPending.includes(S.uid), refresh: async () => { const r = await sb.auth.refreshSession(); if (r.error) throw r.error; } });
+  S.db = makeDb(sb, S.uid, { idb: true, skipHydrate: a1CleanupPending.includes(S.uid), refresh: async () => { const r = await sb.auth.refreshSession(); if (r.error) throw r.error; } });
   restorePending(); // only this user's queue; never the legacy unowned queue
   S.dl = DL; S.owner = true; S.conn = 'live'; S.offline = false;
   subscribe(); pumpAll(); nativeBoot();
