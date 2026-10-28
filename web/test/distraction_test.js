@@ -74,4 +74,34 @@ ctx.UI.sheet={type:'urge'};
 ctx.ACT['l6-urge-back']();
 assert.equal(closed,2);
 assert.equal(ctx.UI.notice,null);
-console.log('distraction_test: L6 urge surf and drift rules passed');
+const {l6SummariseUsage}=ctx.module.exports;
+const safe=l6SummariseUsage([
+  {pkg:'com.instagram.android',min:6,opens:2},
+  {pkg:'com.google.android.youtube',min:3,opens:1},
+  {pkg:'malicious.app',min:500,opens:99}
+],7);
+assert.equal(safe.total,7,'reported minutes cannot exceed focus duration');
+assert.equal(safe.leader.label,'Instagram');
+assert.equal(safe.apps.Instagram.min,6);
+assert.equal(Object.keys(safe.apps).length,2,'only allowlisted apps are stored');
+
+const writes=[];
+ctx.CL={sessionUsage:async()=>({apps:[
+  {pkg:'com.instagram.android',min:6,opens:2}
+]})};
+ctx.NP={detectDrift:true,usageAccess:true};
+ctx.ACTMAP={physics:{name:'Physics',kind:'study'}};
+ctx.dayKeyOf=()=> '2026-10-28';
+ctx.W=()=>({update(path,payload,ensure){
+  writes.push({path,payload,ensure});return this;
+}});
+ctx.commit=()=>true;
+ctx.toast=(message,options)=>{ctx.toastResult={message,options}};
+ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(()=>{
+  assert.equal(writes.length,1);
+  assert.equal(writes[0].path,'usage/2026-10-28');
+  assert.equal(writes[0].payload.sessions.entry1.apps.Instagram.min,6);
+  assert.equal(ctx.toastResult.options.action.act,'l6-usage-log');
+  assert.equal(ctx.UI.l6Detected.min,6);
+  console.log('distraction_test: L6 urge surf, usage allowlist and offline write shape passed');
+}).catch(e=>{console.error(e);process.exitCode=1;});
