@@ -113,6 +113,7 @@ function l7Suggestions(ctx,week){
   return suggestions.length?kGroup('Suggestions',suggestions.map(x=>
     '<div class="l7-advice"><span>'+esc(x.text)+'</span>'+
     kBtn(x.action.label,'data-act="'+esc(x.action.act)+'" data-advice="'+esc(x.id)+'"'+
+      (x.action.act==='l7-dismiss'?' data-id="'+esc(x.id)+'" data-week="'+esc(week)+'"':'')+
       (x.action.args.subject?' data-subject="'+esc(x.action.args.subject)+'"':'')+
       (Number.isInteger(x.action.args.hour)?' data-hour="'+x.action.args.hour+'"':''),{kind:'text'})+
     kIconBtn('close','Dismiss suggestion','data-act="l7-dismiss" data-id="'+esc(x.id)+'" data-week="'+esc(week)+'"')+
