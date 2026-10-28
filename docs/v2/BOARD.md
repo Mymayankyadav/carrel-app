@@ -5,7 +5,7 @@
 | L1 | 1 | todo | `v2/l1` | | Today |
 | L2 | 2 | todo | `v2/l2` | | Rituals |
 | L3 | 1 | merged | `v2/l3` | [#29](https://github.com/Mymayankyadav/carrel-app/pull/29) | Scheduler, preview, unit and browser tests green |
-| L4 | 1 | todo | `v2/l4` | | Subjects |
+| L4 | 1 | doing | `v2/l4` | [#33](https://github.com/Mymayankyadav/carrel-app/pull/33) (draft) | Spacing model/tests complete; Subjects UI next |
 | L5 | 1 | todo | `v2/l5` | | Focus |
 | L6 | 2 | todo | `v2/l6` | | Distraction |
 | L7 | 2 | todo | `v2/l7` | | Insights |
