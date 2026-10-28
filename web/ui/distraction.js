@@ -132,11 +132,15 @@ async function l6AfterStudyStop(id,start,end,activity){
     !NP.usageAccess||!canWrite()||end-start<10*MIN||end<=start)return;
   const revision=l6UsageConsentRevision;
   const selected=JSON.stringify(NP.usagePackages||[]);
+  // A sign-out/sign-in swaps the owner's S.db, even when the same account
+  // signs back in. Never write a result gathered under an earlier session.
+  const database=typeof S==='undefined'?null:S.db;
   try{
     const reply=await CL.sessionUsage({startMs:start,endMs:end});
     // Prevent stale results being persisted after consent or app selection changes,
     // even when the user disables and re-enables tracking before a query returns.
     if(revision!==l6UsageConsentRevision||selected!==JSON.stringify(NP.usagePackages||[])||
+       (typeof S!=='undefined'&&S.db!==database)||
        !NP.detectDrift||!NP.usageAccess||!canWrite())return;
     const safe=l6SummariseUsage(reply&&reply.apps,Math.floor((end-start)/MIN));
     if(safe.total<2||!safe.leader)return;
