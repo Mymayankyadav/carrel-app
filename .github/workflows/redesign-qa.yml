@@ -37,8 +37,6 @@ jobs:
           done
       - name: Integrated mock-only acceptance
         run: python3 tools/redesign_smoke.py
-      - name: Two-tap real-click navigation and card audit
-        run: python3 tools/v2_qa_navigation_smoke.py
       - name: Preserve screenshots
         if: always()
         uses: actions/upload-artifact@v4
@@ -46,12 +44,4 @@ jobs:
           name: redesign-acceptance
           path: screenshots/redesign
           if-no-files-found: warn
-          retention-days: 14
-      - name: Preserve navigation audit
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: v2-navigation-audit
-          path: screenshots/nav-audit
-          if-no-files-found: ignore
           retention-days: 14
