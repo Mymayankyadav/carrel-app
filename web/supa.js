@@ -15,7 +15,7 @@ function makeDb(sb, uid, opts) {
   let hydrated = Promise.resolve(), saveT = 0, dropped = false, chan = null, closed = false, cleared = false;
   // Fence network reads against later realtime events, local writes and
   // newer network reads. Keep tombstones while reads are in flight.
-  let revision = 0, activeReads = 0, hydratedDone = !opts.idb;
+  let revision = 0, activeReads = 0, hydratedDone = !opts.idb || !!opts.clearOnly;
   const changed = new Map(), beforeHydration = new Set();
   function mark(path) {
     if (activeReads) changed.set(path, ++revision);
@@ -78,7 +78,7 @@ function makeDb(sb, uid, opts) {
     // Persist even an empty cache; otherwise deleted last documents resurrect.
     saveT = setTimeout(() => { if (!closed && !cleared) idb('put', IDB_KEY, Array.from(cache)); }, 1000);
   }
-  if (opts.idb) hydrated = idb('get', IDB_KEY).then(arr => {
+  if (opts.idb && !opts.clearOnly) hydrated = idb('get', IDB_KEY).then(arr => {
     if (closed || cleared || !Array.isArray(arr)) return;
     arr.forEach(([p, d]) => {
       // A realtime DELETE before hydration must not resurrect a stale row.
@@ -214,7 +214,8 @@ function makeDb(sb, uid, opts) {
 
   /* ----- realtime ----- */
   function connect() {
-    if (!sb.channel) return;
+    // A sign-out retry needs disk deletion only: never hydrate or subscribe.
+    if (!sb || !sb.channel || opts.clearOnly) return;
     const onWrite = p => {
       if (!closed && p.new && p.new.owner === uid && p.new.path) {
         cache.set(p.new.path, p.new.data); mark(p.new.path); notify(p.new.path);
