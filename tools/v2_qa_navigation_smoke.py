@@ -81,6 +81,19 @@ with sync_playwright() as playwright:
             visit(page,'Plan / Tasks',[
                 '#nav [data-v="plan"]','[data-act="p1-open-tasks"]'],
                 {'page':'tasks'},report)
+            # Today > All activities > edit one is two taps and does not
+            # accidentally start the activity. Both controls are separate
+            # 44px touch targets, not nested buttons.
+            reset(page)
+            page.locator('[data-act="t1-activities"]').click()
+            edit = page.locator('#sheet [data-act="t2-edit-one"]').first
+            assert edit.is_visible(), 'No direct per-activity edit in All activities'
+            assert edit.bounding_box()['width'] >= 44, 'Edit tap target too small'
+            assert page.locator('#sheet [data-act="t2-start"]').count() > 0
+            visit(page,'Today / Edit activity',[
+                '[data-act="t1-activities"]',
+                '#sheet [data-act="t2-edit-one"]'],
+                {'view':'settings','page':'settings.activity','sheet':None},report)
 
             # Settings overview links are data-driven and may vary by platform
             # (e.g. Notifications appears only in native builds).
@@ -101,6 +114,7 @@ with sync_playwright() as playwright:
                 ('l7-focus','stats.focus'),
                 ('l7-estimates','stats.estimates'),
                 ('s1-patterns','stats.patterns'),
+                ('s1-insights','stats.insights'),
                 ('l7-streak','stats.streak')]:
                 visit(page,'Insights / '+id,[
                     '#nav [data-v="insights"]',
@@ -127,10 +141,14 @@ with sync_playwright() as playwright:
                     'Snoozing card did not remove it',first)
             report['unreached_pages']=sorted(
                 set(report['registered_pages'])-set(report['reached_pages']))
-            # These are reported, not waved through as two-tap successes:
-            # the developer kit is internal, settings.notifications is native,
-            # settings.activity requires Settings > Activities > Edit, and
-            # stats.insights is an old optional detail replaced by the main tab.
+            # Audit registered pages precisely: only the developer kit
+            # preview, native-only Notifications, and desktop-only keyboard
+            # shortcuts (when on mobile) are intentional exceptions.
+            conditional={'kit','settings.notifications'}
+            if width < 960: conditional.add('settings.keys')
+            assert set(report['unreached_pages']) == conditional, (
+                'An unexpected registered page is unreachable in two taps',
+                report['unreached_pages'],sorted(conditional))
             assert not errors, errors
             output=OUT/f'{width}-{theme}.json'
             output.write_text(json.dumps(report,indent=2)+'\n',encoding='utf-8')

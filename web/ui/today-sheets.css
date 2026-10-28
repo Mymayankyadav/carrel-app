@@ -1,7 +1,10 @@
 /* T2 Today sheets: kit tokens and 44px touch targets. */
 .t2-sheet{display:flex;flex-direction:column;gap:12px;min-width:0;padding-top:12px}
 .t2-section{font-size:var(--t-xs);font-weight:600;color:var(--text-2);padding:12px 0 4px}
-.t2-activity{min-height:56px;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;border-bottom:1px solid var(--line);color:var(--text);font-size:var(--t-sm);text-align:left;cursor:pointer}
+.t2-activity-row{display:flex;align-items:center;gap:4px;min-width:0;border-bottom:1px solid var(--line)}
+.t2-activity-row>.t2-activity{flex:1 1 auto;min-width:0}
+.t2-activity-row>.t2-activity-edit{flex:0 0 44px;width:44px;height:44px}
+.t2-activity{min-height:56px;width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;background:none;border:0;color:var(--text);font-size:var(--t-sm);text-align:left;cursor:pointer}
 .t2-activity-left{display:flex;align-items:center;gap:10px;min-width:0}
 .t2-activity-left>span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .t2-activity-right{font-size:var(--t-xs);color:var(--text-2);white-space:nowrap}
