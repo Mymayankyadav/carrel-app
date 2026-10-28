@@ -26,7 +26,13 @@ with sync_playwright() as p:
 
             def capture(name):
                 page.wait_for_timeout(250)
-                assert page.evaluate('Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)') <= width + 1, name + ' overflows'
+                scroll_width = page.evaluate('Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)')
+                if scroll_width > width + 1:
+                    offenders = page.evaluate("""() => Array.from(document.querySelectorAll('body *')).map(e => {
+                        const r=e.getBoundingClientRect();
+                        return {tag:e.tagName,cls:String(e.className||'').slice(0,65),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width)};
+                    }).filter(x=>x.right>innerWidth+1&&x.width>1).slice(0,12)""")
+                    raise AssertionError(f'{name} overflows {scroll_width}px > {width+1}px: {offenders}')
                 missing = page.evaluate('''() => Array.from(document.querySelectorAll('[data-act],[data-long],[data-change],[data-submit]')).flatMap(el =>
                     ['act','long','change','submit'].flatMap(k => {const name=el.dataset[k];return name && typeof (k==='submit'?SUBMIT:ACT)[name]!=='function' ? [k+':'+name] : []}))''')
                 assert not missing, (name, missing)
