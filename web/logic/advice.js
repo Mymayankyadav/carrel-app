@@ -7,16 +7,18 @@ function l7Accuracy(history){
   const err=valid.reduce((sum,x)=>sum+Math.abs(x.actual-x.planned)/x.planned,0)/valid.length;
   return Math.round(100*l7Clamp(1-err,0,1));
 }
-function l7WeekOf(k,firstDay){
-  const d=new Date(k+'T12:00:00Z'),wd=d.getUTCDay(),first=Number.isInteger(firstDay)?firstDay:1;
-  d.setUTCDate(d.getUTCDate()-(wd-first+7)%7);
+function l7WeekOf(k){
+  // A freeze belongs to an ISO (Monday–Sunday) week regardless of the
+  // separately configurable calendar/display week start.
+  const d=new Date(k+'T12:00:00Z'),wd=d.getUTCDay();
+  d.setUTCDate(d.getUTCDate()-(wd+6)%7);
   return d.toISOString().slice(0,10);
 }
 function flexibleStreak(days,minDay,weekStart){
   const keys=Object.keys(days||{}).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
   const min=Math.max(5,+minDay||25),byWeek={},status={};
   for(const k of keys){
-    const week=l7WeekOf(k,weekStart),w=byWeek[week]||(byWeek[week]={met:0,used:false});
+    const week=l7WeekOf(k),w=byWeek[week]||(byWeek[week]={met:0,used:false});
     const time=+days[k]||0;
     if(time>=min){status[k]='met';w.met++;}
     else if(w.met>0&&!w.used){status[k]='freeze';w.used=true;}
