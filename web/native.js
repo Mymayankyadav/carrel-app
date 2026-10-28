@@ -52,6 +52,10 @@ function nativeBoot() {
   updateBoot();
   CL.addListener('session', s => { if (sb && s && s.refresh) sb.auth.setSession({ access_token: s.access, refresh_token: s.refresh }).catch(() => {}); });
   CL.addListener('action', () => { if (S.db && S.db.refresh) S.db.refresh(); });
+  if (CL.consumeIncoming) {
+    CL.addListener('incoming', l8ReceiveIncoming);
+    CL.consumeIncoming().then(l8ReceiveIncoming).catch(() => {});
+  }
   CL.getPrefs().then(p => { Object.assign(NP, p); changed(); }).catch(() => {});
   if (!store.get('notifAsked')) {
     store.set('notifAsked', 1);
@@ -212,21 +216,33 @@ if (NATIVE && CAP.App) {
   });
 }
 
-/* L8: share-target and app-shortcut capture. Never save incoming text without review. */
-if (typeof window !== 'undefined') {
-  window.addEventListener('carrel-capture', event => {
-    const text = event && event.detail && typeof event.detail.text === 'string'
-      ? event.detail.text.slice(0,2000) : '';
-    const open = () => {
-      if (typeof ACT !== 'undefined' && typeof ACT['l9-open'] === 'function') {
-        ACT['l9-open']();
-        if (typeof UI !== 'undefined' && UI.sheet && UI.sheet.type === 'capture') {
-          UI.sheet.text = text;
-          if (typeof renderSheet === 'function') renderSheet();
-        }
-      }
-    };
-    if (typeof S !== 'undefined' && S.db) open();
-    else window.addEventListener('load', open, {once:true});
-  });
+/* L8: Android shares/shortcuts are delivered by the native plugin with durable ack.
+ * Never write a task just because the user shared text; open Quick Capture to review. */
+let l8Incoming = null, l8Retry = null;
+function l8ReceiveIncoming(item) {
+  if (!item || !item.id || !['capture','start'].includes(item.kind)) return;
+  if (l8Incoming && l8Incoming.id === item.id) return;
+  l8Incoming = item;
+  l8FlushIncoming();
+}
+function l8FlushIncoming() {
+  if (!l8Incoming) return;
+  if (typeof S === 'undefined' || !S.db || !S.loaded || !S.loaded.activities ||
+      !S.loaded.current || typeof UI === 'undefined') {
+    if (!l8Retry && typeof setTimeout === 'function')
+      l8Retry = setTimeout(() => { l8Retry = null; l8FlushIncoming(); }, 500);
+    return;
+  }
+  const item = l8Incoming;
+  l8Incoming = null;
+  if (item.kind === 'capture') {
+    if (typeof l9OpenCapture === 'function') l9OpenCapture(String(item.value || '').slice(0,500));
+  } else if (item.kind === 'start') {
+    const last = typeof lastEntry === 'function' ? lastEntry() : null;
+    const id = item.value === 'last' ? (last && last.a) || (ACTS.find(a=>a.kind==='study'&&!a.archived)||{}).id : item.value;
+    if (id && ACTMAP[id] && ACTMAP[id].kind === 'study' && !ACTMAP[id].archived && typeof startActivity === 'function') {
+      startActivity(id);
+    } else if (typeof toast === 'function') toast('That subject is not available.');
+  }
+  if (CL && CL.ackIncoming) CL.ackIncoming({id:item.id}).catch(() => {});
 }
