@@ -43,13 +43,26 @@ function enqueue(w) {
   savePending();
   pump(op.path);
 }
+// Offline writes belong to one authenticated account. Never replay the old
+// unscoped "pending" key: it has no owner and may be from another account.
+// Keep that legacy key untouched for manual recovery instead of guessing.
+function pendingStoreKey() {
+  return S.uid ? 'pending:' + S.uid : null;
+}
 function savePending() {
-  store.set('pending', S.pending.length ? S.pending.map(o => ({ path: o.path, kind: o.kind, data: o.data, ensure: o.ensure, cond: o.cond })) : null);
+  const key = pendingStoreKey();
+  if (!key) return;
+  store.set(key, S.pending.length ? S.pending.map(o => ({ path: o.path, kind: o.kind, data: o.data, ensure: o.ensure, cond: o.cond })) : null);
 }
 function restorePending() {
-  const arr = store.get('pending');
+  const key = pendingStoreKey();
+  if (!key || S.pending.length) return;
+  const arr = store.get(key);
   if (!Array.isArray(arr)) return;
-  for (const o of arr) if (o && o.path && o.kind) S.pending.push({ oid: ++opSeq, path: o.path, kind: o.kind, data: o.data, ensure: o.ensure || null, cond: o.cond || null, tries: 1 });
+  for (const o of arr) if (o && typeof o.path === 'string' && o.path.includes('/') &&
+    ['set','update','delete'].includes(o.kind)) {
+    S.pending.push({ oid: ++opSeq, path: o.path, kind: o.kind, data: o.data, ensure: o.ensure || null, cond: o.cond || null, tries: 1 });
+  }
 }
 function pumpAll() {
   const paths = new Set(S.pending.map(o => o.path));
@@ -80,9 +93,15 @@ async function pump(path) {
   const op = S.pending.find(o => o.path === path);
   if (!op) return;
   S.inflight.add(path);
+  const db = S.db;
   let drop = false, retry = false;
-  try { await execOp(op); drop = true; }
+  try {
+    await execOp(op);
+    if (S.db !== db) return; // stale completion after account switch
+    drop = true;
+  }
   catch (e) {
+    if (S.db !== db) return; // never change the new account's queue/connection
     const code = e && e.code;
     if (code === 'invalid_argument' || code === 'transform_error' || code === 'quota_exceeded') {
       drop = true;
