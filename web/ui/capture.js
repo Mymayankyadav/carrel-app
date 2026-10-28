@@ -93,7 +93,10 @@ Object.assign(ACT,{
     if(['task','deadline','block','ask'].includes(v)){sh.manualType=v;sh.err='';renderSheet();}},
   'l9-edit'(el){const sh=UI.sheet;if(!sh||sh.type!=='capture')return;
     const v=el.getAttribute('data-field');if(!['activity','minutes','date','time','prio'].includes(v))return;
-    sh.edit=sh.edit===v?'':v;renderSheet();},
+    sh.edit=sh.edit===v?'':v;
+    if(sh.edit==='date'&&sh.override.date==null)sh.override.date=l9CaptureResult(sh).date||todayKey();
+    if(sh.edit==='time'&&sh.override.time==null)sh.override.time=l9CaptureResult(sh).time||'09:00';
+    renderSheet();},
   'l9-prio'(el){const sh=UI.sheet;if(!sh||sh.type!=='capture')return;
     sh.override.prio=+el.getAttribute('data-v');renderSheet();},
   'l9-save'(){l9CaptureSave();}
