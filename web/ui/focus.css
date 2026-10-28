@@ -13,3 +13,11 @@
 .desk-ctl button .i{width:24px;height:24px}
 .desk-ctl button:focus-visible{outline:2px solid #2DD4BF;outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.desk-in{transition:none}.desk-ctl{transition:none}}
+
+/* L5: Flowtime and non-disruptive break suggestions. */
+.l5-flow-chip{display:flex;justify-content:flex-start}
+.l5-flow-chip .k-btn{font-size:var(--t-sm);min-height:44px}
+.l5-break-remaining,.l5-running-intent{font-size:var(--t-sm);color:var(--text-2)}
+.l5-break-choices{display:flex;flex-direction:column;gap:8px}
+.l5-break-choices>span{color:var(--text-2);font-size:var(--t-xs)}
+.l5-break-choices .k-chip{min-height:44px}
