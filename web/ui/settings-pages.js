@@ -36,6 +36,7 @@ function g2Day(){
     g2Time('planEnd',CFG.planEnd,'Plans end by')+
     kField('Gap between blocks',g2Nudge('gap',CFG.gap,5,0,60,x=>x+'m'))+
     kField('Daily goal',g2Nudge('dailyGoal',CFG.dailyGoal,30,0,960,x=>x===0?'—':(x/60)+'h'))+
+    kField('Minimum streak day',g2Nudge('minDay',CFG.minDay||25,5,5,120,x=>x+'m'))+
     '<details class="g2-details"><summary class="g2-summary">Week starts on<span>'+
       esc(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'][+CFG.weekStart||0])+icon('expand')+
       '</span></summary>'+g2RadioRows(['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].map((n,i)=>({label:n,value:String(i)})),String(+CFG.weekStart||0),'g2-week')+'</details>'+
@@ -102,10 +103,11 @@ Object.assign(ACT,{
   },
   'g2-nudge'(el){
     const k=el.getAttribute('data-key'),d=+el.getAttribute('data-d');
-    const spec={guardHours:[1,12],gap:[0,60],dailyGoal:[0,960],
+    const spec={guardHours:[1,12],gap:[0,60],dailyGoal:[0,960],minDay:[5,120],
       'pomo.focus':[1,180],'pomo.short':[1,60],'pomo.long':[1,90],'pomo.every':[2,8]};
     if(!spec[k]||!Number.isFinite(d))return;
-    const n=k.startsWith('pomo.')?+CFG.pomodoro[k.slice(5)]:+CFG[k];
+    const n=k.startsWith('pomo.')?+CFG.pomodoro[k.slice(5)]:
+      k==='minDay'?(+CFG.minDay||25):+CFG[k];
     const val=Math.max(spec[k][0],Math.min(spec[k][1],n+d));
     if(!Number.isFinite(val)||val===n)return;
     if(k.startsWith('pomo.'))saveSetting({pomodoro:{[k.slice(5)]:val}});
