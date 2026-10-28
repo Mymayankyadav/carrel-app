@@ -22,6 +22,7 @@ import org.json.JSONObject
 class CarrelLivePlugin : Plugin() {
     companion object {
         @Volatile private var instance: CarrelLivePlugin? = null
+        @JvmStatic
         fun emitIncoming(raw: JSONObject) {
             instance?.notifyListeners("incoming", JSObject()
                 .put("id", raw.optString("id"))
