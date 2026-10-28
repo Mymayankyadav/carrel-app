@@ -237,9 +237,10 @@ if (NATIVE && CAP.App) {
 /* L8: Android shares/shortcuts are delivered by the native plugin with durable ack.
  * Never write a task just because the user shared text; open Quick Capture to review. */
 let l8Incoming = null, l8Retry = null;
+const l8HandledIds = new Set();
 function l8ReceiveIncoming(item) {
   if (!item || !item.id || !['capture','start'].includes(item.kind)) return;
-  if (l8Incoming && l8Incoming.id === item.id) return;
+  if (l8HandledIds.has(item.id) || (l8Incoming && l8Incoming.id === item.id)) return;
   l8Incoming = item;
   l8FlushIncoming();
 }
@@ -262,6 +263,9 @@ function l8FlushIncoming() {
   }
   const item = l8Incoming;
   l8Incoming = null;
+  l8HandledIds.add(item.id);
+  // Bound the dedup window; IDs are per received Android Intent.
+  if (l8HandledIds.size > 32) l8HandledIds.delete(l8HandledIds.values().next().value);
   if (item.kind === 'capture') {
     if (typeof l9OpenCapture === 'function') l9OpenCapture(String(item.value || '').slice(0,500));
   } else if (item.kind === 'start') {
