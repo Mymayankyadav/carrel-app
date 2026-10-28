@@ -1,6 +1,6 @@
 /* ---------- views: shell ---------- */
 /* R0a: global top bar removed; each screen now owns its header. */
-function vNav() { return kNav(UI.view); }
+function vNav() { if (S.conn === 'none' || !S.owner) return ''; return kNav(UI.view); }
 function canonicalView(v) {
   return ({calendar:'plan',week:'insights',patterns:'insights',stats:'insights'})[v] || v || 'today';
 }
