@@ -54,6 +54,9 @@ vm.createContext(ctx);
 for (const file of ['core/sync.js', 'auth.js']) {
   vm.runInContext(fs.readFileSync(path.join(__dirname, '..', file), 'utf8'), ctx, {filename:file});
 }
+// This unit test controls adapter completions; subscribing to the full app
+// requires a larger UI/data harness and is covered by existing integration CI.
+vm.runInContext('subscribe = () => {}', ctx);
 const flush = async () => { for (let i=0;i<5;i++) await Promise.resolve(); };
 const session = id => ({user:{id}});
 
