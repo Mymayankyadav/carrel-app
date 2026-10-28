@@ -211,3 +211,22 @@ if (NATIVE && CAP.App) {
     }
   });
 }
+
+/* L8: share-target and app-shortcut capture. Never save incoming text without review. */
+if (typeof window !== 'undefined') {
+  window.addEventListener('carrel-capture', event => {
+    const text = event && event.detail && typeof event.detail.text === 'string'
+      ? event.detail.text.slice(0,2000) : '';
+    const open = () => {
+      if (typeof ACT !== 'undefined' && typeof ACT['l9-open'] === 'function') {
+        ACT['l9-open']();
+        if (typeof UI !== 'undefined' && UI.sheet && UI.sheet.type === 'capture') {
+          UI.sheet.text = text;
+          if (typeof renderSheet === 'function') renderSheet();
+        }
+      }
+    };
+    if (typeof S !== 'undefined' && S.db) open();
+    else window.addEventListener('load', open, {once:true});
+  });
+}
