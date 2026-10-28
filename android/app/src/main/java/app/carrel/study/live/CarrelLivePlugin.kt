@@ -13,6 +13,7 @@ import com.getcapacitor.annotation.CapacitorPlugin
 import com.getcapacitor.annotation.Permission
 import com.getcapacitor.annotation.PermissionCallback
 import org.json.JSONObject
+import org.json.JSONArray
 
 /** Bridge between the Carrel web code and the native notification. */
 @CapacitorPlugin(
@@ -135,6 +136,10 @@ class CarrelLivePlugin : Plugin() {
         call.getBoolean("respectDnd")?.let { s.respectDnd = it }
         call.getBoolean("privacy")?.let { s.privacy = it }
         call.getBoolean("notifDistractions")?.let { s.notifDistractions = it }
+        call.getBoolean("detectDrift")?.let { s.detectDrift = it }
+        call.getArray("usagePackages")?.let { arr ->
+            s.usagePackages = (0 until arr.length()).map { arr.optString(it) }
+        }
         live.io.execute { live.engine.render() }
         call.resolve(prefs())
     }
@@ -149,7 +154,12 @@ class CarrelLivePlugin : Plugin() {
         val s = live.store
         return JSObject().put("vibrateFocus", s.vibrateFocus).put("vibrateBreak", s.vibrateBreak)
             .put("respectDnd", s.respectDnd).put("privacy", s.privacy)
-            .put("notifDistractions", s.notifDistractions).put("lastNudge", s.p.getString("lastNudge", ""))
+            .put("notifDistractions", s.notifDistractions)
+            .put("detectDrift", s.detectDrift)
+            .put("usageDetectionSupported", true)
+            .put("usagePackages", JSONArray(s.usagePackages))
+            .put("usageAccess", UsageReader.hasAccess(context))
+            .put("lastNudge", s.p.getString("lastNudge", ""))
             .put("notifications", live.notifications.allowed())
             .put("exactAlarms", Build.VERSION.SDK_INT < 31 || context.getSystemService(android.app.AlarmManager::class.java).canScheduleExactAlarms())
     }
@@ -172,6 +182,44 @@ class CarrelLivePlugin : Plugin() {
         val i = if (Build.VERSION.SDK_INT >= 31) Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:" + context.packageName))
             else Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:" + context.packageName))
         open(i); call.resolve()
+    }
+
+    @com.getcapacitor.PluginMethod
+    fun hasUsageAccess(call: PluginCall) {
+        call.resolve(JSObject().put("allowed", UsageReader.hasAccess(context)))
+    }
+
+    @com.getcapacitor.PluginMethod
+    fun openUsageAccess(call: PluginCall) {
+        if (Build.VERSION.SDK_INT >= 21) {
+            open(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+        }
+        call.resolve(JSObject().put("allowed", UsageReader.hasAccess(context)))
+    }
+
+    @com.getcapacitor.PluginMethod
+    fun sessionUsage(call: PluginCall) {
+        val start = call.getLong("startMs", 0L) ?: 0L
+        val end = call.getLong("endMs", 0L) ?: 0L
+        if (!live.store.detectDrift || !UsageReader.hasAccess(context)) {
+            call.resolve(JSObject().put("apps", JSONArray()))
+            return
+        }
+        live.io.execute {
+            // Settings can be changed while this queued task is waiting or
+            // while UsageStatsManager is scanning its bounded event window.
+            // Check consent at both boundaries; never expose a revoked read.
+            val selected = if (live.store.detectDrift && UsageReader.hasAccess(context))
+                live.store.usagePackages else emptyList()
+            val result = if (selected.isEmpty()) emptyList() else
+                runCatching { UsageReader.read(context, start, end, selected) }
+                    .getOrDefault(emptyList())
+            val stillAllowed = live.store.detectDrift && UsageReader.hasAccess(context) &&
+                live.store.usagePackages == selected
+            val arr = JSONArray()
+            if (stillAllowed) for (item in result) arr.put(item)
+            call.resolve(JSObject().put("apps", arr))
+        }
     }
 
     @com.getcapacitor.PluginMethod

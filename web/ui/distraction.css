@@ -1,1 +1,19 @@
-/* Carrel v2 reserved for lane implementation: ui/distraction.css */
+/* L6: reserved visual language: kit tokens, quiet utility surface. */
+.l6-urge-body{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;min-height:208px;padding:24px 16px;}
+.l6-urge-ring{width:144px;height:144px;position:relative;display:grid;place-items:center;font-variant-numeric:tabular-nums;}
+.l6-urge-ring svg{position:absolute;inset:0;width:100%;height:100%;transform:rotate(-90deg);overflow:visible;}
+.l6-urge-ring circle{fill:none;stroke-width:5;stroke-linecap:round;}
+.l6-urge-ring .l6-track{stroke:var(--line,rgba(120,130,126,.18));}
+.l6-urge-ring .l6-progress{stroke:var(--accent,#0F766E);animation:l6-urge-progress 60s linear forwards;animation-delay:calc(-1 * var(--l6-elapsed,0s));}
+@keyframes l6-urge-progress{from{stroke-dashoffset:0;}to{stroke-dashoffset:157;}}
+.l6-urge-ring>span{font-size:29px;font-weight:650;letter-spacing:-1px;}
+.l6-urge-label{text-align:center;color:var(--muted,inherit);font-size:13px;}
+.l6-drift-card{display:flex;align-items:center;justify-content:space-between;gap:12px;min-width:0;}
+.l6-drift-main{font-size:13px;line-height:1.5;}
+.l6-drift-main strong{font-weight:650;}
+.l6-spark{flex:none;color:var(--accent,#0F766E);fill:currentColor;}
+@media(prefers-reduced-motion:reduce){.l6-urge-ring .l6-progress{animation:none;}}
+
+/* Prior timer toasts must never cover the urge-surf timer or its actions.
+   Keep them underneath this modal's scrim (50) without deleting Undo state. */
+body:has(#sheet .l6-urge-body) .k-toast{z-index:49}

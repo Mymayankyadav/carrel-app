@@ -2,7 +2,8 @@
 const LABS={
   flowtime:{label:'Adaptive breaks',def:true},
   recall:{label:'Session recall',def:true},
-  energy:{label:'Start-of-session energy check',def:false}
+  energy:{label:'Start-of-session energy check',def:false},
+  urgesurf:{label:'Urge surfing (60-second pause)',def:true}
 };
 function lab(name){
  const v=CFG.labs&&CFG.labs[name];

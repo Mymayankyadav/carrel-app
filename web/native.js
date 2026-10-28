@@ -20,7 +20,8 @@ const DL = {
 };
 
 /* ----- phone notification (the CarrelLive plugin) ----- */
-const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifDistractions: false, notifications: true, exactAlarms: true };
+const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifDistractions: false, notifications: true, exactAlarms: true,
+  detectDrift:false, usageAccess:false, usagePackages:[], usageDetectionSupported:false };
 let nbDone = false, nsSig = '';
 
 /* Native may have refreshed the login while the app was closed; pick up the newer tokens before supabase-js starts. */
@@ -64,8 +65,20 @@ function nativeBoot() {
 }
 function nativeSession(session) {
   if (CL && CL.setSession) CL.setSession({ access: session.access_token, refresh: session.refresh_token, expiresAt: (session.expires_at || 0) * 1000 });
+  // Native opt-in is account-scoped. Reload it after sign-in rather than
+  // reusing a previous account's in-memory permissions and allowlist.
+  if (CL && CL.getPrefs) CL.getPrefs().then(p => { Object.assign(NP,p); changed(); }).catch(()=>{});
 }
-function nativeClear() { nsSig = ''; if (CL && CL.clearSession) CL.clearSession(); }
+function nativeClear() {
+  nsSig = '';
+  // Immediately stop queued JS callbacks from writing post-sign-out usage.
+  NP.detectDrift=false;
+  NP.usageAccess=false;
+  NP.usagePackages=[];
+  if (typeof l6ClearUsageOffer==='function') l6ClearUsageOffer();
+  else UI.l6Detected=null;
+  if (CL && CL.clearSession) CL.clearSession();
+}
 
 /* Tells the notification what the timer is doing. Only sends when something changed. */
 function nativeSync() {
@@ -149,7 +162,8 @@ if (typeof PAGES !== 'undefined') {
         kRow({label:'Exact alarms',value:NP.exactAlarms?'Allowed':'Not allowed',open:true,attrs:'data-act="np-exact"'})+
         kRow({label:'Background activity',open:true,attrs:'data-act="np-battery"'})+
         kRow({label:'Test vibration',value:NP.lastNudge||'',open:true,attrs:'data-act="np-test"'});
-      return permission+kGroup('',options)+kCollapse('np-troubleshoot','Troubleshoot',troubleshoot);
+      return permission+kGroup('',options+(typeof l6DriftRow==='function'?l6DriftRow():''))+
+        kCollapse('np-troubleshoot','Troubleshoot',troubleshoot);
     }
   };
   ['vibrateFocus','vibrateBreak','respectDnd','privacy','notifDistractions'].forEach(key => {
@@ -217,6 +231,14 @@ function updateBoot() { if (NATIVE) setTimeout(() => checkUpdates(false), 5000);
 
 /* Google sign-in returns to the app through the app.carrel.study://auth deep link. */
 if (NATIVE && CAP.App) {
+  CAP.App.addListener('resume', () => {
+    if (CL && CL.hasUsageAccess && NP.detectDrift)
+      CL.hasUsageAccess().then(r => {
+        NP.usageAccess=!!r.allowed;
+        if(!NP.usageAccess&&typeof l6ClearUsageOffer==='function')l6ClearUsageOffer();
+        changed();
+      }).catch(() => {});
+  });
   CAP.App.addListener('backButton', () => {
     if (typeof goBack === 'function' && goBack()) return;
     if (typeof CAP.App.minimizeApp === 'function') CAP.App.minimizeApp();
