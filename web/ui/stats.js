@@ -153,8 +153,10 @@ function vStats(){
     kRow({icon:'patterns',label:'Patterns',open:true,attrs:'data-act="s1-patterns"'})+
     kRow({icon:'today',label:'Streak',value:context.streak+' days',open:true,
       attrs:'data-act="l7-streak"'});
+  const fromClaude=typeof l10FromClaude==='function'?l10FromClaude():'';
   return '<div class="s1-stats l7-insights">'+controls+summary+suggestions+chart+
     (subjects?kGroup('Subjects',subjects):'')+
+    fromClaude+
     '<section class="s1-links">'+links+'</section></div>';
 }
 

@@ -1,1 +1,16 @@
-/* Carrel v2 reserved for lane implementation: ui/coach.css */
+/* L10: a quiet, first-party note and plan preview; kit tokens only. */
+.l10-coach-card{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  width:100%;min-height:44px;border:0;background:transparent;color:var(--text);
+  cursor:pointer;text-align:left;padding:8px 0;}
+.l10-coach-card>span{min-width:0;display:flex;flex-direction:column;gap:4px;}
+.l10-coach-card strong{font-size:var(--t-sm);font-weight:650;}
+.l10-coach-card small{font-size:var(--t-xs);color:var(--text-2);overflow:hidden;
+  text-overflow:ellipsis;white-space:nowrap;max-width:320px;}
+.l10-coach-card:focus-visible{outline:2px solid var(--accent);outline-offset:3px;}
+.l10-coach-sheet{display:flex;flex-direction:column;gap:18px;}
+.l10-coach-content{display:flex;flex-direction:column;gap:8px;min-width:0;}
+.l10-coach-content strong{font-size:var(--t-md);}
+.l10-coach-content p{margin:0;font-size:var(--t-sm);line-height:1.5;white-space:pre-wrap;overflow-wrap:anywhere;}
+.l10-coach-caption{font-size:var(--t-xs);color:var(--text-2);margin:8px 0;}
+.l10-proposal{border-top:1px solid var(--line);padding-top:12px;}
+.l10-proposal .k-row{min-height:52px;}

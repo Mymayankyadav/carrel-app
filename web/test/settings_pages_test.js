@@ -22,7 +22,11 @@ vm.createContext(env);vm.runInContext(source,env);
 names.forEach(n=>{const page=PAGES['settings.'+n];assert(page&&typeof page.render==='function','register '+n);assert(page.title);});
 assert(PAGES['settings.timer'].render().includes('Ask if running longer than'));
 assert(PAGES['settings.day'].render().includes('Day starts at'));
-assert(PAGES['settings.claude'].render().includes('Prove this theorem'));
+const claudePage=PAGES['settings.claude'].render();
+for(const label of ['Plan my day','Plan my week','Weekly review','Exam plan'])
+  assert(claudePage.includes(label),'Claude prompt '+label);
+assert(claudePage.includes('data-act="copy"'),'prompts must be copyable');
+assert(claudePage.includes('never sends data'),'no model API inside Carrel');
 assert(PAGES['settings.data'].render().includes('data-f="csv"'));
 assert(PAGES['settings.account'].render().includes('math@example.com'));
 assert(PAGES['settings.about'].render().includes('1.0.20'));
