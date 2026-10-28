@@ -10,9 +10,13 @@ function recoverAuth(delay = 30000) {
   recoverT = setTimeout(async () => {
     recoverT = 0;
     if (!sb || !S.db || S.conn !== 'readonly') return;
+    const db = S.db, uid = S.uid;
     try {
       const r = await sb.auth.refreshSession();
-      if (!r.error && r.data && r.data.session) {
+      // Auth refresh can finish after a different user signs in.
+      if (S.db !== db || S.uid !== uid || S.conn !== 'readonly') return;
+      if (!r.error && r.data && r.data.session &&
+          r.data.session.user && r.data.session.user.id === uid) {
         S.conn = 'live'; S.offline = false;
         pumpAll();
         if (S.db && S.db.refresh) S.db.refresh();
@@ -67,8 +71,9 @@ function openDb(session) {
   S.dl = DL; S.owner = true; S.conn = 'live'; S.offline = false;
   subscribe(); pumpAll(); nativeBoot();
   let tries = 0;
+  const uid = S.uid, db = S.db;
   const tzTimer = setInterval(() => {
-    if (++tries > 30 || !S.db) return clearInterval(tzTimer);
+    if (++tries > 30 || S.db !== db || S.uid !== uid) return clearInterval(tzTimer);
     if (S.loaded.settings) {
       clearInterval(tzTimer);
       if (!S.base.settings || !S.base.settings.tz) { try { saveSetting({ tz: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata' }); } catch (e) { /* later */ } }
