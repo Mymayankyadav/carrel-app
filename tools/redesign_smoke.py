@@ -34,15 +34,21 @@ with sync_playwright() as p:
                 page.screenshot(path=str(OUT / f'{width}-{theme}-{name}.png'), full_page=True)
 
             def tab(name):
-                page.locator(f'#nav [data-v="{name}"]').click()
-                expect(page.locator(f'#nav [data-v="{name}"]')).to_have_attribute('aria-current', 'page')
+                if name == 'settings':
+                    page.locator('#nav [data-v="today"]').click()
+                    page.locator('[data-act="open-settings"]').click()
+                    assert page.evaluate("UI.view==='settings'")
+                    return
+                target = 'insights' if name == 'stats' else name
+                page.locator(f'#nav [data-v="{target}"]').click()
+                expect(page.locator(f'#nav [data-v="{target}"]')).to_have_attribute('aria-current', 'page')
 
             def close():
                 page.keyboard.press('Escape')
                 page.wait_for_timeout(150)
                 assert page.evaluate('UI.sheet === null')
 
-            for view in ('today', 'plan', 'stats', 'settings'):
+            for view in ('today', 'plan', 'subjects', 'stats', 'settings'):
                 tab(view)
                 capture(view)
             # Every registered production subscreen must render independently.

@@ -60,9 +60,13 @@ def main():
             except ImportError:
                 pass
 
-        for view in ("today", "plan", "stats", "settings"):
+        for view in ("today", "plan", "subjects", "insights", "settings"):
             try:
-                page.locator(f'#nav [data-v="{view}"]').click(timeout=5000)
+                if view == "settings":
+                    page.locator('#nav [data-v="today"]').click(timeout=5000)
+                    page.locator('[data-act="open-settings"]').click(timeout=5000)
+                else:
+                    page.locator(f'#nav [data-v="{view}"]').click(timeout=5000)
                 page.wait_for_timeout(250)
                 capture(view)
             except Exception as exc:

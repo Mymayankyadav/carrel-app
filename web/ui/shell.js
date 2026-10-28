@@ -2,8 +2,10 @@
 /* R0a: global top bar removed; each screen now owns its header. */
 function vNav() { return kNav(UI.view); }
 function canonicalView(v) {
-  return ({calendar:'plan',week:'stats',patterns:'stats'})[v] || v || 'today';
+  return ({calendar:'plan',week:'insights',patterns:'insights',stats:'insights'})[v] || v || 'today';
 }
+VIEWS.insights = VIEWS.insights || (()=>VIEWS.stats());
+VIEWS.subjects = VIEWS.subjects || (()=>kEmpty('Coming soon'));
 function vSyncLine() {
   const status = syncState(), count = S.pending.length;
   if (status === 'offline' && count) return '<div class="r0-sync" role="status">'+icon('offline')+'Offline · '+count+' waiting</div>';
@@ -193,6 +195,7 @@ function closeSheet(silent, fromHistory) {
 /* ---------- actions ---------- */
 Object.assign(ACT, {
   notice() { noticeNow(); },
+  'open-settings'() { UI.view='settings'; UI.pages=[]; render(); },
   'notice-drift'(el) { noticeDrift(+el.getAttribute('data-m')); },
   'park-drop'(el) { const k = el.getAttribute('data-k'); commit('Dropped.', W().dis(k, el.getAttribute('data-id'), { dismissed: true }), { undo: true }); },
   noop() {},
@@ -333,7 +336,7 @@ document.addEventListener('submit', e => {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (DRAG && DRAG.started) { cancelDrag(); e.preventDefault(); return; }
-    if (UI.sheet) { closeSheet(); e.preventDefault(); return; }
+    if (UI.sheet) { goBack(); e.preventDefault(); return; }
     if (UI.desk) { exitDesk(); e.preventDefault(); return; }
   }
   const t = e.target;
@@ -359,10 +362,10 @@ document.addEventListener('keydown', e => {
   else if (lk === 'n') { if (UI.view === 'plan') ACT['cal-new'](); else openEntrySheet('add'); }
   else if (lk === 't') ACT.view({ getAttribute: () => 'today' });
   else if (lk === 'c') ACT.view({ getAttribute: () => 'plan' });
-  else if (lk === 'w') ACT.view({ getAttribute: () => 'stats' });
-  else if (lk === 'p') openPage('stats','stats.patterns');
-  else if (k === 'ArrowLeft') { if (UI.view === 'stats') ACT['s1-prev'](); else if (UI.view === 'plan') ACT['cal-prev'](); else return; }
-  else if (k === 'ArrowRight') { if (UI.view === 'stats') ACT['s1-next'](); else if (UI.view === 'plan') ACT['cal-next'](); else return; }
+  else if (lk === 'w') ACT.view({ getAttribute: () => 'insights' });
+  else if (lk === 'p') openPage('insights','stats.patterns');
+  else if (k === 'ArrowLeft') { if (UI.view === 'insights') ACT['s1-prev'](); else if (UI.view === 'plan') ACT['cal-prev'](); else return; }
+  else if (k === 'ArrowRight') { if (UI.view === 'insights') ACT['s1-next'](); else if (UI.view === 'plan') ACT['cal-next'](); else return; }
   else return;
   e.preventDefault();
 });
@@ -374,7 +377,7 @@ window.addEventListener('pagehide', () => store.set('seen', Date.now()));
 window.addEventListener('online', () => pumpAll());
 window.addEventListener('hashchange', () => {
   const h = (location.hash || '').replace('#', '');
-  if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) {
+  if (['today','plan','subjects','insights','stats','settings','calendar','week','patterns'].includes(h)) {
     const v=canonicalView(h);
     if(v===UI.view)return;
     UI.view=v;UI.pages=[];
@@ -390,7 +393,7 @@ async function boot(hot) {
   if (hot.view) UI.view=canonicalView(hot.view);
   if (hot.date) UI.date = hot.date;
   const h = (location.hash || '').replace('#', '');
-  if (['today','plan','stats','settings','calendar','week','patterns'].includes(h)) UI.view=canonicalView(h);
+  if (['today','plan','subjects','insights','stats','settings','calendar','week','patterns'].includes(h)) UI.view=canonicalView(h);
   S.windowFrom = addDaysKey(keyOfDate(new Date()), -WINDOW_DAYS);
   restorePending();
   recompute();

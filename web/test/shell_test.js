@@ -15,7 +15,7 @@ const combined=fs.readFileSync(path.join(__dirname,'../logic.js'),'utf8')+
 assert.doesNotThrow(()=>new vm.Script(combined),'bundled modules parse as one script');
 assert.ok(combined.indexOf('SUBMIT = {}')<combined.indexOf('Object.assign(SUBMIT,'),'submit registry ready');
 
-assert.equal(manifest.js[2],'core/state.js');
+assert.ok(manifest.js.indexOf('logic/sched.js')<manifest.js.indexOf('core/state.js'),'v2 pure logic preloads before state');
 assert.equal(manifest.css[0],'ui/kit.css');
 assert.ok(manifest.js.includes('ui/shell.js'));
 assert.ok(!manifest.js.includes('app.js'),'monolith no longer built');
@@ -48,7 +48,7 @@ const section=between('function canonicalView(v)',"function vSheet()");
 const ctx=vm.createContext(runtime);
 const render=vm.runInContext(section+'\n[vMain,vSyncLine,canonicalView]',ctx);
 const [vMain,vSyncLine,canonical]=render;
-assert.equal(canonical('calendar'),'plan');assert.equal(canonical('week'),'stats');
+assert.equal(canonical('calendar'),'plan');assert.equal(canonical('week'),'insights');assert.equal(canonical('stats'),'insights');
 assert.ok(vMain().includes('plan'));
 runtime.UI.pages=[{id:'tasks',params:{}}];assert.ok(vMain().includes('<header>Tasks</header>'));
 runtime.UI.pages=[];runtime.UI.view='today';
