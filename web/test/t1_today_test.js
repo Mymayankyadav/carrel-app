@@ -2,8 +2,8 @@
 const assert=require('node:assert/strict'),fs=require('node:fs'),vm=require('node:vm'),path=require('node:path');
 const js=fs.readFileSync(path.join(__dirname,'../ui/today.js'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'../ui/today.css'),'utf8');
-const marker='/* T1 — minimalist Today view;';
-assert(js.includes(marker),'T1 view source present');
+const marker='/* L1: goal ring and earliest eligible planned work';
+assert(js.includes(marker),'L1 and T1 view source present');
 const code=js.slice(js.indexOf(marker)),MIN=60000,HOUR=3600000,now=Date.now();
 const ACT={},VIEWS={},calls=[];
 const UI={lastRate:null,notice:null,back:null,guardTime:'',desk:false};
