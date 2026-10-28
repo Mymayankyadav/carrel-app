@@ -75,6 +75,15 @@ class Notifications(private val context: Context, private val store: Store) {
             .setUsesChronometer(true)
             .setChronometerCountDown(model.countDown)
         if (!model.text.isNullOrBlank()) b.setContentText(model.text)
+        // Android 16 promoted ongoing is opt-in. Older versions keep the quiet
+        // existing chronometer notification. Respect the lock-screen privacy flag.
+        if (Build.VERSION.SDK_INT >= 36 && !store.privacy) {
+            val seconds = ((model.whenMillis - System.currentTimeMillis()).coerceAtLeast(0L) / 1000L)
+            val critical = if (model.countDown) "${seconds / 60}:${(seconds % 60).toString().padStart(2, '0')}"
+                else if (model.phase == "due") "Break" else "Study"
+            b.setRequestPromotedOngoing(true).setShortCriticalText(critical.take(7))
+        }
+
 
         // The useful action must never be pushed out of the notification shade
         // by optional distraction buttons.

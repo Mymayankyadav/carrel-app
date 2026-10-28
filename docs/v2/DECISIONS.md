@@ -6,3 +6,4 @@
 2026-10-28 · ORC · Quick Capture replaces the Plan FAB, while the previous Plan block editor remains accessible in the header · Preserve existing v1 capabilities per B3.
 2026-10-28 · L1 · Keep two compact upcoming Plan links after the ribbon · A ribbon summarizes the day but does not directly focus an individual plan block; existing one-tap Plan focus remains useful.
 2026-10-28 · L5 · Flowtime and session recall default on; energy check defaults off under Labs · Gentle break prompts and skippable recall are low-risk; extra check-in remains opt-in.
+2026-10-28 · L2 · Morning scheduling has an explicit preview and Accept before any planned blocks are written · Avoids surprise plan mutations; shutdown replaces the Plan menu's Wrap up while retaining the legacy writer as fallback.

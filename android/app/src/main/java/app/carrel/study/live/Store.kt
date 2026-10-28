@@ -15,12 +15,25 @@ class Store(ctx: Context) {
     var refresh: String get() = p.getString("refresh", "") ?: ""; private set(v) { p.edit().putString("refresh", v).apply() }
     var expiresAt: Long get() = p.getLong("expiresAt", 0); private set(v) { p.edit().putLong("expiresAt", v).apply() }
     fun setSession(a: String, r: String, exp: Long) { p.edit().putString("access", a).putString("refresh", r).putLong("expiresAt", exp).apply() }
-    fun clearSession() { p.edit().remove("access").remove("refresh").remove("expiresAt").remove("active").remove("queue").remove("undoOid").apply() }
+    fun clearSession() { p.edit()
+        .remove("access").remove("refresh").remove("expiresAt")
+        .remove("active").remove("queue").remove("undoOid")
+        .remove("todayStudyMs").remove("todayKey").remove("todayAsOf")
+        .remove("studyRunning").remove("lastStudyId").remove("topActivities")
+        .remove("pendingIncoming").apply() }
     fun hasSession() = access.isNotBlank() && refresh.isNotBlank()
 
     var active: State?
         get() = p.getString("active", null)?.let { try { stateFromJson(JSONObject(it)) } catch (e: Exception) { null } }
         set(v) { p.edit().apply { if (v == null) remove("active") else putString("active", stateToJson(v).toString()) }.apply() }
+
+    /** Native surfaces may read cached values without querying user data themselves. */
+    var todayStudyMs: Long get() = p.getLong("todayStudyMs", 0L); set(v) { p.edit().putLong("todayStudyMs", v).apply() }
+    var todayKey: String get() = p.getString("todayKey", "") ?: ""; set(v) { p.edit().putString("todayKey", v).apply() }
+    var todayAsOf: Long get() = p.getLong("todayAsOf", 0L); set(v) { p.edit().putLong("todayAsOf", v).apply() }
+    var studyRunning: Boolean get() = p.getBoolean("studyRunning", false); set(v) { p.edit().putBoolean("studyRunning", v).apply() }
+    var lastStudyId: String get() = p.getString("lastStudyId", "") ?: ""; set(v) { p.edit().putString("lastStudyId", v).apply() }
+    var topActivities: String get() = p.getString("topActivities", "[]") ?: "[]"; set(v) { p.edit().putString("topActivities", v).apply() }
 
     var feedbackUntil: Long get() = p.getLong("feedbackUntil", 0); set(v) { p.edit().putLong("feedbackUntil", v).apply() }
     var warning: String? get() = p.getString("warning", null); set(v) { p.edit().putString("warning", v).apply() }
