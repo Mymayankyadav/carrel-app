@@ -101,7 +101,7 @@ function l6DriftRow(){
   const enabled=!!NP.detectDrift;
   const selected=Array.isArray(NP.usagePackages)?NP.usagePackages:[];
   const switcher=kRow({label:'Detect drift',
-    sub:'Only selected app names and foreground minutes sync to Carrel. No screen or message content.',
+    sub:'Android grants broad usage access. Only selected app names, minutes and open counts sync. No content.',
     right:kSwitch({act:'l6-drift-toggle',on:enabled,label:'Detect drift'})});
   const access=enabled&&!NP.usageAccess?kRow({label:'Usage access required',
     right:kBtn('Allow','data-act="l6-usage-access"',{kind:'text'})}):'';
