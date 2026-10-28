@@ -92,7 +92,7 @@ class CarrelLivePlugin : Plugin() {
 
     @com.getcapacitor.PluginMethod
     fun clearSession(call: PluginCall) {
-        live.io.execute { live.store.clearSession(); live.engine.render() }
+        live.io.execute { live.store.clearSession(); CarrelShortcuts.refresh(context); live.engine.render() }
         call.resolve()
     }
 
