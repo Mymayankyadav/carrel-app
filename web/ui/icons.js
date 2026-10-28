@@ -92,3 +92,11 @@ Object.assign(P, {
 
 // Backwards-compatible names from the pre-redesign app.
 Object.assign(P, {"play":P.start,"cup":P.break,"moon":P.wrap,"plus":P.add,"left":P.prev,"right":P.open,"sliders":P.settings,"clock":P.later,"bars":P.stats,"grid":P.patterns,"check":P.done,"x":P.close,"skip":P.next,"trash":P.delete,"download":P.export,"dots":P.more,"shrink":P.fit,"wand":P.autoplan,"cal":P.plan,"flag":P.deadline,"inbox":P.backlog});
+
+/* F1: Lucide-compatible fallback paths; generator map updated alongside. */
+Object.assign(P,{
+  subjects:'<path d="M12 7v14M3 18V5a2 2 0 0 1 2-2h4a3 3 0 0 1 3 3v15a3 3 0 0 0-3-3H5a2 2 0 0 0-2 2z"/><path d="M21 18V5a2 2 0 0 0-2-2h-4a3 3 0 0 0-3 3v15a3 3 0 0 1 3-3h4a2 2 0 0 1 2 2z"/>',
+  ring:'<circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 9 9"/>',
+  ribbon:'<path d="M3 7h18M3 12h18M3 17h18"/><path d="M9 5v14M15 5v14"/>',
+  quickadd:'<path d="M5 12h14M12 5v14"/>'
+});

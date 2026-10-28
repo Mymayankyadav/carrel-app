@@ -2,6 +2,11 @@
   "js": [
     "config.js",
     "supa.js",
+    "logic/sched.js",
+    "logic/spacing.js",
+    "logic/breaks.js",
+    "logic/parse.js",
+    "logic/advice.js",
     "core/state.js",
     "ui/icons.js",
     "ui/kit.js",
@@ -21,6 +26,14 @@
     "ui/settings.js",
     "ui/settings-activities.js",
     "ui/settings-pages.js",
+    "ui/ribbon.js",
+    "ui/cards.js",
+    "ui/rituals.js",
+    "ui/subjects.js",
+    "ui/distraction.js",
+    "ui/capture.js",
+    "ui/coach.js",
+    "ui/labs.js",
     "gcal.js",
     "native.js",
     "ui/shell.js",
@@ -42,6 +55,12 @@
     "ui/stats-pages.css",
     "ui/settings.css",
     "ui/settings-activities.css",
-    "ui/settings-pages.css"
+    "ui/settings-pages.css",
+    "ui/ribbon.css",
+    "ui/rituals.css",
+    "ui/subjects.css",
+    "ui/distraction.css",
+    "ui/capture.css",
+    "ui/coach.css"
   ]
 }

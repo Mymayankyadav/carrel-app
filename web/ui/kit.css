@@ -137,3 +137,12 @@ button.k-row{width:100%;padding:0;text-align:left;border-top:0;border-left:0;bor
   .k-sheet,.k-page,.k-toast{animation:none}
   .k-switch-thumb,.k-collapse>summary .i{transition:none}
 }
+
+/* F1 primitives; all colours use kit tokens. */
+.f1-card{position:relative;padding:16px;min-width:0}
+.f1-card-head{display:flex;align-items:flex-start;gap:8px}
+.f1-card-body{flex:1;min-width:0}
+.f1-head-actions{display:inline-flex;align-items:center;gap:4px}
+.k-dots{display:flex;align-items:center;justify-content:center;gap:7px;min-height:28px}
+.k-dot-step{width:6px;height:6px;border-radius:50%;background:var(--line)}
+.k-dot-step.active{width:16px;border-radius:99px;background:var(--accent)}

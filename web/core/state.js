@@ -2,7 +2,7 @@
 const ACT = {}, VIEWS = {}, SHEETS = {}, PAGES = {}, SUBMIT = {};
 /* ===== Carrel app ===== */
 const PALETTE = ['#3D7EA6', '#C2603E', '#2F9C8A', '#8A63B8', '#B8912E', '#5B8C3A', '#C24E7A', '#4F6BD8', '#2B8FC4', '#A0522D', '#6E7F2E', '#9C4DB0'];
-const DEFAULTS = { dayStart: '04:00', planStart: '08:00', planEnd: '22:30', gap: 10, dailyGoal: 120, weekStart: 1, guardHours: 4, clock: 'auto', pomodoro: { focus: 25, short: 5, long: 15, every: 4 }, onboarded: false };
+const DEFAULTS = { dayStart: '04:00', planStart: '08:00', planEnd: '22:30', gap: 10, dailyGoal: 120, weekStart: 1, guardHours: 4, clock: 'auto', pomodoro: { focus: 25, short: 5, long: 15, every: 4 }, onboarded: false, labs: {} };
 const PRESETS = { '25/5': { focus: 25, short: 5, long: 15, every: 4 }, '50/10': { focus: 50, short: 10, long: 20, every: 3 }, '90/20': { focus: 90, short: 20, long: 30, every: 2 } };
 const STARTER = {
   study: { name: 'Study', color: '#3D7EA6', kind: 'study', order: 1 },
@@ -38,11 +38,11 @@ const store = {
 
 const S = {
   db: null, dl: null, user: null, conn: 'connecting', owner: true, offline: false,
-  base: { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {} },
-  loaded: { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false },
+  base: { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {}, topics: {}, rituals: {}, coach: {}, usage: {} },
+  loaded: { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false, topics: false, rituals: false, coach: false, usage: false },
   pending: [], inflight: new Set(), windowFrom: null, fetched: new Set(), unsubs: [], resubT: 0
 };
-let V = { current: null, activities: null, settings: null, days: {}, plans: {}, reviews: [], planning: {}, distractions: {} };
+let V = { current: null, activities: null, settings: null, days: {}, plans: {}, reviews: [], planning: {}, distractions: {}, topics: {}, rituals: {}, coach: {}, usage: {} };
 let DRAG = null;
 let CFG = Object.assign({}, DEFAULTS), ACTS = [], ACTMAP = {}, ENTRIES = [], CUR = null;
 let H12 = false;

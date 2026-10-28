@@ -15,7 +15,8 @@ function g1Settings() {
   const second=link('settings.calendar','Google Calendar','gcal',calendar)+
     link('settings.claude','Claude prompts','note')+
     link('settings.data','Export','export');
-  const third=link('settings.account','Account','user',account)+
+  const third=link('settings.labs','Labs','note')+
+    link('settings.account','Account','user',account)+
     kRow({label:'About',icon:'info',right:'<span class="g1-about-value">'+esc(updater&&updater.bundle||'')+(updated?'<i class="g1-update-dot"></i>':'')+icon('open')+'</span>',
       attrs:'data-act="g1-page" data-page="settings.about"'})+
     (typeof window!=='undefined'&&window.matchMedia&&window.matchMedia('(pointer:fine)').matches?

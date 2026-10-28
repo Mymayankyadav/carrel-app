@@ -32,8 +32,8 @@ function teardownDb(clearData) {
   if (clearData && S.db && S.db.clear) S.db.clear();
   S.db = null; S.uid = null; S.user = null;
   if (clearData) {
-    S.base = { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {} };
-    S.loaded = { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false };
+    S.base = { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {}, topics: {}, rituals: {}, coach: {}, usage: {} };
+    S.loaded = { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false, topics: false, rituals: false, coach: false, usage: false };
     S.pending = []; savePending(); S.fetched = new Set(); UNDO.length = 0; UI.sheet = null;
   }
 }

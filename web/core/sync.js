@@ -7,6 +7,7 @@ function readPath(v, path) {
   if (c === 'plans') return v.plans[id];
   if (c === 'planning') return v.planning[id];
   if (c === 'distractions') return v.distractions[id];
+  if (['topics','rituals','coach','usage'].includes(c)) return v[c][id];
   return undefined;
 }
 function writePath(v, path, val) {
@@ -17,6 +18,7 @@ function writePath(v, path, val) {
   else if (c === 'plans') { if (val === undefined) delete v.plans[id]; else v.plans[id] = val; }
   else if (c === 'planning') { if (val === undefined) delete v.planning[id]; else v.planning[id] = val; }
   else if (c === 'distractions') { if (val === undefined) delete v.distractions[id]; else v.distractions[id] = val; }
+  else if (['topics','rituals','coach','usage'].includes(c)) { if (val === undefined) delete v[c][id]; else v[c][id] = val; }
 }
 function applyOp(v, op) {
   const prev = readPath(v, op.path);
@@ -28,7 +30,7 @@ function applyOp(v, op) {
 }
 function computeView() {
   const b = S.base;
-  const v = { current: b.current, activities: b.activities, settings: b.settings, days: Object.assign({}, b.days), plans: Object.assign({}, b.plans), reviews: b.reviews || [], planning: Object.assign({}, b.planning), distractions: Object.assign({}, b.distractions) };
+  const v = { current: b.current, activities: b.activities, settings: b.settings, days: Object.assign({}, b.days), plans: Object.assign({}, b.plans), reviews: b.reviews || [], planning: Object.assign({}, b.planning), distractions: Object.assign({}, b.distractions), topics: Object.assign({}, b.topics), rituals: Object.assign({}, b.rituals), coach: Object.assign({}, b.coach), usage: Object.assign({}, b.usage) };
   for (const op of S.pending) applyOp(v, op);
   return v;
 }
@@ -119,6 +121,23 @@ function syncState() {
 }
 const canWrite = () => !!S.db && S.conn !== 'readonly' && S.owner;
 
+/* F1: realtime subscriptions for additive v2 collections. */
+function watchColl(name) {
+  if (!['topics','rituals','coach','usage'].includes(name) || !S.db) return null;
+  const ranged = name === 'rituals' || name === 'usage';
+  const from = S.windowFrom || addDaysKey(todayKey(), -WINDOW_DAYS);
+  const query = ranged ? S.db.collection(name).where('date', '>=', from) : S.db.collection(name);
+  return query.onSnapshot(q => {
+    const m = {};
+    if (ranged) for (const id in S.base[name]) if (id < from) m[id] = S.base[name][id];
+    q.docs.forEach(d => { if (d.exists) m[d.id] = d.data(); });
+    S.base[name] = m; S.loaded[name] = true; changed();
+  }, e => {
+    console.warn('Carrel subscription', name, e);
+    if (e && e.code === 'revoked') { S.conn='readonly'; if (typeof recoverAuth === 'function') recoverAuth(); changed(); }
+    else if (e && e.code !== 'invalid_argument') { clearTimeout(S.resubT); S.resubT=setTimeout(subscribe,5000); }
+  });
+}
 function subscribe() {
   S.unsubs.forEach(u => { try { u(); } catch (e) { /* already closed */ } });
   S.unsubs = [];
@@ -142,6 +161,7 @@ function subscribe() {
   S.unsubs.push(coll('days', 'days'));
   S.unsubs.push(coll('plans', 'plans'));
   S.unsubs.push(coll('distractions', 'distractions'));
+  for (const name of ['topics','rituals','coach','usage']) S.unsubs.push(watchColl(name));
   S.unsubs.push(db.collection('reviews').orderBy('week', 'desc').limit(12).onSnapshot(q => {
     S.base.reviews = q.docs.filter(d => d.exists).map(d => Object.assign({ id: d.id }, d.data()));
     S.loaded.reviews = true;

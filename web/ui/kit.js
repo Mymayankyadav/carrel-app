@@ -96,11 +96,31 @@ function kEmpty(text,actionHtml){return '<div class="k-empty">'+kEsc(text||'')+(
 function kSheetHead(title,actionsHtml){return '<header class="k-sheet-head"><span class="k-sheet-title" id="sh-title">'+kEsc(title)+'</span><span class="k-sheet-actions">'+(actionsHtml||'')+kIconBtn('close','Close','data-act="sheet-close"')+'</span></header>';}
 
 function kSheetFoot(html){return '<footer class="k-sheet-foot">'+(html||'')+'</footer>';}
+/* F1: back-aware, three-step-compatible sheet rendering. */
+function kFlow(sh,steps) {
+  steps=Array.isArray(steps)?steps:[];
+  if(!steps.length)return kEmpty('Nothing to show');
+  sh.flowSteps=steps;
+  const i=Math.max(0,Math.min(steps.length-1,+sh.step||0));sh.step=i;
+  const step=steps[i],allowed=typeof step.canNext!=='function'||step.canNext();
+  const dots='<div class="k-dots" role="group" aria-label="Step '+(i+1)+' of '+steps.length+'">'+
+    steps.map((_,j)=>'<span class="k-dot-step'+(i===j?' active':'')+'" aria-hidden="true"></span>').join('')+'</div>';
+  return kSheetHead(step.title||'')+dots+
+    '<div class="k-sheet-body">'+(typeof step.body==='function'?step.body():'')+'</div>'+
+    kSheetFoot(kBtn(step.next||(i===steps.length-1?'Done':'Next'),'data-act="k-flow-next"'+(allowed?'':' disabled'),{kind:'primary'}));
+}
+ACT['k-flow-next']=()=>{
+  const sh=UI.sheet;if(!sh||!Array.isArray(sh.flowSteps)||!sh.flowSteps.length)return;
+  const step=sh.flowSteps[sh.step||0];
+  if(step&&typeof step.canNext==='function'&&!step.canNext())return;
+  if(sh.step<sh.flowSteps.length-1){sh.step++;render();}
+  else if(typeof sh.done==='function')sh.done();
+};
 
 function kPageHead(title,actionsHtml){return '<header class="k-page-head">'+kIconBtn('back','Back','data-act="k-back"')+'<span class="k-page-title">'+kEsc(title)+'</span><span class="k-page-actions">'+(actionsHtml||'')+'</span></header>';}
 
 function kNav(view){
-  return '<nav class="k-nav" aria-label="Main navigation">'+[['today','Today'],['plan','Plan'],['stats','Stats'],['settings','Settings']].map(([id,label])=>
+  return '<nav class="k-nav" aria-label="Main navigation">'+[['today','Today'],['plan','Plan'],['subjects','Subjects'],['insights','Insights']].map(([id,label])=>
     '<button type="button" class="k-nav-item" data-act="view" data-v="'+id+'" aria-current="'+(id===view?'page':'false')+'">'+icon(id)+kEsc(label)+'</button>').join('')+'</nav>';
 }
 
@@ -138,7 +158,10 @@ function openPage(tab,id,params){
 function goBack(fromHistory){
   if(UI.kDialog){const resolve=UI.kDialog.resolve;UI.kDialog=null;kRenderPop();if(resolve)resolve(false);return true;}
   if(UI.kMenu){UI.kMenu=null;kRenderPop();return true;}
-  if(UI.sheet){if(typeof closeSheet==='function')closeSheet(false,!!fromHistory);else {UI.sheet=null;render();}return true;}
+  if(UI.sheet){
+    if (UI.sheet.flowSteps && (+UI.sheet.step || 0)>0) { UI.sheet.step--; render(); return true; }
+    if(typeof closeSheet==='function')closeSheet(false,!!fromHistory);else {UI.sheet=null;render();}return true;
+  }
   if(UI.pages&&UI.pages.length)return popPage(!!fromHistory);
   if(UI.view!=='today'){UI.view='today';render();return true;}
   return false;
