@@ -88,7 +88,7 @@ function l9CaptureSave(){
 }
 SHEETS.capture=l9CaptureSheet;
 Object.assign(ACT,{
-  'l9-open'(){l9OpenCapture();},
+  'l9-open'(el){l9OpenCapture('',el&&el.getAttribute('data-type')==='block'?'block':null);},
   'l9-type'(el){const sh=UI.sheet; if(!sh||sh.type!=='capture')return;const v=el.getAttribute('data-v');
     if(['task','deadline','block','ask'].includes(v)){sh.manualType=v;sh.err='';renderSheet();}},
   'l9-edit'(el){const sh=UI.sheet;if(!sh||sh.type!=='capture')return;
