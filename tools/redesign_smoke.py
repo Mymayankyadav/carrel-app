@@ -128,7 +128,17 @@ with sync_playwright() as p:
             close()
             # Drag and resize a future block with real pointer events.
             if width >= 960:
-                page.evaluate("ACT['cal-next']()")
+                # Previous QA blindly moved one day forward, which fails when
+                # an earlier action already navigated to tomorrow's block.
+                # Select a real, loaded future plan rather than an offset.
+                page.evaluate("""() => {
+                    const future=Object.keys(V.plans).filter(k=>k>todayKey() &&
+                      Object.values((V.plans[k]||{}).blocks||{})
+                        .some(b=>b&&b.activity&&b.status!=='skipped')).sort();
+                    if(!future.length)throw new Error('No future mock plan available');
+                    UI.view='plan';UI.pages=[];UI.cal.view='day';
+                    UI.cal.anchor=future[0];UI.cal.scrollTo=true;render();
+                }""")
                 page.wait_for_timeout(200)
                 card = page.locator('[data-drag="block"]').first
                 if card.count():
