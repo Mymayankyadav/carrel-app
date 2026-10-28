@@ -126,5 +126,34 @@ ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(()=>{
   assert.equal(writes[0].payload.sessions.entry1.apps.Instagram.min,6);
   assert.equal(ctx.toastResult.options.action.act,'l6-usage-log');
   assert.equal(ctx.UI.l6Detected.min,6);
-  console.log('distraction_test: L6 urge surf, usage allowlist and offline write shape passed');
+
+  // Native Capacitor proxies expose arbitrary JS method names: capability
+  // must come from the new APK's explicit prefs, not CL.sessionUsage alone.
+  ctx.NP.usageDetectionSupported=false;
+  assert.equal(ctx.l6DriftRow(),'','old APK must not show a broken usage control');
+  ctx.NP.usageDetectionSupported=true;
+  ctx.NP.usagePackages=['com.instagram.android'];
+  ctx.changed=()=>{};
+  ctx.CL.setPrefs=async update=>({...ctx.NP,...update});
+  ctx.CL.openUsageAccess=async()=>({allowed:true});
+  ctx.CL.hasUsageAccess=async()=>({allowed:true});
+
+  let completeQuery;
+  ctx.CL.sessionUsage=()=>new Promise(resolve=>{completeQuery=resolve;});
+  const pending=ctx.l6AfterStudyStop('entry2',0,20*60000,'physics');
+  await ctx.ACT['l6-drift-toggle'](); // disable before the native response
+  assert.equal(ctx.NP.detectDrift,false);
+  completeQuery({apps:[{pkg:'com.instagram.android',min:6,opens:2}]});
+  await pending;
+  assert.equal(writes.length,1,'opting out must discard in-flight usage results');
+
+  await ctx.ACT['l6-drift-toggle'](); // enable again
+  assert.equal(ctx.NP.detectDrift,true);
+  const pendingSelection=ctx.l6AfterStudyStop('entry3',0,20*60000,'physics');
+  await ctx.ACT['l6-use-app']({getAttribute:()=> 'com.instagram.android'});
+  assert.equal(ctx.NP.usagePackages.length,0);
+  completeQuery({apps:[{pkg:'com.instagram.android',min:6,opens:2}]});
+  await pendingSelection;
+  assert.equal(writes.length,1,'a removed app cannot be persisted from an old query');
+  console.log('distraction_test: L6 urge surf, offline write, old APK, and revoked consent passed');
 }).catch(e=>{console.error(e);process.exitCode=1;});
