@@ -123,6 +123,15 @@ function fakeSb() {
     assert.equal(await diskOnly.clear(), true);
     assert.equal(idb.records.has('docs:u3'), false);
     assert.equal(idb.state.getAttempts, reads, 'cleanup never hydrates cache');
+
+    // A re-signed-in account can skip a stale snapshot but still delete its
+    // IndexedDB key on the next sign-out.
+    idb.records.set('docs:u4', [['days/old', { secret: 'stale' }]]);
+    const skipped = makeDb(fakeSb(), 'u4', { idb: true, skipHydrate: true });
+    assert.equal(idb.state.getAttempts, reads, 're-sign-in skips stale hydration');
+    skipped.close();
+    assert.equal(await skipped.clear(), true);
+    assert.equal(idb.records.has('docs:u4'), false);
   } finally {
     global.indexedDB = oldIdb;
     global.setTimeout = oldTimeout;
