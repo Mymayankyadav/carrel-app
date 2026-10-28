@@ -25,17 +25,30 @@ function recoverAuth(delay = 30000) {
 }
 
 function teardownDb(clearData) {
+  // A SIGNED_IN event can switch accounts without a SIGNED_OUT event.
+  // Preserve unsent writes under the OLD uid (unless explicitly signing out)
+  // before replacing the adapter, then isolate the new account completely.
+  const oldUid = S.uid;
+  if (oldUid) {
+    if (clearData) store.set('pending:' + oldUid, null);
+    else savePending();
+  }
   clearTimeout(recoverT); recoverT = 0;
+  clearTimeout(S.resubT); S.resubT = 0;
   S.unsubs.forEach(u => { try { u(); } catch (e) { /* already closed */ } });
   S.unsubs = [];
   if (S.db && S.db.close) { try { S.db.close(); } catch (e) { /* closed */ } }
   if (clearData && S.db && S.db.clear) S.db.clear();
   S.db = null; S.uid = null; S.user = null;
-  if (clearData) {
-    S.base = { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {}, topics: {}, rituals: {}, coach: {}, usage: {} };
-    S.loaded = { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false, topics: false, rituals: false, coach: false, usage: false };
-    S.pending = []; savePending(); S.fetched = new Set(); UNDO.length = 0; UI.sheet = null;
-  }
+  // In-flight completions from the old adapter are fenced in pump().
+  S.pending = []; S.inflight.clear();
+  for (const path of Object.keys(retryT)) { clearTimeout(retryT[path]); delete retryT[path]; }
+  S.base = { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {}, topics: {}, rituals: {}, coach: {}, usage: {} };
+  S.loaded = { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false, topics: false, rituals: false, coach: false, usage: false };
+  S.fetched = new Set(); S.offline = false;
+  UNDO.length = 0; UI.sheet = null;
+  if (Array.isArray(UI.pages)) UI.pages = [];
+  UI.view = 'today';
 }
 function showSignedOut() {
   S.conn = 'none';
@@ -46,6 +59,7 @@ function openDb(session) {
   teardownDb(false);
   S.uid = session.user.id; S.user = session.user;
   S.db = makeDb(sb, S.uid, { idb: true, refresh: async () => { const r = await sb.auth.refreshSession(); if (r.error) throw r.error; } });
+  restorePending(); // only this user's queue; never the legacy unowned queue
   S.dl = DL; S.owner = true; S.conn = 'live'; S.offline = false;
   subscribe(); pumpAll(); nativeBoot();
   let tries = 0;
