@@ -114,5 +114,25 @@ const session = id => ({user:{id}});
   assert.equal(S.pending.length, 1);
   assert.equal(S.pending[0].data.secret, 'bob');
   assert.equal(requests.at(-1).uid, 'bob');
+
+  // The old unowned queue is importable only after explicit confirmation.
+  let prompts = 0;
+  ctx.confirmDialog = async opts => {
+    prompts++;
+    assert.equal(opts.danger, true);
+    assert.match(opts.text, /no account label/);
+    return false;
+  };
+  await ctx.ACT['a1-recover-legacy-pending']();
+  assert.equal(storage.has('pending'), true, 'cancel preserves legacy edits');
+  assert.equal(S.pending.length, 1);
+
+  ctx.confirmDialog = async () => { prompts++; return true; };
+  await ctx.ACT['a1-recover-legacy-pending']();
+  assert.equal(prompts, 2);
+  assert.equal(storage.has('pending'), false);
+  assert.equal(S.pending.length, 2);
+  assert.equal(storage.get('pending:bob').length, 2);
+  assert.equal(requests.at(-1).uid, 'bob', 'import is queued only on confirmed account');
   console.log('ACCOUNT SWITCH ISOLATION TESTS PASSED');
 })().catch(e => { console.error(e); process.exitCode = 1; });
