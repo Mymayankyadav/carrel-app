@@ -21,7 +21,7 @@ const DL = {
 
 /* ----- phone notification (the CarrelLive plugin) ----- */
 const NP = { vibrateFocus: true, vibrateBreak: false, respectDnd: true, privacy: false, notifDistractions: false, notifications: true, exactAlarms: true,
-  detectDrift:false, usageAccess:false, usagePackages:[] };
+  detectDrift:false, usageAccess:false, usagePackages:[], usageDetectionSupported:false };
 let nbDone = false, nsSig = '';
 
 /* Native may have refreshed the login while the app was closed; pick up the newer tokens before supabase-js starts. */
