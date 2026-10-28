@@ -12,7 +12,7 @@ function makeDb(sb, uid, opts) {
   const collOf = p => p.slice(0, p.indexOf('/'));
   const idOf = p => p.slice(p.indexOf('/') + 1);
   const OPS = { '>=': 'gte', '<=': 'lte', '>': 'gt', '<': 'lt', '==': 'eq' };
-  let hydrated = Promise.resolve(), saveT = 0, dropped = false, chan = null, closed = false;
+  let hydrated = Promise.resolve(), saveT = 0, dropped = false, chan = null, closed = false, cleared = false;
   // Fence network reads against later realtime events, local writes and
   // newer network reads. Keep tombstones while reads are in flight.
   let revision = 0, activeReads = 0, hydratedDone = !opts.idb;
@@ -65,13 +65,13 @@ function makeDb(sb, uid, opts) {
     return task;
   }
   function schedSave() {
-    if (!opts.idb || closed) return;
+    if (!opts.idb || closed || cleared) return;
     clearTimeout(saveT);
     // Persist even an empty cache; otherwise deleted last documents resurrect.
-    saveT = setTimeout(() => { if (!closed) idb('put', IDB_KEY, Array.from(cache)); }, 1000);
+    saveT = setTimeout(() => { if (!closed && !cleared) idb('put', IDB_KEY, Array.from(cache)); }, 1000);
   }
   if (opts.idb) hydrated = idb('get', IDB_KEY).then(arr => {
-    if (closed || !Array.isArray(arr)) return;
+    if (closed || cleared || !Array.isArray(arr)) return;
     arr.forEach(([p, d]) => {
       // A realtime DELETE before hydration must not resurrect a stale row.
       if (!cache.has(p) && !beforeHydration.has(p)) cache.set(p, d);
@@ -254,10 +254,9 @@ function makeDb(sb, uid, opts) {
     refresh: refreshAll,
     close() { closed = true; clearTimeout(saveT); listeners.clear(); if (chan && sb.removeChannel) { try { sb.removeChannel(chan); } catch (e) { /* closed */ } } },
     async clear() {
-      await hydrated;
-      cache.clear();
-      // Serialized after every outstanding save, including a prior adapter's
-      // writes. A new adapter's hydration will wait for this deletion.
+      // Enqueue deletion synchronously: a new adapter opened immediately after
+      // sign-out must wait for this delete before reading its own IDB snapshot.
+      cleared = true; clearTimeout(saveT); cache.clear();
       if (opts.idb) await idb('del', IDB_KEY);
     }
   };
