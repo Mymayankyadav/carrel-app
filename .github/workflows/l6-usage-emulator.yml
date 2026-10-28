@@ -45,7 +45,7 @@ jobs:
           emulator-boot-timeout: 600
           # The emulator action invokes each script line in its own shell:
           # use one command so the working-directory change is preserved.
-          script: chmod +x android/gradlew && (cd android && ./gradlew --no-daemon connectedDebugAndroidTest --stacktrace)
+          script: chmod +x android/gradlew && (cd android && ./gradlew --no-daemon :app:connectedDebugAndroidTest --stacktrace)
       - name: Preserve Android instrumentation reports
         if: always()
         uses: actions/upload-artifact@v4
