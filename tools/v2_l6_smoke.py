@@ -26,6 +26,14 @@ with sync_playwright() as p:
             expect(page.locator('#sheet')).to_contain_text('Back to work')
             expect(page.locator('#sheet [role="timer"]')).to_be_visible()
             assert page.evaluate("UI.notice && UI.sheet && UI.sheet.type==='urge'")
+            # Previously the old "Logged Chemistry" toast (z=60) sat above
+            # the urge sheet (z=51), obscuring its ring and controls.
+            assert page.evaluate("""() => {
+                const toast=document.querySelector('#toast .k-toast');
+                const scrim=document.querySelector('#sheet .k-sheet-bg');
+                return !toast || (scrim &&
+                    Number(getComputedStyle(toast).zIndex)<Number(getComputedStyle(scrim).zIndex));
+            }"""), 'a prior timer toast must appear below the urge-sheet scrim'
             page.screenshot(path=str(out/f'{width}-{theme}-urge.png'),full_page=True)
             page.locator('#sheet [data-act="l6-urge-log"]').click()
             expect(page.locator('[data-act="notice-drift"][data-m="5"]')).to_be_visible()
