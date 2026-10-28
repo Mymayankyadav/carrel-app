@@ -139,7 +139,7 @@ PAGES['stats.subject']={
   actions:params=>kIconBtn('edit','Edit subject','data-act="s2-edit" data-id="'+esc(params&&params.id||'')+'"')
 };
 PAGES['stats.patterns']={title:'Patterns',render:s2Patterns};
-PAGES['stats.insights']={title:'Insights',render:s2Insights};
+PAGES['stats.insights']={title:'Study observations',render:s2Insights};
 Object.assign(ACT,{
   's2-weeks'(el){UI.s2Weeks=el.getAttribute('data-v')==='12'?12:4;render();},
   's2-edit'(el){const id=el.getAttribute('data-id');if(ACTMAP[id])openPage('settings','settings.activity',{id});}
