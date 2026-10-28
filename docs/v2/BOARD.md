@@ -3,7 +3,7 @@
 |---|---|---|---|---|---|
 | F1 | 0 | merged | `v2/f1` | [#27](https://github.com/Mymayankyadav/carrel-app/pull/27) | Green web + browser CI; merged 28 Oct |
 | L1 | 1 | merged | `v2/l1` | [#35](https://github.com/Mymayankyadav/carrel-app/pull/35) | Ring, hero, ribbon, smart stack; full CI + four-viewport smoke green |
-| L2 | 2 | doing | `v2/l2` | | Morning and shutdown flow implemented; QA in progress |
+| L2 | 2 | merged | `v2/l2` | [#39](https://github.com/Mymayankyadav/carrel-app/pull/39) | Morning scheduling, end-of-day shutdown; full CI and screenshots green |
 | L3 | 1 | merged | `v2/l3` | [#29](https://github.com/Mymayankyadav/carrel-app/pull/29) | Scheduler, preview, unit and browser tests green |
 | L4 | 1 | merged | `v2/l4` | [#33](https://github.com/Mymayankyadav/carrel-app/pull/33) | Subjects, topic recall, spacing and browser acceptance green |
 | L5 | 1 | merged | `v2/l5` | [#37](https://github.com/Mymayankyadav/carrel-app/pull/37) | Session intention, adaptive break and recall; Node/Playwright CI green |
