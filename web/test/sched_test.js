@@ -54,4 +54,17 @@ assert(b.every(x=>x.minutes<=120),'daily hard cap');
 assert.equal(b.reduce((a,x)=>a+x.minutes,0),240);
 b=backwardPlan({today:'2026-10-30',deadline:'2026-11-01',hoursNeeded:2,hoursDone:1,maxPerDay:3});
 assert(Math.abs(b.reduce((a,x)=>a+x.minutes,0)-60)<=5);
+// Duplicate or touching free intervals must not inflate capacity or double-book.
+p=autoPlan({items:[task('a','math',120)],free:[[at(8),at(9)],[at(8,30),at(9,30)]],now:at(7)});
+assert.equal(p.blocks.reduce((n,x)=>n+x.minutes,0),81,'overlap counts only once toward the 90% budget');
+assert.equal(p.blocks.length,1,'overlapping windows produce one contiguous block');
+p=autoPlan({items:[task('a','math',30)],free:[[at(8),at(8,15)],[at(8,15),at(8,45)]],now:at(7)});
+assert.equal(p.blocks.length,1,'touching short windows form a usable free interval');
+assert.equal(p.blocks[0].minutes,30);
+// Malformed dates or non-finite quantities must not hang morning planning.
+assert.deepEqual(backwardPlan({today:'2026-02-31',deadline:'2026-03-10',hoursNeeded:10}),[]);
+assert.deepEqual(backwardPlan({today:'2026-10-29',deadline:'2026-11-02',hoursNeeded:10,maxPerDay:Infinity}),[]);
+assert.deepEqual(backwardPlan({today:'2026-10-29',deadline:'2026-11-02',hoursNeeded:Infinity}),[]);
+assert.deepEqual(backwardPlan({today:'2026-10-29',deadline:'2026-11-02',hoursNeeded:10,maxPerDay:0}),[]);
+assert(backwardPlan({today:'2026-10-29',deadline:'2026-10-30',hoursNeeded:30,maxPerDay:100})[0].minutes<=1440,'daily capacity never exceeds 24h');
 console.log('SCHED TESTS PASSED');
