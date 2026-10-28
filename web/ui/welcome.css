@@ -5,6 +5,10 @@
 .w1-name{font-size:var(--t-xl);font-weight:600;line-height:1.2;margin:18px 0 32px;letter-spacing:-.02em}
 .w1-auth-inner>.k-btn{width:100%;max-width:320px}
 .w1-private{font-size:var(--t-sm);color:var(--text-2);margin:0 0 16px}
+.w1-cache-alert{max-width:320px;width:100%;margin:20px auto 0;padding:16px;border:1px solid var(--line);border-radius:var(--r-sm);background:var(--surface);text-align:left;font-size:var(--t-sm)}
+.w1-cache-alert strong{font-weight:600}
+.w1-cache-alert p{color:var(--text-2);margin:8px 0 12px}
+.w1-cache-alert .k-btn{min-height:44px}
 .w1-setup{max-width:480px;width:100%;margin-inline:auto;padding-top:20px;display:flex;flex-direction:column;gap:20px}
 .w1-heading{font-size:var(--t-lg);font-weight:600;letter-spacing:-.015em;line-height:1.2}
 .w1-add-form{display:flex;gap:8px;align-items:center;width:100%}
