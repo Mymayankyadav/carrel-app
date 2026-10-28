@@ -65,8 +65,19 @@ function nativeBoot() {
 }
 function nativeSession(session) {
   if (CL && CL.setSession) CL.setSession({ access: session.access_token, refresh: session.refresh_token, expiresAt: (session.expires_at || 0) * 1000 });
+  // Native opt-in is account-scoped. Reload it after sign-in rather than
+  // reusing a previous account's in-memory permissions and allowlist.
+  if (CL && CL.getPrefs) CL.getPrefs().then(p => { Object.assign(NP,p); changed(); }).catch(()=>{});
 }
-function nativeClear() { nsSig = ''; if (CL && CL.clearSession) CL.clearSession(); }
+function nativeClear() {
+  nsSig = '';
+  // Immediately stop queued JS callbacks from writing post-sign-out usage.
+  NP.detectDrift=false;
+  NP.usageAccess=false;
+  NP.usagePackages=[];
+  UI.l6Detected=null;
+  if (CL && CL.clearSession) CL.clearSession();
+}
 
 /* Tells the notification what the timer is doing. Only sends when something changed. */
 function nativeSync() {
