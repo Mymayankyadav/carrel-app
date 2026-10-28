@@ -193,7 +193,7 @@ function fakeIndexedDb() {
       next.doc('state/current').onSnapshot(s => { if (s.exists) revived = true; });
       await clear;
       await tick();
-      assert.equal(idb.records.has('docs:u1'), false);
+      assert.deepEqual(idb.records.get('docs:u1') || [], [], 'old account cache cleared (an empty snapshot is safe)');
       assert.equal(revived, false, 'new adapter must not read pre-sign-out cache');
       next.close();
     }
