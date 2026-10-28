@@ -4,6 +4,10 @@ import android.content.res.Configuration;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.os.Build;
+import android.content.Intent;
+import android.net.Uri;
+import android.webkit.WebView;
+import org.json.JSONObject;
 import androidx.core.view.WindowCompat;
 import androidx.core.view.WindowInsetsControllerCompat;
 import com.getcapacitor.BridgeActivity;
@@ -15,6 +19,33 @@ public class MainActivity extends BridgeActivity {
         registerPlugin(CarrelLivePlugin.class);
         super.onCreate(savedInstanceState);
         configureSystemBars();
+        dispatchCaptureIntent(getIntent());
+    }
+
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        dispatchCaptureIntent(intent);
+    }
+
+    private void dispatchCaptureIntent(Intent intent) {
+        if (intent == null) return;
+        String value = null;
+        if (Intent.ACTION_SEND.equals(intent.getAction()) && "text/plain".equals(intent.getType())) {
+            value = intent.getStringExtra(Intent.EXTRA_TEXT);
+        } else if (Intent.ACTION_VIEW.equals(intent.getAction()) && intent.getData() != null &&
+                   "capture".equals(intent.getData().getHost())) {
+            value = intent.getData().getQueryParameter("text");
+            if (value == null) value = "";
+        }
+        if (value == null) return;
+        final String text = value.length() > 2000 ? value.substring(0, 2000) : value;
+        final WebView web = getBridge() == null ? null : getBridge().getWebView();
+        if (web == null) return;
+        final String js = "window.dispatchEvent(new CustomEvent('carrel-capture',{detail:{text:" +
+            JSONObject.quote(text) + "}}))";
+        web.post(() -> web.evaluateJavascript(js, null));
     }
 
     @Override
