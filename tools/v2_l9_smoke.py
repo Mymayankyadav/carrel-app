@@ -21,6 +21,11 @@ with sync_playwright() as p:
             expect(page.locator('#sheet')).to_contain_text('Quick add')
             page.screenshot(path=str(out/f'{width}-{theme}-preview.png'),full_page=True)
             page.locator('[data-act="l9-save"]').click()
+            print('L9 DEBUG block', page.evaluate("""(date) => ({
+              date, sheet:UI.sheet, errors:[],
+              plans: Object.keys(V.plans), records:((V.plans[date]||{}).blocks||{}),
+              pending:S.pending.length, toast:UI.toast, conn:S.conn
+            })""", planned_date),flush=True)
             assert page.evaluate("""(date) => {
                const k=date;
                return Object.values(((V.plans[k]||{}).blocks)||{})
