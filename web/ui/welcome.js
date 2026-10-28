@@ -14,7 +14,14 @@ function w1Welcome() {
       '<p class="w1-private">This tracker is private</p>' +
       kBtn('Sign out','data-act="signout"',{kind:'text'}) :
       kBtn('Continue with Google','data-act="signin"',{kind:'primary',icon:'signin'})) +
-    '</div></div>';
+    '</div>' +
+    (S.conn === 'none' && a1CleanupPending.length ?
+      '<div class="w1-cache-alert" role="alert"><strong>' +
+      (a1CleanupPending.every(id => a1CleanupBusy.has(id)) ? 'Clearing device cache' : 'Device cache not cleared') +
+      '</strong><p>Offline data may remain on this device.</p>' +
+      kBtn('Retry clearing','data-act="a1-retry-cache-clear"' +
+        (a1CleanupPending.every(id => a1CleanupBusy.has(id)) ? ' disabled' : ''),{kind:'text'}) +
+      '</div>' : '') + '</div>';
 }
 /* Whitespace, duplicate and case-safe suggestions. The original onb-add/onb-chip
  * actions perform the writes and onb-done persists the completion flag. */
