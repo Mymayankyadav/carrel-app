@@ -36,7 +36,8 @@ function sStart(sh){
     kField('What will you finish?',kText({bind:'sheet.intent',value:sh.intent||'',
       placeholder:'One clear outcome',attrs:'maxlength="80" aria-label="Session intention"'}))+
     kField('If…',kText({bind:'sheet.ifText',value:sh.ifText||'',attrs:'maxlength="80" aria-label="If condition"'}))+
-    kField('Then…',kText({bind:'sheet.thenText',value:sh.thenText||'',attrs:'maxlength="80" aria-label="Then action"'}))):'';
+    kField('Then…',kText({bind:'sheet.thenText',value:sh.thenText||'',attrs:'maxlength="80" aria-label="Then action"'})))
+      .replace('<summary>','<summary data-act="l5-intention-toggle">'):'';
   const energy=a&&a.kind==='study'&&typeof lab==='function'&&lab('energy')?
     kField('Energy',kSeg({act:'l5-energy',value:String(sh.energy||0),
       options:[{v:'1',label:'Low'},{v:'2',label:'Okay'},{v:'3',label:'High'}]})):'';
@@ -110,6 +111,11 @@ function l5SessionEndSheet(sh){
 Object.assign(SHEETS,{start:sStart,activities:sActivities,park:sPark,parked:sParked,fixstop:sFixStop});
 SHEETS.sessionEnd=l5SessionEndSheet;
 Object.assign(ACT,{
+  // Keep the disclosure state synchronously before editable fields trigger morphing.
+  'l5-intention-toggle'(el){
+    const d=el.closest&&el.closest('details');
+    UI.open=UI.open||{};UI.open['l5-intention']=d?!d.open:true;
+  },
   't2-start-opts'(el){
     const id=el.getAttribute('data-id'),a=ACTMAP[id];
     if(!a||a.archived)return;
