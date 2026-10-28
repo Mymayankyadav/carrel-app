@@ -119,6 +119,14 @@ ctx.CL={sessionUsage:async()=>({apps:[
 ctx.NP={detectDrift:true,usageAccess:true};
 ctx.ACTMAP={physics:{name:'Physics',kind:'study'}};
 ctx.dayKeyOf=()=> '2026-10-28';
+// The queued stop/switch commit recomputes V.days before starting the async
+// native read. Model that durable entry for every query under test.
+ctx.V.days={'2026-10-28':{entries:Object.fromEntries(
+  ['entry1','entry2','entry3','entry4','entry5','entry6'].map(id=>[
+    id,{activity:'physics',start:new Date(0).toISOString(),
+      end:new Date(20*60000).toISOString()}
+  ])
+)}};
 ctx.W=()=>({update(path,payload,ensure){
   writes.push({path,payload,ensure});return this;
 }});
@@ -193,5 +201,21 @@ ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(async()=>{
   assert.equal(ctx.NP.detectDrift,true,'native opt-in must survive a permission-screen failure');
   assert.equal(ctx.NP.usageAccess,false,'failed permission prompt cannot be mistaken for access');
 
-  console.log('distraction_test: L6 urge surf, offline write, old APK, account and consent isolation passed');
+  // Stop followed by Undo/edit while Android is still reading should not
+  // persist a ghost usage session even when permission remains granted.
+  ctx.NP.usageAccess=true;
+  ctx.CL.sessionUsage=()=>new Promise(resolve=>{completeQuery=resolve;});
+  const edited=ctx.l6AfterStudyStop('entry5',0,20*60000,'physics');
+  ctx.V.days['2026-10-28'].entries.entry5.end=new Date(19*60000).toISOString();
+  completeQuery({apps:[{pkg:'com.instagram.android',min:6,opens:2}]});
+  await edited;
+  assert.equal(writes.length,1,'edited study session cannot receive stale usage metadata');
+
+  const undone=ctx.l6AfterStudyStop('entry6',0,20*60000,'physics');
+  delete ctx.V.days['2026-10-28'].entries.entry6;
+  completeQuery({apps:[{pkg:'com.instagram.android',min:6,opens:2}]});
+  await undone;
+  assert.equal(writes.length,1,'undone study session cannot receive ghost usage metadata');
+
+  console.log('distraction_test: L6 urge surf, offline write, old APK, session-edit, account and consent isolation passed');
 }).catch(e=>{console.error(e);process.exitCode=1;});
