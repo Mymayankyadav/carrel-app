@@ -14,19 +14,22 @@ const seven=Array.from({length:7},(_,i)=>ent(String(i),L.addDaysKey('2026-10-20'
 assert.equal(L.patternsModel(seven,T('2026-10-27T21:00:00'),4).studyDays,7);
 const stats=fs.readFileSync(path.join(__dirname,'../ui/stats.js'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'../ui/stats.css'),'utf8');
-const ACT={},VIEWS={},UI={weekOff:0,s1Range:'week'};
+const ACT={},VIEWS={},SHEETS={},UI={weekOff:0,s1Range:'week'};
 const PAGES={'stats.subject':{},'stats.patterns':{},'stats.insights':{}};
 const calls=[],ACTS=[{id:'math',name:'Mathematics',kind:'study',color:'#345678',order:1,goal:120}];
 const env={
- ACT,VIEWS,PAGES,UI,ACTS,ACTMAP:{math:ACTS[0]},
- MIN,HOUR,ENTRIES:seven,CFG:{weekStart:1,dailyGoal:60},Date,Math,Object,
+ ACT,VIEWS,PAGES,SHEETS,UI,ACTS,ACTMAP:{math:ACTS[0]},
+ MIN,HOUR,DAY:24*HOUR,ENTRIES:seven,CFG:{weekStart:1,dailyGoal:60,planEnd:'22:30',minDay:25},Date,Math,Object,
+ V:{distractions:{},rituals:{}},store:{get:()=>null,set:()=>{}},advise:()=>[],
+ flexibleStreak:()=>({count:2}),l7Accuracy:()=>85,
  todayKey:()=> '2026-10-27',weekStartKey:()=> '2026-10-26',
- dateOfKey:L.dateOfKey,weekdayOfKey:()=>1,addDaysKey:L.addDaysKey,
+ dateOfKey:L.dateOfKey,weekdayOfKey:()=>1,addDaysKey:L.addDaysKey,hmOnDay:L.hmOnDay,
  rowWeekday:()=> 'Monday',DF:()=>({format:()=> 'Oct'}),shortDay:k=>k,longDay:k=>k,
  ensureRange:()=>{},aggregate:()=>({'2026-10-26':{acts:{math:2*HOUR},study:2*HOUR}}),
  isStudyId:id=>id==='math',act:()=>ACTS[0],kSafeColour:s=>s,
  fmtDur:v=>Math.round(v/MIN)+'m',esc:s=>String(s),icon:()=>'<svg></svg>',
  kEmpty:s=>s,kIconBtn:(_ic,label,attrs)=>'<button '+attrs+'>'+label+'</button>',
+ kBtn:(label,attrs)=>'<button '+attrs+'>'+label+'</button>',
  kSeg:()=>'<div class="segment">Week Month</div>',
  kRow:o=>'<button '+(o.attrs||'')+'>'+o.label+'</button>',kGroup:(l,rows)=>l+rows,
  pushPage:(id,p)=>calls.push([id,p]),render:()=>calls.push('render')
@@ -34,7 +37,7 @@ const env={
 vm.createContext(env);vm.runInContext(stats,env);
 assert.equal(typeof VIEWS.stats,'function');assert(!VIEWS.patterns,'removed legacy Patterns tab');
 let html=VIEWS.stats();assert(html.includes('Subjects')&&html.includes('Mathematics'));
-assert(html.includes('This week')&&html.includes('Insights')&&html.includes('Patterns'));
+assert(html.includes('This week')&&html.includes('Focus')&&html.includes('Patterns'));
 assert(!html.includes('Example data'),'real data only');
 ACT['s1-range']({getAttribute:()=> 'month'});assert.equal(UI.s1Range,'month');
 html=VIEWS.stats();assert(html.includes('Last 4 weeks'));
