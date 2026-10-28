@@ -29,10 +29,10 @@ with sync_playwright() as p:
             page.locator('[data-act="l9-save"]').click()
             assert page.evaluate("""() => Object.values(((V.planning.backlog||{}).items)||{})
                  .some(t=>t&&t.title==='Write notes'&&t.minutes===45)"""),'task should be saved'
-            page.evaluate("l9OpenCapture('exam 12 nov 9am')")
+            page.evaluate("l9OpenCapture('exam tomorrow 9am')")
             page.locator('[data-act="l9-save"]').click()
             assert page.evaluate("""() => Object.values(((V.planning.deadlines||{}).items)||{})
-                 .some(d=>d&&d.date==='2026-11-12'&&d.kind==='exam')"""),'deadline should be saved'
+                 .some(d=>d&&d.date===addDaysKey(todayKey(),1)&&d.kind==='exam')"""),'deadline should be saved'
             page.evaluate("l9OpenCapture('Ask for a weekly plan','ask')")
             page.locator('[data-act="l9-save"]').click()
             assert page.evaluate("""() => Object.values(V.coach||{})
