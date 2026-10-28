@@ -1,6 +1,6 @@
 # QA — offline cache and realtime race fencing
 
-Branch: `v2/qa-idb-realtime-fencing`. Status: in review. Scope: ORC-owned `web/supa.js` adapter hardening, a Node regression suite, and QA handoff. No schema changes, remote destinations, new permissions, native code or UI changes.
+Branch: `v2/qa-idb-realtime-fencing`. Status: merged to `main` via [PR #62](https://github.com/Mymayankyadav/carrel-app/pull/62), squash commit `56ba6a8bde6cf8ec109108691e077571a5d845dc`. Scope: ORC-owned `web/supa.js` adapter hardening, a Node regression suite, and QA handoff. No schema changes, remote destinations, new permissions, native code or UI changes.
 
 ## Reproduced failure modes
 
@@ -18,10 +18,19 @@ Branch: `v2/qa-idb-realtime-fencing`. Status: in review. Scope: ORC-owned `web/s
 
 ## Acceptance
 
-- [ ] `node web/test/supa_cache_test.js` and existing `supa_test.js` / `account_switch_test.js` green in CI
-- [ ] Full web build and Node suite green
-- [ ] Browser acceptance, navigation and v2 smoke green
-- [ ] No UI changes; existing 390/1280 light/dark visual matrix remains valid
+- [x] New `supa_cache_test.js` and existing `supa_test.js` / `account_switch_test.js` green in CI
+- [x] Full web build and Node suite green
+- [x] Browser acceptance, navigation and v2 smoke green
+- [x] No UI changes; 390/1280 light/dark Today/Plan screenshot matrix inspected, no new visual regression
 - [ ] No real Android testing claimed; L6 PR #44 remains draft pending issue #52
 
 No production documents were modified. This fix is strictly local cache and realtime sequencing.
+
+## Final CI evidence (PR head `f20d97c8`)
+
+- [Web build, Node suite, v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40769874339) — success
+- [Additional web/Node/v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40769869925) — success
+- [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40769874425) — success; screenshot artifact inspected for Today/Plan at phone/desktop light/dark
+- [Real-click navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40769874163) — success
+
+Earlier intermediate CI runs failed due to an overly strict test assertion that assumed IDB deletion could not be followed by an empty snapshot; the assertion was corrected and final head is green. No production data operations or device QA performed.
