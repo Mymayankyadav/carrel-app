@@ -136,6 +136,17 @@ function l6SummariseUsage(apps,minutes){
   }
   return {apps:out,total:Math.min(Math.max(0,minutes),total),leader};
 }
+/* A pending OS usage query must never sync metadata after the user undoes,
+ * deletes, or edits the study entry that originally authorized the scan. */
+function l6SessionStillLogged(id,start,end,activity){
+  const day=dayKeyOf(start);
+  const doc=V&&V.days&&V.days[day];
+  const entry=doc&&doc.entries&&doc.entries[id];
+  if(!entry||entry.activity!==activity)return false;
+  const savedStart=parseT(entry.start),savedEnd=parseT(entry.end);
+  return Number.isFinite(savedStart)&&Number.isFinite(savedEnd)&&
+    Math.abs(savedStart-start)<=2000&&Math.abs(savedEnd-end)<=2000;
+}
 async function l6AfterStudyStop(id,start,end,activity){
   if(typeof CL==='undefined'||!CL||!CL.sessionUsage||!NP.detectDrift||
     !NP.usageAccess||!canWrite()||end-start<10*MIN||end<=start)return;
@@ -150,7 +161,8 @@ async function l6AfterStudyStop(id,start,end,activity){
     // even when the user disables and re-enables tracking before a query returns.
     if(revision!==l6UsageConsentRevision||selected!==JSON.stringify(NP.usagePackages||[])||
        (typeof S!=='undefined'&&S.db!==database)||
-       !NP.detectDrift||!NP.usageAccess||!canWrite())return;
+       !NP.detectDrift||!NP.usageAccess||!canWrite()||
+       !l6SessionStillLogged(id,start,end,activity))return;
     const safe=l6SummariseUsage(reply&&reply.apps,Math.floor((end-start)/MIN));
     if(safe.total<2||!safe.leader)return;
     const day=dayKeyOf(start);
