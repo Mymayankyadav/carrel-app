@@ -64,6 +64,7 @@ assert.equal(sh.type,'morning');
 assert(ctx.l2MorningSheet(sh).includes('Old problem set'));
 sh.step=1;ctx.l2MorningSheet(sh);
 assert(sh.proposal.blocks.length>=3);
+assert.equal(sh.flowSteps[1].canNext(),true,'accept is enabled on the first preview render');
 assert.equal(sh.flowSteps[1].onNext(),true);
 assert(sh.accepted);
 const accept=calls.at(-1);
