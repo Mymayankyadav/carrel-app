@@ -156,6 +156,47 @@ function vStats(){
     (subjects?kGroup('Subjects',subjects):'')+
     '<section class="s1-links">'+links+'</section></div>';
 }
+
+/* L7 fresh-start card and one-action weekly subject goal. */
+function l7TopSubject(){
+  return ACTS.filter(a=>a.kind==='study'&&!a.archived)
+    .sort((a,b)=>(+b.goal||0)-(+a.goal||0))[0]||null;
+}
+function l7GoalSheet(sh){
+  const a=ACTMAP[sh.subject];
+  if(!a)return kSheetHead('Weekly goal')+kEmpty('Choose a study subject.');
+  return kSheetHead('One goal for this week')+
+    '<div class="k-sheet-body l7-goal-sheet">'+
+    kField('Subject',kActPick({bind:'sheet.subject',id:sh.subject,study:true,life:false}))+
+    kField('Weekly goal',kStepper({bind:'sheet.hours',value:sh.hours||1,min:1,max:80,step:1,
+      fmt:h=>h+'h'}))+'</div>'+
+    kSheetFoot(kBtn('Set goal','data-act="l7-goal-save"',{kind:'primary'}));
+}
+SHEETS.l7goal=l7GoalSheet;
+Object.assign(ACT,{
+  'l7-goal-open'(){
+    const a=l7TopSubject();if(!a)return;
+    openSheet({type:'l7goal',subject:a.id,hours:Math.max(1,Math.round((+a.goal||60)/60))});
+  },
+  'l7-goal-save'(){
+    const sh=UI.sheet,subject=sh&&ACTMAP[sh.subject],h=+sh.hours;
+    if(!sh||sh.type!=='l7goal'||!subject||subject.archived||subject.kind!=='study'||
+      !Number.isInteger(h)||h<1||h>80)return;
+    store.set('freshstart:'+todayKey(),true);
+    closeSheet(true);
+    saveAct(subject.id,{goal:h*60},'Weekly goal updated.');
+  }
+});
+if(typeof document!=='undefined')document.addEventListener('DOMContentLoaded',()=>{
+  CARDS.freshstart={rank:ctx=>{
+    if(store.get('freshstart:'+ctx.k)||!l7TopSubject())return 0;
+    const first=Number.isInteger(+CFG.weekStart)?+CFG.weekStart:1;
+    const day=dateOfKey(ctx.k);
+    return day.getDate()===1||day.getDay()===first?85:0;
+  },render:()=>'<div class="l7-freshstart"><span>New week. Set one goal?</span>'+
+    kBtn('Set goal','data-act="l7-goal-open"',{kind:'primary'})+'</div>'};
+});
+
 /* Plan's existing week-target panel keeps its contract until P1 moves it. */
 VIEWS.stats=vStats;
 VIEWS.insights=vStats;
