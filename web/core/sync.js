@@ -64,6 +64,29 @@ function restorePending() {
     S.pending.push({ oid: ++opSeq, path: o.path, kind: o.kind, data: o.data, ensure: o.ensure || null, cond: o.cond || null, tries: 1 });
   }
 }
+// A pre-upgrade queue has no owner. It can only be assigned by an explicit
+// account-level recovery action, never by the authentication callback.
+function importLegacyPending() {
+  const key = pendingStoreKey(), arr = store.get('pending');
+  if (!key || !Array.isArray(arr) || !arr.length) return 0;
+  const valid = o => o && typeof o.path === 'string' &&
+    /^[a-z]+\\/[^/]+$/.test(o.path) && ['set','update','delete'].includes(o.kind) &&
+    (o.kind === 'delete' || (o.data && typeof o.data === 'object' && !Array.isArray(o.data)));
+  if (!arr.every(valid)) return -1;
+  const ops = arr.map(o => ({ oid: ++opSeq, path: o.path, kind: o.kind,
+    data: o.data, ensure: o.ensure || null, cond: o.cond || null, tries: 1 }));
+  S.pending.push(...ops);
+  savePending();
+  const saved = store.get(key);
+  if (!Array.isArray(saved) || saved.length !== S.pending.length) {
+    S.pending.splice(-ops.length, ops.length); // leave legacy data untouched
+    return -1;
+  }
+  store.set('pending', null);
+  pumpAll();
+  changed();
+  return ops.length;
+}
 function pumpAll() {
   const paths = new Set(S.pending.map(o => o.path));
   paths.forEach(p => { clearTimeout(retryT[p]); pump(p); });
