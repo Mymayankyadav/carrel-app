@@ -80,5 +80,117 @@ CARDS.distraction={
       l6DriftSpark(s.current.days)+'</div>';
   }
 };
+
+/* L6 Usage Access: disabled until BOTH the native toggle and OS special
+ * permission are granted. The selected allowlist is editable on device. */
+const l6UsageApps=[
+  ['com.instagram.android','Instagram'],['com.google.android.youtube','YouTube'],
+  ['com.whatsapp','WhatsApp'],['com.twitter.android','X'],
+  ['com.zhiliaoapp.musically','TikTok'],['com.reddit.frontpage','Reddit'],
+  ['com.snapchat.android','Snapchat'],['com.facebook.katana','Facebook'],
+  ['in.startv.hotstar','Hotstar'],['com.netflix.mediaclient','Netflix']
+];
+function l6DriftRow(){
+  if(typeof CL==='undefined'||!CL||!CL.sessionUsage)return '';
+  const enabled=!!NP.detectDrift;
+  const selected=Array.isArray(NP.usagePackages)?NP.usagePackages:[];
+  const switcher=kRow({label:'Detect drift',
+    right:kSwitch({act:'l6-drift-toggle',on:enabled,label:'Detect drift'})});
+  const access=enabled&&!NP.usageAccess?kRow({label:'Usage access required',
+    right:kBtn('Allow','data-act="l6-usage-access"',{kind:'text'})}):'';
+  const options=enabled?kCollapse('l6-drift-apps','Apps to count',
+    kChips({act:'l6-use-app',value:selected,multi:true,
+      options:l6UsageApps.map(([v,label])=>({v,label}))})):'';
+  return switcher+access+options;
+}
+function l6SummariseUsage(apps,minutes){
+  const allowed=new Map(l6UsageApps),out=Object.create(null);
+  let total=0,leader=null;
+  for(const row of Array.isArray(apps)?apps:[]){
+    if(!row||!allowed.has(row.pkg))continue;
+    const min=Math.max(0,Math.min(24*60,Math.round(+row.min||0)));
+    const opens=Math.max(0,Math.min(999,Math.round(+row.opens||0)));
+    if(!min)continue;
+    const label=allowed.get(row.pkg);
+    out[label]={min,opens};
+    total+=min;
+    if(!leader||min>leader.min)leader={label,min};
+  }
+  return {apps:out,total:Math.min(Math.max(0,minutes),total),leader};
+}
+async function l6AfterStudyStop(id,start,end,activity){
+  if(typeof CL==='undefined'||!CL||!CL.sessionUsage||!NP.detectDrift||
+    !NP.usageAccess||!canWrite()||end-start<10*MIN||end<=start)return;
+  try{
+    const reply=await CL.sessionUsage({startMs:start,endMs:end});
+    if(!NP.detectDrift||!canWrite())return; // consent can be revoked during query
+    const safe=l6SummariseUsage(reply&&reply.apps,Math.floor((end-start)/MIN));
+    if(safe.total<2||!safe.leader)return;
+    const day=dayKeyOf(start);
+    const data={v:1,date:day,sessions:{[id]:{apps:safe.apps}}};
+    const w=W().update('usage/'+day,data,{v:1,date:day,sessions:{}});
+    if(!commit(null,w,{undo:true}))return;
+    UI.l6Detected={id,day,activity,at:end,min:safe.total,until:Date.now()+120000};
+    const name=typeof ACTMAP!=='undefined'&&ACTMAP[activity]?ACTMAP[activity].name:'study';
+    toast(safe.leader.label+' '+safe.leader.min+'m during '+name,
+      {action:{label:'Log',act:'l6-usage-log'},persist:true});
+  }catch(e){ /* Never interrupt saving the study entry if usage access changed. */ }
+}
+ACT['l6-drift-toggle']=async ()=>{
+  if(!CL||!CL.setPrefs)return;
+  const next=!NP.detectDrift;
+  try{
+    const r=await CL.setPrefs({detectDrift:next});
+    Object.assign(NP,r);
+    changed();
+    if(next&&CL.openUsageAccess){
+      await CL.openUsageAccess();
+      if(CL.hasUsageAccess){
+        const access=await CL.hasUsageAccess();NP.usageAccess=!!access.allowed;changed();
+      }
+    }
+  }catch(e){toast('Could not change usage detection.');}
+};
+ACT['l6-usage-access']=async ()=>{
+  if(!CL||!CL.openUsageAccess)return;
+  await CL.openUsageAccess().catch(()=>{});
+  if(CL.hasUsageAccess){
+    const state=await CL.hasUsageAccess().catch(()=>({allowed:false}));
+    NP.usageAccess=!!state.allowed;changed();
+  }
+};
+ACT['l6-use-app']=async el=>{
+  if(!CL||!CL.setPrefs)return;
+  const pkg=el.getAttribute('data-v');
+  if(!l6UsageApps.some(([id])=>id===pkg))return;
+  const values=new Set(Array.isArray(NP.usagePackages)?NP.usagePackages:[]);
+  if(values.has(pkg))values.delete(pkg);else values.add(pkg);
+  try{
+    const p=await CL.setPrefs({usagePackages:[...values]});
+    Object.assign(NP,p);changed();
+  }catch(e){toast('Could not update app list.');}
+};
+ACT['l6-usage-log']=()=>{
+  const found=UI.l6Detected;
+  if(!found||Date.now()>found.until||!canWrite())return;
+  const min=Math.min(found.min,24*60),drift=ACTS.find(a=>a.role==='drift'&&!a.archived);
+  if(!drift){toast('Add a Drift activity in Settings first.');return;}
+  const at=found.at,start=at-min*MIN;
+  if(start>=at||!Number.isFinite(start))return;
+  const w=W();
+  // The native result only gives aggregate minutes, not exact interruption
+  // times. Attribute them to the END of the known focus session.
+  w.day(found.day,{[found.id]:{end:isoLocal(start)}});
+  w.day(dayKeyOf(start),{[uid('e')]:{
+    activity:drift.id,start:isoLocal(start),end:isoLocal(at),
+    note:'detected app use',focus:null,block:null,pomo:null
+  }});
+  w.dis(found.day,uid('d'),{
+    type:'drift',at:isoLocal(at),driftMin:min,text:null,activity:found.activity,
+    entry:found.id,src:'usage',applied:true
+  });
+  if(commit('Logged '+min+'m of drift.',w,{undo:true}))UI.l6Detected=null;
+};
+
 if(typeof module!=='undefined'&&module.exports)
-  module.exports={l6DriftWeek,l6DriftRank};
+  module.exports={l6DriftWeek,l6DriftRank,l6SummariseUsage};
