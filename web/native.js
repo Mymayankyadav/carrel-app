@@ -77,7 +77,26 @@ function nativeSync() {
   }
   const br = breakAct();
   const state = liveStateOf(CUR, { rev: 0, act: id => act(id), breakId: br ? br.id : null, blockTitle });
-  const payload = { state, id: CUR ? CUR.id : null };
+  // Give native surfaces a deterministic 14-day shortlist and today's study
+  // total. No additional server read: the app already holds these entries.
+  const now=Date.now(),day=todayKey();
+  const today=aggregate(ENTRIES,now,day,day)[day];
+  const start=dayStartMs(addDaysKey(day,-13)),scores={};
+  for(const en of ENTRIES){
+    if(!ACTMAP[en.a]||ACTMAP[en.a].kind!=='study'||ACTMAP[en.a].archived)continue;
+    const ms=Math.max(0,Math.min(entryEnd(en,now),now)-Math.max(en.s,start));
+    scores[en.a]=(scores[en.a]||0)+ms;
+  }
+  const topActivities=Object.keys(scores).sort((a,b)=>scores[b]-scores[a])
+    .slice(0,3).map(id=>({id,name:ACTMAP[id].name}));
+  const recent=lastEntry();
+  const payload = { state, id: CUR ? CUR.id : null,
+    todayStudyMs:Math.max(0,Math.floor((today&&today.study)||0)),
+    todayKey:day,
+    studyRunning:!!(CUR&&ACTMAP[CUR.activity]&&ACTMAP[CUR.activity].kind==='study'),
+    lastStudyId:CUR&&ACTMAP[CUR.activity]&&ACTMAP[CUR.activity].kind==='study'?CUR.activity:
+      recent&&ACTMAP[recent.a]&&ACTMAP[recent.a].kind==='study'?recent.a:'',
+    topActivities };
   const sig = JSON.stringify(payload);
   if (sig === nsSig) return;
   nsSig = sig;
