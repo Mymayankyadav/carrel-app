@@ -20,7 +20,7 @@ class Store(ctx: Context) {
         .remove("active").remove("queue").remove("undoOid")
         .remove("todayStudyMs").remove("todayKey").remove("todayAsOf")
         .remove("studyRunning").remove("lastStudyId").remove("topActivities")
-        .remove("pendingIncoming").apply() }
+        .remove("pendingIncoming").remove("detectDrift").remove("usagePackages").apply() }
     fun hasSession() = access.isNotBlank() && refresh.isNotBlank()
 
     var active: State?
@@ -46,6 +46,22 @@ class Store(ctx: Context) {
     }
 
     // prefs
+    /** Usage access is opt-in and independent of the OS-level special access grant. */
+    var detectDrift: Boolean get() = p.getBoolean("detectDrift", false)
+        set(v) { p.edit().putBoolean("detectDrift", v).apply() }
+    var usagePackages: List<String>
+        get() {
+            val raw = p.getString("usagePackages", null) ?: return UsageReader.DEFAULT_PACKAGES
+            val arr = runCatching { JSONArray(raw) }.getOrNull() ?: return emptyList()
+            return (0 until arr.length()).mapNotNull { arr.optString(it) }
+                .distinct().filter { it in UsageReader.DEFAULT_PACKAGES }.take(20)
+        }
+        set(v) {
+            p.edit().putString("usagePackages", JSONArray(
+                v.distinct().filter { it in UsageReader.DEFAULT_PACKAGES }.take(20)
+            ).toString()).apply()
+        }
+
     var vibrateFocus: Boolean get() = p.getBoolean("vibrateFocus", true); set(v) { p.edit().putBoolean("vibrateFocus", v).apply() }
     var vibrateBreak: Boolean get() = p.getBoolean("vibrateBreak", false); set(v) { p.edit().putBoolean("vibrateBreak", v).apply() }
     var respectDnd: Boolean get() = p.getBoolean("respectDnd", true); set(v) { p.edit().putBoolean("respectDnd", v).apply() }
