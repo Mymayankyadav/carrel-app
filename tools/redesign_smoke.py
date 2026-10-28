@@ -26,13 +26,23 @@ with sync_playwright() as p:
 
             def capture(name):
                 page.wait_for_timeout(250)
-                scroll_width = page.evaluate('Math.max(document.documentElement.scrollWidth,document.body.scrollWidth)')
-                if scroll_width > width + 1:
-                    offenders = page.evaluate("""() => Array.from(document.querySelectorAll('body *')).map(e => {
-                        const r=e.getBoundingClientRect();
-                        return {tag:e.tagName,cls:String(e.className||'').slice(0,65),left:Math.round(r.left),right:Math.round(r.right),width:Math.round(r.width)};
-                    }).filter(x=>x.right>innerWidth+1&&x.width>1).slice(0,12)""")
-                    raise AssertionError(f'{name} overflows {scroll_width}px > {width+1}px: {offenders}')
+                overflow = page.evaluate("""() => {
+                    const width=Math.max(document.documentElement.scrollWidth,document.body.scrollWidth);
+                    const offenders=Array.from(document.querySelectorAll('body *')).map(e=>{
+                        const rect=e.getBoundingClientRect(),style=getComputedStyle(e);
+                        return {tag:e.tagName,cls:String(e.className||'').slice(0,65),
+                            left:Math.round(rect.left),right:Math.round(rect.right),
+                            width:Math.round(rect.width),scroll:e.scrollWidth,
+                            client:e.clientWidth,animation:style.animationName,
+                            translate:style.translate};
+                    }).filter(e=>e.right>innerWidth+1&&e.width>1).slice(0,12);
+                    return {width,offenders};
+                }""")
+                if overflow['width'] > width + 1:
+                    page.screenshot(path=str(OUT / f'{width}-{theme}-{name}-overflow.png'),
+                        full_page=True)
+                    raise AssertionError(
+                        f'{name} overflows {overflow["width"]}px > {width+1}px: {overflow["offenders"]}')
                 missing = page.evaluate('''() => Array.from(document.querySelectorAll('[data-act],[data-long],[data-change],[data-submit]')).flatMap(el =>
                     ['act','long','change','submit'].flatMap(k => {const name=el.dataset[k];return name && typeof (k==='submit'?SUBMIT:ACT)[name]!=='function' ? [k+':'+name] : []}))''')
                 assert not missing, (name, missing)
@@ -62,6 +72,23 @@ with sync_playwright() as p:
             for name in pages:
                 params = {'id': page.evaluate("ACTS.find(a=>a.kind==='study').id")} if name in ('settings.activity', 'stats.subject') else {}
                 page.evaluate('([id,params])=>openPage(id.startsWith("stats.")?"stats":id==="log"?"today":id==="tasks"?"plan":"settings",id,params)', [name,params])
+                if name == 'log' and width < 960:
+                    # The Log page animates in. Sample *during* that
+                    # transition: a former 12px horizontal translate briefly
+                    # inflated a 390px document to scrollWidth=402, then
+                    # disappeared before the ordinary post-animation check.
+                    widths = page.evaluate("""() => new Promise(resolve => {
+                        const samples=[], end=performance.now()+260;
+                        function sample(){
+                            samples.push(Math.max(document.documentElement.scrollWidth,
+                                document.body.scrollWidth));
+                            if(performance.now()<end)requestAnimationFrame(sample);
+                            else resolve(samples);
+                        }
+                        sample();
+                    })""")
+                    assert max(widths) <= width + 1, (
+                        f'Log transition overflows {max(widths)}px at viewport {width}px: {widths}')
                 capture(name)
                 page.keyboard.press('Escape')
                 page.wait_for_timeout(150)
