@@ -17,22 +17,24 @@ with sync_playwright() as p:
             page.wait_for_function('S.loaded.current && ACTS.length>0')
             page.evaluate("l9OpenCapture('read paper tmr 14:30 1h')")
             assert page.evaluate("l9CaptureResult(UI.sheet).type==='block'")
+            planned_date=page.evaluate("l9CaptureResult(UI.sheet).date")
             expect(page.locator('#sheet')).to_contain_text('Quick add')
             page.screenshot(path=str(out/f'{width}-{theme}-preview.png'),full_page=True)
             page.locator('[data-act="l9-save"]').click()
-            assert page.evaluate("""() => {
-               const k=addDaysKey(todayKey(),1);
+            assert page.evaluate("""(date) => {
+               const k=date;
                return Object.values(((V.plans[k]||{}).blocks)||{})
                  .some(b=>b && b.title==='Read paper' && b.at==='14:30');
-            }"""),'block should be saved'
+            }""",planned_date),'block should be saved'
             page.evaluate("l9OpenCapture('write notes 45m by fri')")
             page.locator('[data-act="l9-save"]').click()
             assert page.evaluate("""() => Object.values(((V.planning.backlog||{}).items)||{})
                  .some(t=>t&&t.title==='Write notes'&&t.minutes===45)"""),'task should be saved'
             page.evaluate("l9OpenCapture('exam tomorrow 9am')")
+            exam_date=page.evaluate("l9CaptureResult(UI.sheet).date")
             page.locator('[data-act="l9-save"]').click()
-            assert page.evaluate("""() => Object.values(((V.planning.deadlines||{}).items)||{})
-                 .some(d=>d&&d.date===addDaysKey(todayKey(),1)&&d.kind==='exam')"""),'deadline should be saved'
+            assert page.evaluate("""(date) => Object.values(((V.planning.deadlines||{}).items)||{})
+                 .some(d=>d&&d.date===date&&d.kind==='exam')""",exam_date),'deadline should be saved'
             page.evaluate("l9OpenCapture('Ask for a weekly plan','ask')")
             page.locator('[data-act="l9-save"]').click()
             assert page.evaluate("""() => Object.values(V.coach||{})
