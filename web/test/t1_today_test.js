@@ -76,7 +76,7 @@ base.pomoState=()=>({left:19*MIN,phase:'focus',ps:now-6*MIN,len:25*MIN,end:now+1
 html=VIEWS.today();
 assert(html.includes('Focus 2 of 4')&&html.includes('t1-progress'));
 assert(html.includes('data-act="stop"')&&html.includes('data-act="break"'));
-assert(html.includes('data-act="notice"')&&!html.includes('class="t1-tiles"'));
+assert(html.includes('data-act="l1-noticed"')&&!html.includes('class="t1-tiles"'));
 assert(html.includes('data-act="edit-running"')&&html.includes('data-act="desk"'));
 base.pomoState=()=>({left:-MIN,phase:'focus',ps:now-26*MIN,len:25*MIN,end:now-MIN,cycle:2,every:4});
 html=VIEWS.today();
