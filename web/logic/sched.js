@@ -50,10 +50,20 @@ function l3PeakStart(slot,hours) {
 function autoPlan(opts) {
   opts=opts || {};
   const now=Number.isFinite(+opts.now)?+opts.now:-Infinity;
-  const slots=(opts.free||[]).filter(x => Array.isArray(x) && x.length>=2)
+  // Merge overlapping/touching free windows before budgeting and scheduling.
+  // Duplicated availability must not double-book time or inflate the 10% buffer.
+  const rawSlots=(opts.free||[]).filter(x => Array.isArray(x) && x.length>=2)
     .map(x => ({s:Math.max(+x[0],now),e:+x[1]}))
-    .filter(x => Number.isFinite(x.s)&&Number.isFinite(x.e)&&x.e-x.s>=25*L3_MIN)
+    .filter(x => Number.isFinite(x.s)&&Number.isFinite(x.e)&&x.e>x.s)
     .sort((a,b)=>a.s-b.s);
+  const slots=[];
+  for(const interval of rawSlots){
+    const last=slots[slots.length-1];
+    if(last&&interval.s<=last.e)last.e=Math.max(last.e,interval.e);
+    else slots.push({...interval});
+  }
+  for(let i=slots.length-1;i>=0;i--)
+    if(slots[i].e-slots[i].s<25*L3_MIN)slots.splice(i,1);
   const totalFree=slots.reduce((n,x)=>n+(x.e-x.s)/L3_MIN,0);
   const gap=Math.max(0,+opts.gapMin||0);
   let budget=Math.floor(totalFree*0.90);
@@ -95,15 +105,23 @@ function autoPlan(opts) {
 }
 function backwardPlan(opts) {
   opts=opts||{};
-  const valid=k=>/^\d{4}-\d{2}-\d{2}$/.test(String(k||''));
+  const valid=k=>{
+    if(!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(String(k||'')))return false;
+    const d=new Date(k+'T00:00:00Z');
+    return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===k;
+  };
   if(!valid(opts.today)||!valid(opts.deadline)||opts.today>=opts.deadline)return [];
-  const toUTC=k=>Date.UTC(+k.slice(0,4),+k.slice(5,7)-1,+k.slice(8));
+  const needed=opts.hoursNeeded==null?0:+opts.hoursNeeded;
+  const done=opts.hoursDone==null?0:+opts.hoursDone;
+  const perDay=opts.maxPerDay==null?3:+opts.maxPerDay;
+  if(![needed,done,perDay].every(Number.isFinite)||perDay<=0)return [];
+  const toUTC=k=>new Date(k+'T00:00:00Z').getTime();
   const fromUTC=t=>new Date(t).toISOString().slice(0,10);
   const days=[];
   for(let t=toUTC(opts.today),end=toUTC(opts.deadline);t<end;t+=86400000)days.push(fromUTC(t));
   if(!days.length)return [];
-  const remaining=Math.max(0,((+opts.hoursNeeded||0)-(+opts.hoursDone||0))*60);
-  const maxPerDay=Math.max(0,+opts.maxPerDay||3)*60;
+  const remaining=Math.max(0,(needed-done)*60);
+  const maxPerDay=Math.min(24,perDay)*60;
   if(remaining<25||maxPerDay<25)return [];
   const weights=days.map((_,i)=>i===days.length-1&&days.length>1 ? 0.6 : 1+0.4*i/Math.max(1,days.length-2));
   const target=Math.min(l3Round5(remaining),Math.floor(maxPerDay/5)*5*days.length);
