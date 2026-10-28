@@ -89,7 +89,7 @@ const session = id => ({user:{id}});
     'failed manual retry retains the warning');
   assert.equal(clearCalls[3].opts.clearOnly,true);
   assert.equal(clearCalls[3].uid,'alice');
-  assert.equal(adapters[4].closed,true,'disk-only adapter is immediately closed');
+  assert.equal(adapters[3].closed,true,'disk-only adapter is immediately closed');
   await ctx.ACT['a1-retry-cache-clear']();
   assert.equal(storage.has('cacheClearPending'),false);
   assert.doesNotMatch(ctx.VIEWS.welcome(),/Device cache not cleared/);
