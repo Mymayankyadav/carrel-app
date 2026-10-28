@@ -7,4 +7,6 @@
 2026-10-28 · L1 · Keep two compact upcoming Plan links after the ribbon · A ribbon summarizes the day but does not directly focus an individual plan block; existing one-tap Plan focus remains useful.
 2026-10-28 · L5 · Flowtime and session recall default on; energy check defaults off under Labs · Gentle break prompts and skippable recall are low-risk; extra check-in remains opt-in.
 2026-10-28 · L2 · Morning scheduling has an explicit preview and Accept before any planned blocks are written · Avoids surprise plan mutations; shutdown replaces the Plan menu's Wrap up while retaining the legacy writer as fallback.
+2026-10-28 · L10 · Preserve the v3 meta/guide via an additive doc_merge of v2 fields instead of replacing it · Protect pre-existing sync instructions while publishing Claude read/write rules.
+2026-10-28 · L6 · Keep Android Usage Access detection opt-in and PR #44 in draft for device privacy checks · Aggregate foreground app use can be approximate and requires explicit user acknowledgement before reclassifying study time.
 2026-10-28 · L6 · Android Usage Access is disabled by default, independently gated by explicit OS permission, and shown only when the native bridge advertises support · Protect older APKs and avoid any background usage read or sync without informed opt-in.
