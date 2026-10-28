@@ -89,11 +89,13 @@ Each has an evidence base, where it shows in the UI, and its lane.
    - one `+` everywhere, with natural-language parsing ("physics ch7 2h by fri !" → task, subject, estimate, due date, high priority);
    - an Android share target → backlog;
    - deadlines from text ("maths test 12 nov 9am").
-10. **Claude coach bridge** (L10). Claude already reads and writes the log, plans and reviews through the database.
-    - v2 adds a `coach/*` inbox (notes, plan proposals, weekly reviews). It shows as a Today card and an Insights section; a proposal can be **accepted in one tap**.
-    - Settings › Claude prompts gets updated prompts that tell Claude about the new collections.
+10. **Claude coach bridge** (L10). **Claude reaches Carrel only through Supabase** (SQL through the Supabase connector, in a chat the user starts). There are no API calls in either direction: the app never calls an AI service, and Claude never calls the app.
+    - Claude reads the `docs` table and writes with the existing `doc_set` / `doc_merge` functions. `carrel_uid()` already maps postgres-role SQL to the owner.
+    - v2 adds a `coach/*` inbox (notes, plan proposals, weekly reviews) that Claude writes. Realtime delivers it to the app, where it shows as a Today card and an Insights section; a proposal can be **accepted in one tap**.
+    - The app works fully without Claude. Every v2 feature (scheduler, advice, spacing, parsing) runs **on the device with deterministic rules**; Claude is an optional extra.
+    - Settings › Claude prompts gets updated prompts that point Claude to the guide doc.
 
-**Out of scope for v2:** social or body doubling, paid APIs, server-side AI, iOS, and new sign-in providers.
+**Out of scope for v2:** social or body doubling, any AI or LLM API call from the app or from edge functions, paid APIs, iOS, and new sign-in providers.
 
 ## A5. Information architecture v2
 - Tabs: **Today · Plan · Subjects · Insights**. Settings becomes a gear on Today's header (and stays a page stack).
@@ -170,13 +172,14 @@ Lanes may start Phase-2 work early against the contracts, with stubs gated by th
 |---|---|
 | `topics/<id>` | `{v:1, subject, title, order, due:'YYYY-MM-DD', interval, ease, reps, last, archived}` |
 | `rituals/<date>` | `{v:1, date, morning:{at, picks:[ids], intent}, shutdown:{at, done, carry:[ids], first}}` |
-| `coach/<id>` | `{v:1, at, kind:'note'\|'plan'\|'review', title, body, proposal?, status:'new'\|'seen'\|'accepted'\|'dismissed'}` |
+| `coach/<id>` | `{v:1, at, kind:'note'\|'plan'\|'review'\|'ask', from:'claude'\|'me', title, body, proposal?, status:'new'\|'seen'\|'accepted'\|'dismissed'}`. `ask` = a question the user typed in Quick capture, which Claude answers in the next chat |
 | `usage/<date>` (Android, opt-in) | `{v:1, date, sessions:{<entryId>:{apps:{<label>:{min, opens}}}}}`: labels only, never content |
 | `config/settings.labs` | `{<flag>: bool}` |
 
 - **New optional entry fields** (inside `days/*` entries): `intent`, `ifThen`, `energy` (1–3), `recall` (≤ 280 characters), `topics:[ids]`.
 - Never rename or remove existing fields. Old app versions must ignore the new fields safely.
-- Add a security-advisor check after any new SQL (none is expected).
+- Claude-written documents are **untrusted input**. The app validates each shape (`v`, kinds, lengths, dates) and ignores invalid fields; it never runs anything from them.
+- Allowed additive SQL (no user approval needed): **read-only views** that make the new collections easy for Claude to query (e.g. `coach_inbox`, `topics_due`, `rituals_week`), on the `distraction_items` pattern (`security_invoker`, `carrel_uid()` filter, select-only grant). Run the security advisor after any new SQL.
 
 ## B7. PR checklist
 - [ ] Only owned files changed (`git diff --stat main`).
@@ -275,11 +278,19 @@ Frozen (ORC only): `web/core/*`, `web/ui/shell.js`, `web/ui/kit.*`, `web/ui/icon
 - Parser: subject by prefix or fuzzy match to activities; durations `2h`, `90m`, `1.5h`; dates `today`, `tmr`, `fri`, `12 nov`, `in 3 days`; time `9am`, `14:30`; `!` = high priority; words `test`, `exam`, `due` → deadline.
 - Global `+` placement: Today header (L1), Plan FAB (switch it to `capture` with the Block tab), Subjects header.
 
-### L10: Claude coach bridge
-- **Owns:** `web/ui/coach.*`, `web/ui/settings-pages.js` (only the Claude prompts page), `docs/v2/claude-protocol.md`.
-- `CARDS.coach`: the newest `coach/*` with status `new`: title + 1 line. Tap → a coach sheet (body, plus a proposal preview on the ribbon) with `Accept` (writes the proposed blocks or goal), `Dismiss`.
-- An Insights section "From Claude" (the last 5).
-- `claude-protocol.md`: the exact collection shapes and examples Claude must read and write (plans, coach notes, reviews, topics). The prompts page gets 4 prompts updated to reference it: plan my day, plan my week, weekly review, exam plan.
+### L10: Claude coach bridge (through Supabase only)
+- **Owns:** `web/ui/coach.*`, `web/ui/settings-pages.js` (only the Claude prompts page), `supabase/migrations/005_v2_views.sql`, `docs/v2/claude-protocol.md`.
+- **No API.** Claude works only in a chat the user opens, using the Supabase connector. Everything below is plain SQL on `public.docs` plus documents.
+- **Guide doc:** update `meta/guide`, the doc Claude is told to read first (see the `docs` table comment in `001_core.sql`). It lists every collection and shape (§B6), how to write (`select doc_merge('coach/<id>', '<json>'::jsonb, null, 'claude')`), and rules: write only `coach/*`, `plans/*` proposals and `topics/*`; never edit `days/*` entries; `updated_by = 'claude'`.
+  - L10 writes the guide content as a JSON file in the repo (`docs/v2/guide.json`). ORC loads it with one `doc_set` (allowed: it overwrites only the guide doc).
+- **Views** (`005_v2_views.sql`, additive, select-only): `coach_inbox`, `topics_due`, `week_summary` (per-subject minutes vs goal, estimate factor and drift for the current week), so Claude needs a single query to get context.
+- **App side:**
+  - `CARDS.coach`: the newest `coach/*` with status `new`, showing the title and 1 line. Tap → a coach sheet (body, plus a proposal preview on the ribbon) with `Accept` (validated, then written through the normal write queue, so Undo works) and `Dismiss`.
+  - Status changes are written back, so Claude can see what was accepted.
+  - An Insights section "From Claude" (the last 5). When there are no coach docs, nothing shows (no empty state).
+- **Prompts page:** 4 copy-ready prompts: plan my day, plan my week, weekly review, exam plan. Each starts with "Use the Supabase connector. Read `meta/guide` in `public.docs`, then …".
+- `claude-protocol.md`: the same content for humans, with 3 worked SQL examples (read week context, write a plan proposal, write a review).
+- **Test:** `coach_test.js` feeds malformed coach docs and asserts the app ignores them and never crashes.
 
 ### QA (continuous)
 - **Owns:** `tools/v2_*_smoke.py` (shared with lanes, by file), `web/test/v2_regression_test.js`.
