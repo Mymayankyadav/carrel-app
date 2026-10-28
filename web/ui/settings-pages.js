@@ -52,10 +52,21 @@ function g2Calendar(){
   return '<div class="g2-page">'+rows+
     (!connected?kRow({label:'Connect',icon:'add',attrs:'data-act="gc-connect"' }):'')+'</div>';
 }
+/* L10: copy-only, chat-initiated prompts. No model API is called by Carrel. */
+const l10Prompts=[
+  ['Plan my day','Use the Supabase connector for Carrel. Read meta/guide in public.docs, then plan my day: read week_summary and topics_due and write one coach plan proposal for today.'],
+  ['Plan my week','Use the Supabase connector for Carrel. Read meta/guide in public.docs, then plan my week: inspect week_summary, current plans, and deadlines, and write one coach plan proposal for a suitable day.'],
+  ['Weekly review','Use the Supabase connector for Carrel. Read meta/guide in public.docs, then write my weekly review as one coach review. Use actual study and planned data; do not invent results.'],
+  ['Exam plan','Use the Supabase connector for Carrel. Read meta/guide in public.docs, then make an exam plan for the subject I specify. Inspect topics_due, deadlines and existing activities; write one coach proposal after checking the subject ID.']
+];
 function g2Claude(){
-  return '<div class="g2-page g2-prompts">'+PROMPTS.map(([p])=>
-    '<div class="g2-prompt"><span>'+esc(p)+'</span>'+kIconBtn('copy','Copy prompt','data-act="copy" data-text="'+esc(p)+'"')+'</div>').join('')+'</div>';
+  return '<div class="g2-page g2-prompts">'+l10Prompts.map(([label,prompt])=>
+    '<div class="g2-prompt"><span>'+esc(label)+'</span>'+
+    kIconBtn('copy','Copy '+label+' prompt','data-act="copy" data-text="'+esc(prompt)+'"')+
+    '</div>').join('')+
+    '<div class="s2-muted">Open a Claude chat and paste a prompt. Carrel never sends data to an LLM API.</div></div>';
 }
+
 function g2Data(){
   if(!S.dl)return '<div class="g2-page">'+kEmpty('Export not available here')+'</div>';
   return '<div class="g2-page">'+
