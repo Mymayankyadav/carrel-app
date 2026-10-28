@@ -22,6 +22,12 @@ import org.json.JSONObject
 class CarrelLivePlugin : Plugin() {
     companion object {
         @Volatile private var instance: CarrelLivePlugin? = null
+        fun emitIncoming(raw: JSONObject) {
+            instance?.notifyListeners("incoming", JSObject()
+                .put("id", raw.optString("id"))
+                .put("kind", raw.optString("kind"))
+                .put("value", raw.optString("value")))
+        }
         fun emitSession(s: Store) {
             instance?.notifyListeners("session", JSObject().put("access", s.access).put("refresh", s.refresh).put("expiresAt", s.expiresAt))
         }
@@ -35,6 +41,29 @@ class CarrelLivePlugin : Plugin() {
         instance = this
         schedulePeriodic(context)
         live.io.execute { live.engine.render() }
+    }
+
+    /** Cold-start-safe handoff: do not remove until JS acknowledges handling. */
+    @com.getcapacitor.PluginMethod
+    fun consumeIncoming(call: PluginCall) {
+        val raw = live.store.p.getString("pendingIncoming", null)
+        val item = runCatching { JSONObject(raw ?: "{}") }.getOrNull()
+        call.resolve(JSObject()
+            .put("id", item?.optString("id") ?: "")
+            .put("kind", item?.optString("kind") ?: "")
+            .put("value", item?.optString("value") ?: ""))
+    }
+
+    @com.getcapacitor.PluginMethod
+    fun ackIncoming(call: PluginCall) {
+        val id = call.getString("id") ?: ""
+        val p = live.store.p
+        val raw = p.getString("pendingIncoming", null)
+        val pending = runCatching { JSONObject(raw ?: "{}") }.getOrNull()
+        if (id.isNotBlank() && id == pending?.optString("id")) {
+            p.edit().remove("pendingIncoming").apply()
+        }
+        call.resolve()
     }
 
     @com.getcapacitor.PluginMethod
