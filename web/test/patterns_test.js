@@ -20,6 +20,7 @@ const calls=[],ACTS=[{id:'math',name:'Mathematics',kind:'study',color:'#345678',
 const env={
  ACT,VIEWS,PAGES,SHEETS,UI,ACTS,ACTMAP:{math:ACTS[0]},
  MIN,HOUR,DAY:24*HOUR,ENTRIES:seven,CFG:{weekStart:1,dailyGoal:60,planEnd:'22:30',minDay:25},Date,Math,Object,
+ clamp:(x,a,b)=>Math.min(b,Math.max(a,x)),
  V:{distractions:{},rituals:{}},store:{get:()=>null,set:()=>{}},advise:()=>[],
  flexibleStreak:()=>({count:2}),l7Accuracy:()=>85,
  todayKey:()=> '2026-10-27',weekStartKey:()=> '2026-10-26',
