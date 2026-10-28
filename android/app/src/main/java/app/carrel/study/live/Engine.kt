@@ -2,6 +2,7 @@ package app.carrel.study.live
 
 import android.content.Context
 import org.json.JSONObject
+import app.carrel.study.live.widget.CarrelWidget
 import java.util.UUID
 
 /** The notification's brain. All public functions must be called on live.io. */
@@ -21,6 +22,9 @@ class Engine(private val live: Live) {
         Alarms.schedule(ctx, state, restore)
         if (model == null) live.notifications.cancel() else live.notifications.post(model)
         live.notifications.showUndo(if (s.undoOid != null && now < undoEnd) s.undoOid else null, s.undoAt)
+        // Surface updates also run while notifications are disallowed.
+        CarrelWidget.refresh(ctx)
+        TimerTile.refresh(ctx)
     }
 
     private fun clearUndo() { s.undoOid = null; s.undoPrev = null }
