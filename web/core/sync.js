@@ -43,13 +43,53 @@ function enqueue(w) {
   savePending();
   pump(op.path);
 }
+// Offline writes belong to one authenticated account. Never replay the old
+// unscoped "pending" key: it has no owner and may be from another account.
+// Keep that legacy key untouched for manual recovery instead of guessing.
+function pendingStoreKey() {
+  return S.uid ? 'pending:' + S.uid : null;
+}
 function savePending() {
-  store.set('pending', S.pending.length ? S.pending.map(o => ({ path: o.path, kind: o.kind, data: o.data, ensure: o.ensure, cond: o.cond })) : null);
+  const key = pendingStoreKey();
+  if (!key) return;
+  store.set(key, S.pending.length ? S.pending.map(o => ({ path: o.path, kind: o.kind, data: o.data, ensure: o.ensure, cond: o.cond })) : null);
 }
 function restorePending() {
-  const arr = store.get('pending');
+  const key = pendingStoreKey();
+  if (!key || S.pending.length) return;
+  const arr = store.get(key);
   if (!Array.isArray(arr)) return;
-  for (const o of arr) if (o && o.path && o.kind) S.pending.push({ oid: ++opSeq, path: o.path, kind: o.kind, data: o.data, ensure: o.ensure || null, cond: o.cond || null, tries: 1 });
+  for (const o of arr) if (o && typeof o.path === 'string' && o.path.includes('/') &&
+    ['set','update','delete'].includes(o.kind)) {
+    S.pending.push({ oid: ++opSeq, path: o.path, kind: o.kind, data: o.data, ensure: o.ensure || null, cond: o.cond || null, tries: 1 });
+  }
+}
+// A pre-upgrade queue has no owner. It can only be assigned by an explicit
+// account-level recovery action, never by the authentication callback.
+function importLegacyPending() {
+  const key = pendingStoreKey(), arr = store.get('pending');
+  if (!key || !Array.isArray(arr) || !arr.length) return 0;
+  const valid = o => {
+    if (!o || typeof o.path !== 'string') return false;
+    const parts = o.path.split('/');
+    return parts.length === 2 && /^[a-z]+$/.test(parts[0]) && !!parts[1] &&
+      ['set','update','delete'].includes(o.kind) &&
+      (o.kind === 'delete' || (o.data && typeof o.data === 'object' && !Array.isArray(o.data)));
+  };
+  if (!arr.every(valid)) return -1;
+  const ops = arr.map(o => ({ oid: ++opSeq, path: o.path, kind: o.kind,
+    data: o.data, ensure: o.ensure || null, cond: o.cond || null, tries: 1 }));
+  S.pending.push(...ops);
+  savePending();
+  const saved = store.get(key);
+  if (!Array.isArray(saved) || saved.length !== S.pending.length) {
+    S.pending.splice(-ops.length, ops.length); // leave legacy data untouched
+    return -1;
+  }
+  store.set('pending', null);
+  pumpAll();
+  changed();
+  return ops.length;
 }
 function pumpAll() {
   const paths = new Set(S.pending.map(o => o.path));
@@ -80,9 +120,15 @@ async function pump(path) {
   const op = S.pending.find(o => o.path === path);
   if (!op) return;
   S.inflight.add(path);
+  const db = S.db;
   let drop = false, retry = false;
-  try { await execOp(op); drop = true; }
+  try {
+    await execOp(op);
+    if (S.db !== db) return; // stale completion after account switch
+    drop = true;
+  }
   catch (e) {
+    if (S.db !== db) return; // never change the new account's queue/connection
     const code = e && e.code;
     if (code === 'invalid_argument' || code === 'transform_error' || code === 'quota_exceeded') {
       drop = true;

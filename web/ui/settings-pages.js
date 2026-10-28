@@ -75,8 +75,13 @@ function g2Data(){
     kRow({label:'JSON backup',icon:'export',attrs:'data-act="export" data-f="json"'})+'</div>';
 }
 function g2Account(){
+  const legacy = store.get('pending');
+  const recover = S.uid && Array.isArray(legacy) && legacy.length ?
+    kRow({label:'Older unsaved edits',value:legacy.length+' waiting',icon:'refresh',open:true,
+      attrs:'data-act="a1-recover-legacy-pending"'}) : '';
   return '<div class="g2-page">'+
     kRow({label:'Signed in as',value:S.user&&S.user.email?S.user.email:'—'})+
+    recover+
     '<div class="g2-danger-row">'+kRow({label:'Sign out',icon:'log-out',attrs:'data-act="signout"'})+'</div></div>';
 }
 function g2About(){
