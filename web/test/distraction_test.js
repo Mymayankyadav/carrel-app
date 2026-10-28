@@ -5,6 +5,7 @@ const vm=require('node:vm');
 const path=require('node:path');
 
 let logged=0,opened=[],rendered=0,closed=0;
+const timers=[];
 const ctx={
   console,Date,Math,
   module:{exports:{}},
@@ -19,7 +20,7 @@ const ctx={
   closeSheet(){ctx.UI.sheet=null;closed++;},
   render(){rendered++;},
   renderSheet(){rendered++;},
-  setTimeout(){},
+  setTimeout(callback,ms){timers.push({callback,ms});},
   kSheetHead:label=>label,
   kSheetFoot:body=>body,
   kBtn:(label,attrs)=>label+attrs,
@@ -122,7 +123,10 @@ ctx.W=()=>({update(path,payload,ensure){
   writes.push({path,payload,ensure});return this;
 }});
 ctx.commit=(message,operations,options)=>{ctx.lastCommitOptions=options;return true;};
-ctx.toast=(message,options)=>{ctx.toastResult={message,options}};
+ctx.toast=(message,options)=>{
+  ctx.toastResult={message,options};
+  ctx.UI.toast={msg:message,action:options&&options.action};
+};
 ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(async()=>{
   assert.equal(writes.length,1);
   assert.equal(ctx.lastCommitOptions.undo,false,'automatic metadata cannot occupy Undo');
@@ -130,6 +134,21 @@ ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(async()=>{
   assert.equal(writes[0].payload.sessions.entry1.apps.Instagram.min,6);
   assert.equal(ctx.toastResult.options.action.act,'l6-usage-log');
   assert.equal(ctx.UI.l6Detected.min,6);
+  const offer=ctx.UI.l6Detected;
+  const expiry=timers.find(t=>t.ms===120050);
+  assert.ok(expiry,'the persistent offer must have an expiration timer');
+  expiry.callback();
+  assert.equal(ctx.UI.l6Detected,null,'expired usage offer must be cleared');
+  assert.equal(ctx.UI.toast,null,'expired usage offer cannot leave a permanent dead toast');
+
+  // Revocation must also remove a stale Log action (without logging drift).
+  ctx.UI.l6Detected=offer;
+  ctx.UI.toast={action:{act:'l6-usage-log'}};
+  ctx.NP.usageAccess=false;
+  ctx.ACT['l6-usage-log']();
+  assert.equal(ctx.UI.l6Detected,null);
+  assert.equal(ctx.UI.toast,null);
+  ctx.NP.usageAccess=true;
 
   // Native Capacitor proxies expose arbitrary JS method names: capability
   // must come from the new APK's explicit prefs, not CL.sessionUsage alone.
