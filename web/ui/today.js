@@ -79,6 +79,26 @@ function parkToBacklog(k, id) {
   w.dis(k, id, { moved: true });
   commit('Moved to your backlog.', w, { undo: true });
 }
+
+/* L1: goal ring and earliest eligible planned work (pure, deterministic helpers). */
+function l1GoalFraction(studied,goalMinutes){
+  return goalMinutes>0?clamp((+studied||0)/(goalMinutes*MIN),0,1):0;
+}
+function l1NextOpen(pm,now){
+  return (pm&&pm.rows||[]).filter(r=>r&&r.remaining>0&&!['done','skipped','moved'].includes(r.st))
+    .map(r=>({row:r,at:(r.pieces||[]).find(p=>Array.isArray(p)&&p[0]>=now-15*MIN&&p[1]>now)}))
+    .filter(x=>x.at).sort((a,b)=>a.at[0]-b.at[0]||String(a.row.id).localeCompare(String(b.row.id)))[0]||null;
+}
+function l1GoalRing(studied){
+  const goal=+CFG.dailyGoal||0,p=l1GoalFraction(studied,goal),pct=Math.round(p*100);
+  const label=fmtDur(studied)+' of '+fmtDur(goal*MIN)+' daily goal';
+  const circumference=2*Math.PI*11;
+  return '<button type="button" class="l1-goal" data-act="l1-insights" aria-label="'+esc(label)+'" title="'+esc(label)+'">'+
+    '<svg viewBox="0 0 28 28" width="28" height="28" aria-hidden="true" focusable="false">'+
+    '<circle cx="14" cy="14" r="11" class="l1-goal-track"></circle>'+
+    '<circle cx="14" cy="14" r="11" class="l1-goal-value" stroke-dasharray="'+(circumference*p).toFixed(2)+' '+circumference.toFixed(2)+'"></circle></svg>'+
+    '<span class="l1-goal-text">'+esc(fmtDur(studied))+'</span></button>';
+}
 /* T1 — minimalist Today view; dedicated actions retain existing write contracts. */
 function t1Picks(){
   const visible=ACTS.filter(a=>!a.archived);
@@ -100,12 +120,23 @@ function t1Timer(now,pm){
       if(typeof setTimeout==='function')setTimeout(()=>{if(UI.t1RateShown&&Date.now()>=UI.t1RateShown.until){UI.lastRate=null;UI.t1RateShown=null;render();}},60050);
     }
     const asking=pending&&UI.t1RateShown&&UI.t1RateShown.until>now;
-    const rating=asking?'<div class="t1-rating"><span>Focus?</span>'+[
+    const rating=asking&&!(typeof lab==='function'&&lab('recall')&&typeof SHEETS!=='undefined'&&SHEETS.sessionEnd)?'<div class="t1-rating"><span>Focus?</span>'+[
       [1,'Scattered'],[2,'Okay'],[3,'Deep']].map(([value,label])=>
       kIconBtn('rate'+value,label,'data-act="t1-rate" data-v="'+value+'"')).join('')+'</div>':'';
     const done=UI.t1RateDoneUntil>now?'<div class="t1-rated" role="status">'+icon('check')+'</div>':'';
+    const next=l1NextOpen(pm,now),row=next&&next.row,hasBlocks=!!(pm&&pm.rows&&pm.rows.some(r=>r.remaining>0));
+    const nextActivity=row&&ACTMAP[row.activity],startLabel=next?fmtT(next.at[0]):'';
+    const idleHero=next&&nextActivity&&!nextActivity.archived?
+      '<div class="l1-idle-next"><div class="l1-idle-label">Up next · '+esc(startLabel)+'</div>'+
+      '<strong>'+esc(nextActivity.name)+(row.title?' · '+esc(row.title):'')+'</strong>'+
+      '<span>'+esc(fmtDur(row.remaining))+'</span></div>'+
+      kBtn('Start','data-act="l1-start-block" data-id="'+esc(row.id)+'" data-activity="'+esc(row.activity)+'"',{kind:'primary',icon:'start'}):
+      !hasBlocks?kBtn('Plan my day','data-act="l1-plan-day"',{kind:'primary',icon:'plan'}):
+      '<div class="t1-idle-label">Not tracking</div>';
+    const ritual=V.rituals&&V.rituals[todayKey()]&&V.rituals[todayKey()].morning;
+    const intent=ritual&&ritual.intent?'<p class="l1-intent">'+esc(ritual.intent)+'</p>':'';
     return '<section class="t1-timer t1-idle" aria-label="Timer">'+
-      (rating||done||'<div class="t1-idle-label">Not tracking</div>')+
+      (rating||done||idleHero)+intent+
       (!rating&&recent?kBtn('Resume '+act(last.a).name,'data-act="t1-resume-study" data-id="'+esc(last.a)+'"',{kind:'primary',icon:'start'}):'')+'</section>';
   }
   const a=act(c.activity),start=parseT(c.start),ps=pomoState(now),g=guardInfo(now);
@@ -142,14 +173,15 @@ function t1Notice(){
   const chips=active?'<div class="t1-drift">'+[1,5,15].map(m=>
     '<button type="button" class="t1-drift-btn" data-act="notice-drift" data-m="'+m+'">'+m+'m</button>').join('')+
     kIconBtn('bookmark','Park a thought','data-act="t1-park"')+'</div>':'';
-  return '<div class="t1-notice">'+kBtn('Noticed','data-act="notice"',{kind:'text',icon:'urge'})+chips+
+  return '<div class="t1-notice">'+kBtn('Noticed','data-act="l1-noticed"',{kind:'text',icon:'urge'})+chips+
     (returning?'<span class="t1-back">Back to: '+esc(UI.back.text)+'</span>':'')+'</div>';
 }
 function t1Next(pm,k,now){
   const rows=pm&&pm.rows?pm.rows.filter(r=>r.remaining>0&&!['done','skipped','moved'].includes(r.st)):[];
   rows.sort((a,b)=>(a.pieces&&a.pieces.length?a.pieces[0][0]:Infinity)-
     (b.pieces&&b.pieces.length?b.pieces[0][0]:Infinity));
-  const next=rows.slice(0,3).map(r=>{
+  /* Keep two actionable rows: ribbon alone cannot focus an individual plan block. */
+  const next=rows.slice(0,2).map(r=>{
     const a=act(r.activity),at=r.pieces&&r.pieces.length?r.pieces[0][0]:null;
     return '<button type="button" class="t1-next-row" data-act="t1-plan-focus" data-k="'+esc(k)+'" data-id="'+esc(r.id)+'">'+
       '<span class="t1-next-main"><i class="t1-dot" style="--c:'+kSafeColour(a.color)+'"></i><span>'+
@@ -164,8 +196,8 @@ function t1Today(){
   const now=Date.now(),k=todayKey();
   const agg=aggregate(ENTRIES,now,k,k)[k]||{study:0,acts:{}};
   const head='<header class="t1-day-head"><span>'+esc(stampText(k))+'</span><span class="f1-head-actions">'+
-    '<button type="button" class="t1-log-link" data-act="t1-log" aria-label="Open today log">'+
-    esc(fmtDur(agg.study))+icon('open')+'</button>'+kIconBtn('add','Quick add','data-act="l9-open"')+kIconBtn('settings','Settings','data-act="open-settings"')+'</span></header>';
+    l1GoalRing(agg.study)+kIconBtn('add','Quick add','data-act="l9-open"')+
+    kIconBtn('settings','Settings','data-act="open-settings"')+'</span></header>';
   if(!S.loaded.activities)return '<div class="t1-today">'+head+kEmpty('Opening…')+'</div>';
   if(w1NeedsSetup())return w1FirstRun();
   const pm=planModelFor(k,now);
@@ -174,14 +206,31 @@ function t1Today(){
   const more=kIconBtn('more','All activities','data-act="t1-activities"');
   const parked=CUR&&act(CUR.activity).role==='break'?parkedItems(k):[];
   return '<div class="t1-today">'+head+vSyncLine()+t1Timer(now,pm)+
+    ribbon(k,{now,pm})+renderTopCards(3)+
     (CUR?t1Notice():'')+
-    (grid?'<div class="t1-tiles">'+grid+'</div>':'')+
     t1Next(pm,k,now)+
+    (grid?'<div class="t1-tiles">'+grid+'</div>':'')+
     (parked.length?'<button type="button" class="t1-parked" data-act="t1-parked">'+icon('bookmark')+
       parked.length+' parked '+icon('open')+'</button>':'')+
     '<div class="t1-switch">'+chips+more+'</div></div>';
 }
 Object.assign(ACT,{
+  'l1-insights'(){UI.view='insights';UI.pages=[];render();},
+  'l1-start-block'(el){
+    const id=el.getAttribute('data-id'),aid=el.getAttribute('data-activity');
+    const pm=planModelFor(todayKey(),Date.now());
+    if(pm.rows.some(r=>r.id===id&&r.activity===aid&&r.remaining>0)&&ACTMAP[aid]&&!ACTMAP[aid].archived)
+      startActivity(aid,{block:id});
+  },
+  'l1-plan-day'(){
+    if(typeof SHEETS!=='undefined'&&SHEETS.morning)openSheet({type:'morning'});
+    else {UI.view='plan';UI.pages=[];render();}
+  },
+  'l1-noticed'(){
+    if(typeof l6OnNoticed==='function'&&typeof lab==='function'&&lab('urgesurf'))l6OnNoticed();
+    else noticeNow();
+  },
+  'l1-ribbon'(){UI.view='plan';UI.pages=[];render();},
   't1-log'(){pushPage('log',{k:todayKey()});},
   't1-resume-study'(el){const id=el.getAttribute('data-id');if(ACTMAP[id]&&!ACTMAP[id].archived)startActivity(id);},
   't1-rate'(el){
