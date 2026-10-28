@@ -29,33 +29,41 @@ function makeDb(sb, uid, opts) {
   const IDB_KEY = 'docs:' + uid;
   function idb(op, key, val) {
     const previous = carrelIdbQueues.get(key) || Promise.resolve();
-    const task = previous.catch(() => null).then(() => new Promise(res => {
-      try {
-        const r = indexedDB.open('carrel', 1);
-        r.onupgradeneeded = () => r.result.createObjectStore('kv');
-        r.onerror = () => res(null);
-        r.onsuccess = () => {
-          const db = r.result;
-          let result = null, done = false;
-          const finish = value => {
-            if (done) return;
-            done = true;
-            try { db.close(); } catch (e) { /* already closed */ }
-            res(value);
-          };
+    const task = previous.catch(() => null).then(async () => {
+      // Request errors may precede transaction aborts. Keep the per-account
+      // queue locked until the transaction settles, and retry failed writes.
+      for (let attempt = 0; attempt < (op === 'get' ? 1 : 3); attempt++) {
+        const outcome = await new Promise(resolve => {
           try {
-            const tx = db.transaction('kv', op === 'get' ? 'readonly' : 'readwrite');
-            const st = tx.objectStore('kv');
-            const q = op === 'get' ? st.get(key) : op === 'del' ? st.delete(key) : st.put(val, key);
-            q.onsuccess = () => { result = q.result === undefined ? null : q.result; };
-            q.onerror = () => finish(null);
-            tx.oncomplete = () => finish(result);
-            tx.onerror = () => finish(null);
-            tx.onabort = () => finish(null);
-          } catch (e) { finish(null); }
-        };
-      } catch (e) { res(null); }
-    }));
+            const r = indexedDB.open('carrel', 1);
+            r.onupgradeneeded = () => r.result.createObjectStore('kv');
+            r.onerror = () => resolve({ ok: false });
+            r.onsuccess = () => {
+              const db = r.result;
+              let value = null, failed = false, done = false;
+              const finish = ok => {
+                if (done) return;
+                done = true;
+                try { db.close(); } catch (e) { /* already closed */ }
+                resolve({ ok, value: ok ? (op === 'get' ? value : true) : null });
+              };
+              try {
+                const tx = db.transaction('kv', op === 'get' ? 'readonly' : 'readwrite');
+                const st = tx.objectStore('kv');
+                const q = op === 'get' ? st.get(key) : op === 'del' ? st.delete(key) : st.put(val, key);
+                q.onsuccess = () => { value = q.result === undefined ? null : q.result; };
+                q.onerror = () => { failed = true; }; // wait for abort/complete
+                tx.oncomplete = () => finish(!failed);
+                tx.onerror = () => { failed = true; }; // error bubbles before abort
+                tx.onabort = () => finish(false);
+              } catch (e) { finish(false); }
+            };
+          } catch (e) { resolve({ ok: false }); }
+        });
+        if (outcome.ok) return outcome.value;
+      }
+      return null;
+    });
     carrelIdbQueues.set(key, task);
     task.then(() => {
       if (carrelIdbQueues.get(key) === task) carrelIdbQueues.delete(key);
@@ -265,7 +273,9 @@ function makeDb(sb, uid, opts) {
       // Enqueue deletion synchronously: a new adapter opened immediately after
       // sign-out must wait for this delete before reading its own IDB snapshot.
       cleared = true; clearTimeout(saveT); cache.clear();
-      if (opts.idb) await idb('del', IDB_KEY);
+      // Callers can distinguish a committed deletion from a persistent IDB failure.
+      if (opts.idb) return (await idb('del', IDB_KEY)) === true;
+      return true;
     }
   };
 }
