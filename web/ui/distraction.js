@@ -143,7 +143,8 @@ async function l6AfterStudyStop(id,start,end,activity){
     const day=dayKeyOf(start);
     const data={v:1,date:day,sessions:{[id]:{apps:safe.apps}}};
     const w=W().update('usage/'+day,data,{v:1,date:day,sessions:{}});
-    if(!commit(null,w,{undo:true}))return;
+    // Automatic metadata must not consume the user's next Undo (e.g. Stop).
+    if(!commit(null,w,{undo:false}))return;
     UI.l6Detected={id,day,activity,start,at:end,min:safe.total,until:Date.now()+120000};
     const name=typeof ACTMAP!=='undefined'&&ACTMAP[activity]?ACTMAP[activity].name:'study';
     toast(safe.leader.label+' '+safe.leader.min+'m during '+name,
