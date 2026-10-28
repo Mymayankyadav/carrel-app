@@ -43,10 +43,9 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-boot-timeout: 600
-          script: |
-            cd android
-            chmod +x gradlew
-            ./gradlew --no-daemon connectedDebugAndroidTest --stacktrace
+          # The emulator action invokes each script line in its own shell:
+          # use one command so the working-directory change is preserved.
+          script: chmod +x android/gradlew && (cd android && ./gradlew --no-daemon connectedDebugAndroidTest --stacktrace)
       - name: Preserve Android instrumentation reports
         if: always()
         uses: actions/upload-artifact@v4
