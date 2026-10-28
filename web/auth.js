@@ -3,6 +3,39 @@ const MOCK = typeof window !== 'undefined' && typeof window.__mockDocs !== 'unde
 let sb = null;
 let recoverT = 0;
 
+// An IndexedDB deletion can fail even after sign-out succeeds. Keep a
+// device-local cleanup obligation until its transaction actually commits.
+// This is not synced to Supabase and never includes document contents.
+const a1CleanupKey = 'cacheClearPending';
+let a1CleanupPending = store.get(a1CleanupKey);
+a1CleanupPending = Array.isArray(a1CleanupPending) ?
+  [...new Set(a1CleanupPending.filter(id => typeof id === 'string' && id.length > 0 && id.length <= 128))] : [];
+const a1CleanupBusy = new Set(), a1CleanupVersions = new Map();
+function a1SaveCleanup() { store.set(a1CleanupKey, a1CleanupPending.length ? a1CleanupPending : null); }
+function a1ClearCache(uid, clear) {
+  if (!uid) return Promise.resolve(true);
+  if (!a1CleanupPending.includes(uid)) a1CleanupPending.push(uid);
+  a1SaveCleanup(); // Record intent BEFORE starting the asynchronous deletion.
+  const version = (a1CleanupVersions.get(uid) || 0) + 1;
+  a1CleanupVersions.set(uid, version);
+  a1CleanupBusy.add(uid);
+  let work;
+  try { work = clear(); } catch (e) { work = false; }
+  return Promise.resolve(work).then(ok => ok === true, () => false).then(ok => {
+    // An older completion cannot acknowledge a newer sign-out for this UID.
+    if (a1CleanupVersions.get(uid) === version) {
+      a1CleanupBusy.delete(uid);
+      if (ok) {
+        a1CleanupPending = a1CleanupPending.filter(id => id !== uid);
+        a1SaveCleanup();
+      }
+      if (S.conn === 'none') render();
+    }
+    return ok;
+  });
+}
+
+
 // Retry expired auth without requiring a page reload. Only a confirmed
 // refreshed session can make a read-only connection writable again.
 function recoverAuth(delay = 30000) {
@@ -32,7 +65,8 @@ function teardownDb(clearData) {
   // A SIGNED_IN event can switch accounts without a SIGNED_OUT event.
   // Preserve unsent writes under the OLD uid (unless explicitly signing out)
   // before replacing the adapter, then isolate the new account completely.
-  const oldUid = S.uid;
+  const oldUid = S.uid, oldDb = S.db;
+  let cacheClearResult = Promise.resolve(true);
   if (oldUid) {
     if (clearData) store.set('pending:' + oldUid, null);
     else savePending();
@@ -42,7 +76,9 @@ function teardownDb(clearData) {
   S.unsubs.forEach(u => { try { u(); } catch (e) { /* already closed */ } });
   S.unsubs = [];
   if (S.db && S.db.close) { try { S.db.close(); } catch (e) { /* closed */ } }
-  if (clearData && S.db && S.db.clear) S.db.clear();
+  if (clearData && oldDb && oldDb.clear) {
+    cacheClearResult = a1ClearCache(oldUid, () => oldDb.clear());
+  }
   S.db = null; S.uid = null; S.user = null;
   // In-flight completions from the old adapter are fenced in pump().
   S.pending = []; S.inflight.clear();
@@ -57,6 +93,7 @@ function teardownDb(clearData) {
     if (Array.isArray(UI.pages)) UI.pages = [];
     UI.view = 'today';
   }
+  return cacheClearResult;
 }
 function showSignedOut() {
   S.conn = 'none';
@@ -66,7 +103,9 @@ function openDb(session) {
   if (S.db && S.uid === session.user.id) return;
   teardownDb(false);
   S.uid = session.user.id; S.user = session.user;
-  S.db = makeDb(sb, S.uid, { idb: true, refresh: async () => { const r = await sb.auth.refreshSession(); if (r.error) throw r.error; } });
+  // Never hydrate an old on-device snapshot while a failed sign-out
+  // deletion is pending for this account. Network data remains available.
+  S.db = makeDb(sb, S.uid, { idb: true, skipHydrate: a1CleanupPending.includes(S.uid), refresh: async () => { const r = await sb.auth.refreshSession(); if (r.error) throw r.error; } });
   restorePending(); // only this user's queue; never the legacy unowned queue
   S.dl = DL; S.owner = true; S.conn = 'live'; S.offline = false;
   subscribe(); pumpAll(); nativeBoot();
@@ -126,6 +165,16 @@ Object.assign(ACT, {
     }
     const r = await sb.auth.signOut();
     if (r.error) toast('Could not sign out: ' + r.error.message);
+  },
+  async 'a1-retry-cache-clear'() {
+    // Only run while signed out: do not erase an active account's cache.
+    if (S.conn !== 'none' || S.db) return;
+    const ids = a1CleanupPending.filter(id => !a1CleanupBusy.has(id));
+    await Promise.all(ids.map(id => a1ClearCache(id, () => {
+      const cleanup = makeDb(null, id, { idb: true, clearOnly: true });
+      cleanup.close();
+      return cleanup.clear();
+    })));
   },
   'a1-reconnect'() {
     clearTimeout(recoverT); recoverT = 0;

@@ -6,6 +6,7 @@ const css=fs.readFileSync(path.join(__dirname,'../ui/welcome.css'),'utf8');
 const acts={},v={};
 const env={
  ACT:acts,VIEWS:v,UI:{onbText:''},CFG:{onboarded:false},S:{conn:'none',owner:true},
+ a1CleanupPending:[],a1CleanupBusy:new Set(),
  ACTS:[],ACTMAP:{},SUGGEST:['Physics','Calculus','Biology','History','Economics'],
  esc:x=>String(x).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;','\'':'&#39;'}[c])),
  icon:()=>'<svg></svg>',kBtn:(label,attrs,o)=>'<button data-kind="'+(o.kind||'')+'" '+attrs+'>'+label+'</button>',
@@ -15,6 +16,13 @@ vm.createContext(env);vm.runInContext(source,env);
 let page=v.welcome();
 assert(page.includes('Carrel')&&page.includes('data-act="signin"')&&page.includes('Continue with Google'));
 assert(!page.includes('tagline')&&!page.includes('Sign out'));
+env.a1CleanupPending.push('u1');
+page=v.welcome();
+assert(page.includes('Device cache not cleared') && page.includes('a1-retry-cache-clear'));
+env.a1CleanupBusy.add('u1');
+page=v.welcome();
+assert(page.includes('Clearing device cache') && page.includes('disabled'));
+env.a1CleanupPending.length=0;env.a1CleanupBusy.clear();
 env.S.owner=false;env.S.conn='live';
 page=v.welcome();assert(page.includes('This tracker is private')&&page.includes('data-act="signout"'));
 assert(!page.includes('data-act="signin"'));
