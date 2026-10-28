@@ -156,6 +156,7 @@ class CarrelLivePlugin : Plugin() {
             .put("respectDnd", s.respectDnd).put("privacy", s.privacy)
             .put("notifDistractions", s.notifDistractions)
             .put("detectDrift", s.detectDrift)
+            .put("usageDetectionSupported", true)
             .put("usagePackages", JSONArray(s.usagePackages))
             .put("usageAccess", UsageReader.hasAccess(context))
             .put("lastNudge", s.p.getString("lastNudge", ""))
@@ -205,11 +206,18 @@ class CarrelLivePlugin : Plugin() {
             return
         }
         live.io.execute {
-            val selected = live.store.usagePackages
-            val result = runCatching { UsageReader.read(context, start, end, selected) }
-                .getOrDefault(emptyList())
+            // Settings can be changed while this queued task is waiting or
+            // while UsageStatsManager is scanning its bounded event window.
+            // Check consent at both boundaries; never expose a revoked read.
+            val selected = if (live.store.detectDrift && UsageReader.hasAccess(context))
+                live.store.usagePackages else emptyList()
+            val result = if (selected.isEmpty()) emptyList() else
+                runCatching { UsageReader.read(context, start, end, selected) }
+                    .getOrDefault(emptyList())
+            val stillAllowed = live.store.detectDrift && UsageReader.hasAccess(context) &&
+                live.store.usagePackages == selected
             val arr = JSONArray()
-            for (item in result) arr.put(item)
+            if (stillAllowed) for (item in result) arr.put(item)
             call.resolve(JSObject().put("apps", arr))
         }
     }
