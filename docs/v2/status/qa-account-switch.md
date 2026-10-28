@@ -1,6 +1,6 @@
 # QA — account-switch and offline queue isolation
 
-Branch: `v2/qa-account-switch-isolation`. Scope: ORC/QA-owned sync/auth hardening; no schema, native code, new permissions or network destinations; one conditional Account recovery row is added.
+Branch: `v2/qa-account-switch-isolation`. Status: merged to `main` via [PR #60](https://github.com/Mymayankyadav/carrel-app/pull/60), squash commit `96180b422f1ab570937cc4b3f8d5e6b315d86e3c`. Scope: ORC/QA-owned sync/auth hardening; no schema, native code, new permissions or network destinations; one conditional Account recovery row is added.
 
 ## Failure mode
 
@@ -16,9 +16,18 @@ A `SIGNED_IN` event can switch users without `SIGNED_OUT`. Previously `openDb` c
 
 ## Acceptance
 
-- [ ] Full web build and Node suite, v2 smoke scripts, browser acceptance, two-tap navigation audit
-- [ ] Existing four-viewport screenshots reviewed, including conditional Account recovery row
-- [ ] Review eight Account recovery/confirmation screenshots produced by `tools/v2_qa_account_smoke.py`
+- [x] Full web build and Node suite, v2 smoke scripts, browser acceptance and two-tap navigation audit on final PR head `87fe9e61` (four green GitHub Actions runs)
+- [x] Eight conditional Account recovery and confirmation screenshots reviewed at 390/1280 px, light/dark, with no overflow or visual defect
+- [x] `tools/v2_qa_account_smoke.py` passed in CI and generated eight screenshots in the `v2-f1-shots` artifact
 - [x] No native device acceptance claimed; L6 PR #44 remains draft until physical-device gate #52
 
 No production documents were modified.
+
+## CI links
+
+- [Full web/Node/v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40762423074)
+- [Web/Node/v2 smoke (PR)](https://github.com/Mymayankyadav/carrel-app/actions/runs/40762431124)
+- [Redesign browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40762431156)
+- [Two-tap navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40762431127)
+
+L6 physical Android privacy/device acceptance is still unverified. No claim of device testing.
