@@ -75,8 +75,7 @@ function l2PreviewRibbon(k,blocks){
   return '<div class="l2-preview-ribbon" aria-label="Proposed plan timeline">'+bars+'</div>';
 }
 function l2MorningPreview(sh){
-  const next=l2MorningProposal(sh);sh.proposal=next.proposal;sh.factors=next.factors;
-  const blocks=next.proposal.blocks;
+  const blocks=sh.proposal&&sh.proposal.blocks||[];
   return '<div class="l2-flow">'+l2PreviewRibbon(sh.k,blocks)+
     '<div class="l2-summary">'+blocks.length+' proposed block(s)'+
     (next.proposal.unplaced.length?' · '+next.proposal.unplaced.length+' not fully placed':'')+'</div>'+
@@ -134,6 +133,11 @@ function l2SaveMorning(sh){
   closeSheet();return true;
 }
 function l2MorningSheet(sh){
+  // kFlow calls canNext before body, so compute before step validity is evaluated.
+  if(sh.step===1&&!sh.accepted){
+    const next=l2MorningProposal(sh);
+    sh.proposal=next.proposal;sh.factors=next.factors;
+  }
   const steps=[
     {title:'Pick today’s work',body:()=>l2MorningPick(sh),
       canNext:()=>sh.candidates.some(t=>sh.picks[t.id])},
