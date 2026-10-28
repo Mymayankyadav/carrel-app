@@ -231,7 +231,8 @@ Object.assign(ACT,{
   'l7-drift'(){if(typeof LABS!=='undefined'&&LABS.urgesurf)
       saveSetting({labs:{urgesurf:true}},'Urge-surf enabled.');
     else toast('Urge-surf is coming to Android.');},
-  'l7-start'(){if(typeof resumeLast==='function')resumeLast();},
+  'l7-start'(){const last=typeof lastStudy==='function'?lastStudy():null;
+    if(last&&ACTMAP[last.a]&&!ACTMAP[last.a].archived)startActivity(last.a);},
   's1-prev'(){
     if(UI.s1Range==='month')UI.s1MonthOff=(UI.s1MonthOff||0)+1;
     else UI.weekOff=(UI.weekOff||0)+1;
