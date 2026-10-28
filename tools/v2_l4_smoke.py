@@ -34,7 +34,9 @@ with sync_playwright() as p:
                   due:todayKey(),interval:2,reps:1,ease:2.5,last:null,archived:false});
                 commit(null,w,{undo:false});
             }""")
-            page.wait_for_function("""() => l4DueTopics(todayKey()).some(x=>x.id==='qa_due')""")
+            page.wait_for_function("""() => !!(S.base.topics||{}).qa_due &&
+              !S.pending.some(op=>op.path==='topics/qa_due') &&
+              l4DueTopics(todayKey()).some(x=>x.id==='qa_due')""")
             page.evaluate("openSheet({type:'reviews'})")
             expect(page.locator('[data-act="l4-review-rate"][data-id="qa_due"]')).to_have_count(3)
             page.screenshot(path=str(out/f'{width}-{theme}-reviews.png'),full_page=True)
