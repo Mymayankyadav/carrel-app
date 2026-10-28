@@ -46,9 +46,13 @@ function teardownDb(clearData) {
   S.base = { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {}, topics: {}, rituals: {}, coach: {}, usage: {} };
   S.loaded = { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false, topics: false, rituals: false, coach: false, usage: false };
   S.fetched = new Set(); S.offline = false;
-  UNDO.length = 0; UI.sheet = null;
-  if (Array.isArray(UI.pages)) UI.pages = [];
-  UI.view = 'today';
+  // Preserve the URL-selected initial tab on first sign-in, but never keep
+  // an outgoing account's sheet or page parameters across a switch.
+  if (oldUid || clearData) {
+    UNDO.length = 0; UI.sheet = null;
+    if (Array.isArray(UI.pages)) UI.pages = [];
+    UI.view = 'today';
+  }
 }
 function showSignedOut() {
   S.conn = 'none';
