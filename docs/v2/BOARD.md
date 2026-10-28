@@ -7,7 +7,7 @@
 | L3 | 1 | merged | `v2/l3` | [#29](https://github.com/Mymayankyadav/carrel-app/pull/29) | Scheduler, preview, unit and browser tests green |
 | L4 | 1 | merged | `v2/l4` | [#33](https://github.com/Mymayankyadav/carrel-app/pull/33) | Subjects, topic recall, spacing and browser acceptance green |
 | L5 | 1 | merged | `v2/l5` | [#37](https://github.com/Mymayankyadav/carrel-app/pull/37) | Session intention, adaptive break and recall; Node/Playwright CI green |
-| L6 | 2 | todo | `v2/l6` | | Distraction |
+| L6 | 2 | doing | `v2/l6` | [#44](https://github.com/Mymayankyadav/carrel-app/pull/44) | Urge surf, drift card, opt-in usage access; draft pending native, browser and privacy QA |
 | L7 | 2 | todo | `v2/l7` | | Insights |
 | L8 | 1 | merged | `v2/l8` | [#42](https://github.com/Mymayankyadav/carrel-app/pull/42) | Widgets, tile, shortcuts, share and Live Update; unsigned Android QA green, signed release/device QA tracked |
 | L9 | 1 | merged | `v2/l9` | [#31](https://github.com/Mymayankyadav/carrel-app/pull/31) | Parser, Quick Capture UI, browser tests green; ORC entrypoints in integration |
