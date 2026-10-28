@@ -21,6 +21,8 @@ const S = {
   base: blankBase(), loaded: blankLoaded(), fetched: new Set(), windowFrom: '2026-10-01'
 };
 let seq = 0;
+const intervals = new Map();
+const savedSettings = [];
 const ctx = {
   S, ACT: {}, UI: {view:'today', pages:[], sheet:null}, UNDO: [],
   store: {
@@ -30,10 +32,12 @@ const ctx = {
   window: {addEventListener(){}}, document: {addEventListener(){}},
   console, DL: null,
   setTimeout() { return ++seq; }, clearTimeout(){},
-  setInterval() { return ++seq; }, clearInterval(){},
+  setInterval(fn) { const id=++seq; intervals.set(id,fn); return id; },
+  clearInterval(id) { intervals.delete(id); },
   clone: v => v == null ? v : JSON.parse(JSON.stringify(v)),
   deepMerge: (a,b) => Object.assign({},a,b),
   toast(){}, changed(){}, recompute(){}, render(){}, subscribe(){},
+  saveSetting(v) { savedSettings.push(v); },
   nativeBoot(){}, nativeClear(){}, addDaysKey(){return '2026-10-01';}, todayKey(){return '2026-10-29';},
   makeDb(_sb, uid) {
     const client = { uid, closed: false, close() {this.closed=true;}, clear(){},
@@ -89,6 +93,9 @@ const session = id => ({user:{id}});
   assert.equal(ctx.UI.view, 'today');
   assert.equal(storage.get('pending:alice')[0].data.secret, 'alice');
   assert.equal(requests.length, 1, 'Alice queue never replayed as Bob');
+  const aliceTimezoneTimer = [...intervals.values()][0];
+  aliceTimezoneTimer();
+  assert.equal(savedSettings.length, 0, 'old timezone setup cannot write to Bob');
 
   // An old auth error must not put Bob into read-only mode.
   requests[0].reject({code:'not_granted'});
