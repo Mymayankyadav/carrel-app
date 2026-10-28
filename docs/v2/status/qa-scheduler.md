@@ -1,6 +1,6 @@
 # QA scheduler interval and deadline hardening
 
-Branch: `v2/qa-scheduler-interval-safety`. Scope: post-L3 QA, no UI or database changes.
+Branch: `v2/qa-scheduler-interval-safety`. Status: merged to main via [PR #58](https://github.com/Mymayankyadav/carrel-app/pull/58), squash commit `265652de4e5b425177df94ec933406299ad2057e`. Scope: post-L3 QA, no UI or database changes.
 
 ## Reproduced failure
 
@@ -14,4 +14,4 @@ Overlapping free windows [08:00,09:00] and [08:30,09:30] previously produced ove
 
 ## Evidence and handoff
 
-The existing scheduler test cases plus nine additional assertions passed in an isolated V8 JavaScript execution using the patched module. GitHub CI (Node full suite, web build, browser smoke and screenshots) must still be verified on the PR before merge. No new visual surface was introduced; existing L3 smoke screenshots are the visual acceptance evidence. No Android device validation is claimed or needed for this web-only pure-logic fix. L6 PR #44 remains draft until physical-device gate #52 is satisfied.
+The existing scheduler test cases plus nine additional assertions passed in an isolated V8 JavaScript execution using the patched module. GitHub CI on the final PR head passed web build and full Node suite, all v2 smoke checks, Redesign acceptance, and two-tap navigation audit. The generated L3 preview/accepted screenshots were reviewed in phone (390px) and desktop (1280px), light and dark, with no observed visual regression. No new visual surface was introduced; existing L3 smoke screenshots are the visual acceptance evidence. No Android device validation is claimed or needed for this web-only pure-logic fix. L6 PR #44 remains draft until physical-device gate #52 is satisfied.
