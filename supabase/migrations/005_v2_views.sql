@@ -25,8 +25,35 @@ select d.id,
 from public.docs d
 where d.owner = public.carrel_uid()
   and d.coll = 'topics'
-  and coalesce((d.data->>'archived')::boolean, false) = false
-  and d.data->>'due' ~ '^\\d{4}-\\d{2}-\\d{2}$'
+  and d.data->>'archived' is distinct from 'true'
+  and d.data->>'due' ~ '^[0-9]{4}-[0-9]{2}-[0-9]{2}
+  and d.data->>'due' <= to_char((now() at time zone
+    coalesce((select s.data->>'tz' from public.docs s
+              where s.owner=public.carrel_uid() and s.path='config/settings'),
+             'Asia/Kolkata'))::date + 7,'YYYY-MM-DD');
+
+create or replace view public.week_summary with (security_invoker = true) as
+with current_week as (
+  select public.carrel_uid() as uid,
+    date_trunc('week', now() at time zone
+      coalesce((select s.data->>'tz' from public.docs s
+                where s.owner=public.carrel_uid() and s.path='config/settings'),
+               'Asia/Kolkata'))::date as first_day
+)
+select a.id as activity,
+       a.name as name,
+       coalesce(sum(e.minutes), 0) as minutes,
+       a.weekly_goal_min as goal_minutes
+from current_week w
+join public.activities a on a.owner = w.uid and a.kind = 'study' and not a.archived
+left join public.entries e on e.owner=a.owner and e.activity=a.id
+  and e.day >= to_char(w.first_day,'YYYY-MM-DD')
+  and e.day < to_char(w.first_day + 7,'YYYY-MM-DD')
+group by a.id, a.name, a.weekly_goal_min;
+
+revoke all on public.coach_inbox, public.topics_due, public.week_summary from anon, public;
+grant select on public.coach_inbox, public.topics_due, public.week_summary to authenticated;
+
   and d.data->>'due' <= to_char((now() at time zone
     coalesce((select s.data->>'tz' from public.docs s
               where s.owner=public.carrel_uid() and s.path='config/settings'),
