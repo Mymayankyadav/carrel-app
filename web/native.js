@@ -75,7 +75,8 @@ function nativeClear() {
   NP.detectDrift=false;
   NP.usageAccess=false;
   NP.usagePackages=[];
-  UI.l6Detected=null;
+  if (typeof l6ClearUsageOffer==='function') l6ClearUsageOffer();
+  else UI.l6Detected=null;
   if (CL && CL.clearSession) CL.clearSession();
 }
 
@@ -232,7 +233,11 @@ function updateBoot() { if (NATIVE) setTimeout(() => checkUpdates(false), 5000);
 if (NATIVE && CAP.App) {
   CAP.App.addListener('resume', () => {
     if (CL && CL.hasUsageAccess && NP.detectDrift)
-      CL.hasUsageAccess().then(r => {NP.usageAccess=!!r.allowed;changed();}).catch(() => {});
+      CL.hasUsageAccess().then(r => {
+        NP.usageAccess=!!r.allowed;
+        if(!NP.usageAccess&&typeof l6ClearUsageOffer==='function')l6ClearUsageOffer();
+        changed();
+      }).catch(() => {});
   });
   CAP.App.addListener('backButton', () => {
     if (typeof goBack === 'function' && goBack()) return;
