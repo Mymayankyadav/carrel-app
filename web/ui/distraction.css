@@ -13,3 +13,7 @@
 .l6-drift-main strong{font-weight:650;}
 .l6-spark{flex:none;color:var(--accent,#0F766E);fill:currentColor;}
 @media(prefers-reduced-motion:reduce){.l6-urge-ring .l6-progress{animation:none;}}
+
+/* Prior timer toasts must never cover the urge-surf timer or its actions.
+   Keep them underneath this modal's scrim (50) without deleting Undo state. */
+body:has(#sheet .l6-urge-body) .k-toast{z-index:49}
