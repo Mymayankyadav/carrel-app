@@ -95,7 +95,9 @@ const l6UsageApps=[
   ['in.startv.hotstar','Hotstar'],['com.netflix.mediaclient','Netflix']
 ];
 function l6DriftRow(){
-  if(typeof CL==='undefined'||!CL||!CL.sessionUsage)return '';
+  // Capacitor's JS proxy makes any method name appear callable even on an
+  // older APK. Only native prefs can truthfully advertise this capability.
+  if(typeof CL==='undefined'||!CL||!NP.usageDetectionSupported)return '';
   const enabled=!!NP.detectDrift;
   const selected=Array.isArray(NP.usagePackages)?NP.usagePackages:[];
   const switcher=kRow({label:'Detect drift',
@@ -108,6 +110,8 @@ function l6DriftRow(){
       options:l6UsageApps.map(([v,label])=>({v,label}))})):'';
   return switcher+access+options;
 }
+let l6UsageConsentRevision=0;
+let l6UsagePrefsBusy=false;
 function l6SummariseUsage(apps,minutes){
   const allowed=new Map(l6UsageApps),out=Object.create(null);
   let total=0,leader=null;
@@ -126,9 +130,14 @@ function l6SummariseUsage(apps,minutes){
 async function l6AfterStudyStop(id,start,end,activity){
   if(typeof CL==='undefined'||!CL||!CL.sessionUsage||!NP.detectDrift||
     !NP.usageAccess||!canWrite()||end-start<10*MIN||end<=start)return;
+  const revision=l6UsageConsentRevision;
+  const selected=JSON.stringify(NP.usagePackages||[]);
   try{
     const reply=await CL.sessionUsage({startMs:start,endMs:end});
-    if(!NP.detectDrift||!NP.usageAccess||!canWrite())return; // consent can be revoked during query
+    // Prevent stale results being persisted after consent or app selection changes,
+    // even when the user disables and re-enables tracking before a query returns.
+    if(revision!==l6UsageConsentRevision||selected!==JSON.stringify(NP.usagePackages||[])||
+       !NP.detectDrift||!NP.usageAccess||!canWrite())return;
     const safe=l6SummariseUsage(reply&&reply.apps,Math.floor((end-start)/MIN));
     if(safe.total<2||!safe.leader)return;
     const day=dayKeyOf(start);
@@ -142,8 +151,15 @@ async function l6AfterStudyStop(id,start,end,activity){
   }catch(e){ /* Never interrupt saving the study entry if usage access changed. */ }
 }
 ACT['l6-drift-toggle']=async ()=>{
-  if(!CL||!CL.setPrefs)return;
-  const next=!NP.detectDrift;
+  if(!CL||!CL.setPrefs||!NP.usageDetectionSupported||l6UsagePrefsBusy)return;
+  l6UsagePrefsBusy=true;
+  const previous=!!NP.detectDrift,next=!previous;
+  ++l6UsageConsentRevision;
+  // Update immediately: a pending native query cannot still opt us in
+  // during the asynchronous bridge round-trip.
+  NP.detectDrift=next;
+  if(!next)UI.l6Detected=null;
+  changed();
   try{
     const r=await CL.setPrefs({detectDrift:next});
     Object.assign(NP,r);
@@ -154,7 +170,10 @@ ACT['l6-drift-toggle']=async ()=>{
         const access=await CL.hasUsageAccess();NP.usageAccess=!!access.allowed;changed();
       }
     }
-  }catch(e){toast('Could not change usage detection.');}
+  }catch(e){
+    NP.detectDrift=previous;changed();
+    toast('Could not change usage detection.');
+  }finally{l6UsagePrefsBusy=false;}
 };
 ACT['l6-usage-access']=async ()=>{
   if(!CL||!CL.openUsageAccess)return;
@@ -165,15 +184,22 @@ ACT['l6-usage-access']=async ()=>{
   }
 };
 ACT['l6-use-app']=async el=>{
-  if(!CL||!CL.setPrefs)return;
+  if(!CL||!CL.setPrefs||!NP.usageDetectionSupported||l6UsagePrefsBusy)return;
   const pkg=el.getAttribute('data-v');
   if(!l6UsageApps.some(([id])=>id===pkg))return;
-  const values=new Set(Array.isArray(NP.usagePackages)?NP.usagePackages:[]);
+  const previous=Array.isArray(NP.usagePackages)?[...NP.usagePackages]:[];
+  const values=new Set(previous);
   if(values.has(pkg))values.delete(pkg);else values.add(pkg);
+  ++l6UsageConsentRevision;
+  NP.usagePackages=[...values];
+  changed();
+  l6UsagePrefsBusy=true;
   try{
-    const p=await CL.setPrefs({usagePackages:[...values]});
+    const p=await CL.setPrefs({usagePackages:NP.usagePackages});
     Object.assign(NP,p);changed();
-  }catch(e){toast('Could not update app list.');}
+  }catch(e){
+    NP.usagePackages=previous;changed();toast('Could not update app list.');
+  }finally{l6UsagePrefsBusy=false;}
 };
 /** Never edit stale/overlapping sessions based on an approximate app-usage
  * total. The native API reports aggregate minutes, not an exact time trace. */
