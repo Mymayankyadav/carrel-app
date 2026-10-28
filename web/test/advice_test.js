@@ -18,7 +18,9 @@ assert.equal(l7Accuracy([{planned:60,actual:90},{planned:60,actual:60}]),75);
 assert.equal(l7Accuracy([{planned:10,actual:100}]),0);
 assert.equal(l7Accuracy([]),null);
 assert.equal(l7WeekOf('2026-10-28',1),'2026-10-26');
-assert.equal(l7WeekOf('2026-11-01',0),'2026-11-01');
+assert.equal(l7WeekOf('2026-11-01',0),'2026-10-26');
+// Sunday display-week preferences cannot grant a second freeze in the same ISO week.
+assert.equal(flexibleStreak({'2026-10-30':30,'2026-10-31':0,'2026-11-01':0},25,0).status['2026-11-01'],'miss');
 const days={
  '2026-10-26':45,'2026-10-27':0,'2026-10-28':40,
  '2026-10-29':0,'2026-10-30':35,'2026-10-31':0,'2026-11-01':0
