@@ -202,7 +202,7 @@ Lanes may start Phase-2 work early against the contracts, with stubs gated by th
 # Part C: lanes (ownership is exclusive)
 
 The files listed are each lane's own. Everything else is read-only, except through ORC.
-Frozen (ORC only): `web/core/*`, `web/ui/shell.js`, `web/ui/kit.*`, `web/ui/icons.js`, `web/files.json`, `web/build.py`, `web/supa.js`, `web/auth.js`, `web/config.js`, `.github/workflows/*` (lanes request CI wiring in their status file; ORC adds it).
+Frozen (ORC only): `web/ui/cards.js`, `web/ui/labs.js`, `web/core/*`, `web/ui/shell.js`, `web/ui/kit.*`, `web/ui/icons.js`, `web/files.json`, `web/build.py`, `web/supa.js`, `web/auth.js`, `web/config.js`, `.github/workflows/*` (lanes request CI wiring in their status file; ORC adds it).
 
 ### F1: Foundations (Phase 0)
 - **Owns:** frozen files (temporarily), `docs/v2/*`.
@@ -305,3 +305,414 @@ Frozen (ORC only): `web/core/*`, `web/ui/shell.js`, `web/ui/kit.*`, `web/ui/icon
 | F1 | 0 | todo | v2/f1 | | |
 | L1 … L10, QA | 1–3 | todo | v2/<lane> | | |
 Status values: `todo · doing · review · merged · descoped`.
+
+---
+
+# Part D: implementation details (read before coding)
+
+Part D removes guesswork. If Part D and Parts A–C disagree, **Part D wins**. If something is still unclear, choose the simplest option that satisfies Part A, record it in `docs/v2/DECISIONS.md`, and continue.
+
+## D0. Facts about the current code (verified 28 Oct 2026)
+
+### D0.1 Build and files
+- `web/build.py` concatenates the files listed in `web/files.json` (`js` and `css` arrays, in order) into `www/index.html`, plus a mock test page `web/test/carrel-test.html`. `web/logic.js` is included before them.
+- Every new `.js`/`.css` file must be added to `web/files.json`. Only ORC edits that file: list your new files in your status file under "Files to register", and ORC registers them in a tiny PR before you start (or you start, and the build includes them after ORC merges). **Recommended:** F1 pre-registers *all* v2 files listed in Part C as empty stubs, so lanes never wait.
+- All code runs in one global script scope. Function names must be unique across the app, so **prefix every new top-level name with your lane id** (`l4DueTopics`) unless the plan gives an exact name (contract names in D0.4 and Part C are used as written).
+
+### D0.2 Stored data (Supabase `public.docs`; path = `collection/id`, `data` = JSON)
+| Path | Shape (fields you may rely on) |
+|---|---|
+| `days/<YYYY-MM-DD>` | `{date, entries:{<entryId>:{activity, start, end, note, focus(1–3\|null), block, pomo}}}`. `start`/`end` are ISO local strings (`isoLocal(ms)`) |
+| `plans/<YYYY-MM-DD>` | `{date, source, end?('HH:MM'), note?, blocks:{<blockId>:{activity, title, minutes, orig, order, at('HH:MM'\|null), status('open'\|'skipped'\|…), pomo, from}}}` |
+| `state/current` | the running timer `{running, id, activity, start, note, block, pomo, ret, ack}` |
+| `config/activities` | `{items:{<actId>:{name, color, kind('study'\|'life'), order, goal(hours/week\|null), archived, role('break'\|'sleep'\|'drift'\|null), guard, today}}}` |
+| `config/settings` | `DEFAULTS` in `web/core/state.js`: `dayStart`, `planStart`, `planEnd`, `gap`(min), `dailyGoal`(**minutes**), `weekStart`(0–6), `guardHours`, `clock`, `pomodoro{focus,short,long,every}`, `onboarded`, `tz` |
+| `planning/backlog` | `{items:{<id>:{title, activity, minutes, due, prio(1 high, 2 normal, 3 low), order, created}}}` |
+| `planning/deadlines` | `{items:{<id>:{title, date, time, activity, kind('exam'\|'due'\|'other'), done}}}` |
+| `planning/commitments` | weekly busy items (read through `busyOf(k)`) |
+| `distractions/<date>` | `{date, items:{<id>:{type('urge'\|'drift'\|'park'), at, driftMin, text, activity, entry, …}}}` |
+
+### D0.3 Reading data in the app
+- `V` is the current view of all data, with pending writes applied (`V.days`, `V.plans`, `V.settings`, `V.activities`, `V.planning`, `V.distractions`).
+- `CFG` holds the merged settings; `ACTS` is the activity list; `ACTMAP[id]`; `act(id)`.
+- `ENTRIES` are normalised entries `{id, day, a, s, e, note, focus, block, pomo, running?}` (`s`/`e` in ms; `e` is null while running); `CUR` is the running timer or null.
+- **Helpers:** `todayKey()`, `dayKeyOf(ms)`, `addDaysKey(k, n)`, `dayStartMs(k)`, `dayEndMs(k)`, `hmOnDay(k, 'HH:MM')`, `isoLocal(ms)`, `parseT(v)`, `fmtDur(ms)`, `fmtT(ms)`, `fmtHM('HH:MM')`, `uid(prefix)`, `esc(s)`, `clamp(v, a, b)`, `MIN`, `HOUR`, `DAY`.
+- **Domain helpers:** `planModelFor(k)` (rows with `id, activity, title, target, done, remaining, st, at, pieces:[[s,e]], order`), `busyOf(k)` / `busyIv(k)`, `deadlineList()`, `backlogList()`, `aggregate(entries, now, fromK, toK)`, `patternsModel(entries, now, weeks)`, `insights(...)`, `distractionStats(...)`, `lastEntry()`, `lastStudy()`.
+
+### D0.4 Writing data
+```js
+const w = W();                                   // a write set
+w.update('planning/backlog', { items: { [id]: { title } } }, { items: {} });  // deep merge; 3rd arg = initial doc if missing
+w.set('coach/' + id, doc);                       // replace whole doc
+w.day(k, { [entryId]: { focus: 3 } });           // merge into days/<k>.entries
+w.plan(k, { blocks: { [blockId]: blockDoc } });  // merge into plans/<k>
+commit('Message shown in toast.', w);            // queues the writes offline-safe; adds Undo; re-renders
+commit(null, w, { undo: false });                // silent, no undo
+```
+- Deleting a map key = setting it to `null` in an `update`.
+- Never write directly with `S.db`; always use `W()` + `commit()`.
+
+### D0.5 UI framework
+- **Registries:** `VIEWS[name] = () => html` (tabs), `PAGES[id] = { title, render(params), actions?(params) }` (subscreens; `pushPage(id, params)`, `openPage(tab, id, params)`), `SHEETS[type] = sh => html` (`openSheet({type, ...})`, `closeSheet()`), `ACT[name] = el => {}` (clicks on `data-act="name"`; long-press via `data-long`).
+- `render()` re-renders everything (DOM morphing keeps focus). Call `changed()` after changing `UI` state.
+- **Kit (use these, don't invent new controls):** `kIconBtn kBtn kRow kGroup kField kSwitch kSeg kChips kStepper kTime kDate kDur kText kArea kActPick kSwatches kCollapse kEmpty kSheetHead kSheetFoot kPageHead openMenu confirmDialog`, plus `icon(name)` and `toast(msg, opts)`. Read their signatures in `web/ui/kit.js` (`grep -n "^function k" web/ui/kit.js`).
+- **Local per-device storage:** `store.get(key)`, `store.set(key, value)` (JSON; prefix `carrel.` is added).
+
+### D0.6 Tests and evidence
+- **Unit test template** (Node, no DOM), `web/test/<lane>_test.js`:
+```js
+'use strict';
+const assert = require('assert');
+const L = require('../logic/sched.js');          // pure module under test
+assert.strictEqual(L.estimateFactor([]), 1);     // one assert per rule
+console.log('SCHED TESTS PASSED');
+```
+- **Pure modules** (`web/logic/*.js`) end with: `if (typeof module !== 'undefined' && module.exports) module.exports = { fnA, fnB };`. They take every input as a parameter (no `V`, `CFG`, `Date.now()` inside; pass `now`).
+- **UI tests:** follow the existing `web/test/t1_today_test.js` pattern (load `require('./src')`, eval in a VM with stubs).
+- **Smoke script** `tools/v2_<lane>_smoke.py`: copy the structure of `tools/redesign_smoke.py`. Open the mock page at 390×844 and 1280×800 in light and dark, perform each user action in your lane, assert the expected DOM text or stored value, and save screenshots under `v2-shots/<lane>/` (never committed; it's in `.gitignore`, which ORC adds).
+- **Evidence commands:**
+```bash
+python3 web/build.py && for f in web/test/*_test.js; do TZ=Asia/Kolkata node "$f" || exit 1; done
+python3 tools/shots.py /tmp/s && python3 tools/shots.py /tmp/sd --dark && python3 tools/shots.py /tmp/sw --width 1280
+python3 tools/shots.py /tmp/x --js "openSheet({type:'capture'})"     # one --js per run: an open sheet blocks later clicks
+python3 tools/v2_<lane>_smoke.py
+```
+
+## D1. F1 Foundations: steps
+1. **Stubs:** create every file named in Part C (each lane later fills its own stub; `cards.js` and `labs.js` are ORC's) (js + css) with a one-line header comment and register them in `files.json` in this order, after `ui/settings-pages`:
+   - **JS:** `logic/sched.js`, `logic/spacing.js`, `logic/breaks.js`, `logic/parse.js`, `logic/advice.js`, `ui/ribbon.js`, `ui/cards.js`, `ui/rituals.js`, `ui/subjects.js`, `ui/distraction.js`, `ui/capture.js`, `ui/coach.js`, `ui/labs.js`.
+   - **CSS:** `ui/ribbon.css`, `ui/rituals.css`, `ui/subjects.css`, `ui/distraction.css`, `ui/capture.css`, `ui/coach.css`.
+   - Put `logic/*.js` **before** `core/state.js` in the `js` array.
+2. **Collections:** in `web/core/sync.js` `subscribe()`, add live subscriptions:
+   - `topics` and `coach`: all docs (`db.collection(name).onSnapshot`).
+   - `rituals` and `usage`: `where('date','>=',from)`.
+   - Store them in `S.base.topics/coach/rituals/usage` (maps id → data), add them to `S.loaded`, and copy them into `V` in `computeView()` (same pattern as `planning`).
+   - Also add them to `teardownDb` resets. Export nothing new; lanes read `V.topics` etc.
+3. **Cards:** `web/ui/cards.js`:
+```js
+const CARDS = {};                                 // id -> { rank(ctx) -> 0..100, render(ctx) -> html, label }
+function cardCtx() { return { now: Date.now(), k: todayKey() }; }
+function topCards(max) {                          // used by L1
+  const ctx = cardCtx(), snoozed = store.get('cardSnooze:' + ctx.k) || [];
+  return Object.keys(CARDS).filter(id => !snoozed.includes(id))
+    .map(id => ({ id, r: +CARDS[id].rank(ctx) || 0 })).filter(x => x.r > 0)
+    .sort((a, b) => b.r - a.r || (a.id < b.id ? -1 : 1)).slice(0, max || 3);
+}
+// ACT 'card-snooze' (data-id) adds the id to the snooze list for today, then render().
+```
+   - **Card frame markup:** `<section class="k-card f1-card" data-card="<id>">` + `kIconBtn('close','Hide for today','data-act="card-snooze" data-id="<id>"')` + body. CSS in `kit.css`.
+4. **Labs:** `web/ui/labs.js`:
+   - `const LABS = {}` (name → `{label, def}`).
+   - `function lab(name) { const v = CFG.labs && CFG.labs[name]; return v == null ? !!(LABS[name] && LABS[name].def) : !!v; }`
+   - `PAGES['settings.labs']` lists `kSwitch` rows; toggling writes `saveSetting({ labs: { [name]: bool } })`.
+   - Add a Settings root row `Labs` (icon `note`) in the 3rd group, through ORC's edit of `ui/settings.js`.
+5. **Flow sheet:** in `kit.js`, `kFlow(sh, steps)`.
+   - `steps` = array of `{ title, body: () => html, next: 'Next'|'Done', canNext: () => bool }`.
+   - The current step lives in `sh.step` (0-based). It renders `kSheetHead(title)`, step dots (`.k-dots` with `aria-label="Step 2 of 3"`), the body, and `kSheetFoot(kBtn(next, 'data-act="k-flow-next"', {kind:'primary'}))`.
+   - `ACT['k-flow-next']` increments `sh.step`, or calls `sh.done()` on the last step. Back (`goBack`) on step > 0 goes back one step instead of closing.
+6. **Nav v2:**
+   - In `kNav`, tabs become `[['today','Today'],['plan','Plan'],['subjects','Subjects'],['insights','Insights']]`, with icons `today`, `plan`, `subjects` (Lucide `book-open`), `stats`.
+   - Map `UI.view` `stats` → `insights` (alias), and `VIEWS.insights = VIEWS.stats` until L7 replaces it.
+   - Settings is no longer a tab: `UI.view='settings'` is still valid, but it's reached through the Today header gear (`data-act="open-settings"` → `UI.view='settings'; UI.pages=[]; render()`), and Back from settings root returns to Today.
+   - Add the icons `subjects`, `ring`, `ribbon` and `quickadd` (`plus`) to `icons.js` with `tools/icons.py`.
+7. **Docs:** create `docs/v2/BOARD.md` (the table at the end of Part C), `docs/v2/DECISIONS.md` (header only), `docs/v2/contracts.md` (copy D0.4, D0.5, the `CARDS`/`LABS`/`kFlow`/collection APIs above, and Part C's contract names).
+8. **CI:** in `ci.yml`, run every `tools/v2_*_smoke.py` if any exist (`for f in tools/v2_*_smoke.py; do [ -e "$f" ] && python3 "$f"; done`), after installing Playwright the way `redesign-qa.yml` does. Add `v2-shots/` to `.gitignore`.
+9. **Done when:** the build has no visual change except the nav (Subjects tab shows `kEmpty('Coming soon')` until L4), the gear on Today works, and all tests and shots pass.
+
+## D2. Card ranks (exact; all lanes use these numbers)
+| Card id (owner) | Shows when | Rank |
+|---|---|---|
+| `morning` (L2) | now ≥ dayStart and < dayStart + 4 h, and `rituals/<k>.morning` missing, and the plan has 0 open blocks or the user hasn't opened it | 95 |
+| `shutdown` (L2) | now ≥ planEnd − 30 min, and `rituals/<k>.shutdown` missing, and ≥ 1 entry today | 95 |
+| `freshstart` (L7) | Monday (or `weekStart` day) or the 1st of the month; until tapped or snoozed | 85 |
+| `coach` (L10) | ≥ 1 `coach/*` with `status:'new'` and `from:'claude'` | 80 |
+| `deadline` (L1) | nearest undone deadline within 14 d | 90 if ≤ 2 d · 70 if ≤ 7 d · 40 if ≤ 14 d |
+| `reviews` (L4) | ≥ 1 topic due on or before today | 60 + min(20, 5 × dueCount) |
+| `distraction` (L6) | Sunday, or week drift minutes > 2 × last week's (and > 30) | 50 |
+| `insight` (L1) | `insights()` returns ≥ 1 sentence | 20 |
+
+## D3. L1 Today v2: steps
+1. **Header** (48 px; `t1-head`):
+   - Left: the date (`Tue 27 Oct`).
+   - Right: `ring` button (SVG 28×28: track `--line`, arc `--accent`; arc fraction = `min(1, studiedTodayMs / (CFG.dailyGoal × MIN))`; `aria-label="2h 54m of 2h goal"`; click → `UI.view='insights'`), `kIconBtn('quickadd','Quick add','data-act="open-capture"')` (`openSheet({type:'capture'})` once L9 exists; until then a toast `Coming soon`), `kIconBtn('settings','Settings','data-act="open-settings"')`.
+   - The studied total moves under the ring as 13 px text-2 (`2h 54m`), and it still opens the Log page.
+2. **Ribbon:** `web/ui/ribbon.js` exports `ribbon(k, opts) → html`.
+   - Width 100 %, height 8 px, radius 4. x = (t − dayStartMs(k)) / DAY.
+   - Segments: entries (fill activity colour), planned open blocks' `pieces` (1 px outline in the activity colour, transparent), busy (`--line` hatch). Now marker: 2 px × 14 px `--text` tick centred vertically.
+   - Under it, 3 labels (12 px text-2): the day start, noon and the day end (`4a 12p 4a`). Click → `UI.view='plan'` on `todayKey()`.
+   - Placement: under the hero card.
+3. **Idle hero:**
+   - If `planModelFor(todayKey())` has an open block with a piece starting ≥ now − 15 min: line 1 `● <activity> · <title>`, line 2 `<start time> · <minutes>`, primary `Start` (`startActivity(block.activity, {block: block.id})`).
+   - Else, if there are no blocks: primary `Plan my day` (opens `SHEETS.morning` if L2 is registered, else `UI.view='plan'`).
+   - The "Resume <last>" chip stays if the last study ended < 3 h ago.
+   - The study grid moves below the cards (still shown when idle).
+4. **Cards host:** `topCards(3).map(c => CARDS[c.id].render(cardCtx()))` between the ribbon and the chips.
+5. **Your cards:** register `CARDS.deadline` and `CARDS.insight` per D2.
+   - Deadline body: `flag` icon, title, `in 2d` (danger if ≤ 2 d), and a 3 px bar = hours studied for that subject since the deadline was created ÷ the estimate. Use 10 h if the deadline has no estimate. If the deadline has no subject, show no bar.
+   - Insight body: `insights` icon + the first sentence.
+6. **"Next" list:** remove it. The hero shows the next block, and the ribbon shows the rest.
+7. **Tests** (`today_v2_test.js`):
+   - ring fraction 0, 0.5, 1 (capped);
+   - ribbon segment x positions for a 9:00–10:00 entry with dayStart 04:00 → left 20.83 %;
+   - hero picks the earliest future open block;
+   - `topCards` respects snooze and the max of 3.
+8. **Hooks for other lanes** (put these in `today.js`):
+   - The Noticed button calls `(typeof l6OnNoticed === 'function' && lab('urgesurf')) ? l6OnNoticed() : noticeNow()`.
+   - The `Focus?` rating prompt after a stop is hidden when `lab('recall') && SHEETS.sessionEnd` (L5 shows its own sheet).
+   - The hero's second line shows `rituals/<today>.morning.intent` when idle and present.
+9. **Smoke:** tap ring → Insights; tap ribbon → Plan; snooze a card → it disappears until the next day (fake the date by stubbing `todayKey`).
+
+## D4. L2 Rituals: steps
+1. Register `CARDS.morning` and `CARDS.shutdown` (D2). The card body is one line plus a primary button `Plan my day` / `Shut down`.
+2. **`SHEETS.morning`** uses `kFlow` with 3 steps.
+   - **Step 1 "Pick":** a checkbox list (rows) of candidates:
+     - (a) carry-over: open blocks from yesterday's plan with `remaining > 0`;
+     - (b) reviews due (`l4DueTopics(k)` if defined) as 30-minute items;
+     - (c) backlog sorted by `prio`, then `due`;
+     - (d) `backwardPlan` sessions for today (L3) if defined.
+     - Pre-tick (a), (b), (d), and backlog items with `prio === 1` or due ≤ 2 days.
+     - Sum the ticked minutes and show `3h 40m picked · 4h free` (free = `dayCapacity`). Next is enabled when ≥ 1 item is ticked.
+   - **Step 2 "Plan":** call `sched.autoPlan(...)` (L3) with the ticked items and show the result as a `ribbon()` preview plus a list `time · title`. If L3 isn't merged, place items sequentially from max(now, planStart) with `gap`. Buttons: primary `Accept` (writes the blocks with `from:'auto'` through one `W()` + `commit('Day planned.', w)`).
+   - **Step 3 "Intention":** `kText` "One thing that matters today" + an optional collapsible "If… then…" with two `kText`s. Done writes `rituals/<k>`: `{v:1, date:k, morning:{at: isoLocal(now), picks:[ids], intent, ifThen}}`.
+   - The intent appears as the hero's second line until a timer starts.
+3. **`SHEETS.shutdown`** uses `kFlow` with 3 steps.
+   - **Step 1 "Today":** two numbers (`Studied 4h 36m`, `Plan 63 %`) and the list of done blocks with a `done` icon.
+   - **Step 2 "Leftovers":** each open block has a 3-way `kSeg` (`Tomorrow` · `Backlog` · `Drop`), default `Tomorrow`.
+     - Tomorrow = `carryTo` the next day.
+     - Backlog = add a `planning/backlog` item with the remaining minutes.
+     - Drop = set the block's `status:'skipped'`.
+   - **Step 3 "Tomorrow":** pick the first block for tomorrow (from the carried items plus backlog; one select). Done writes `rituals/<k>.shutdown {at, done: studiedMin, carry:[ids], first: id}`.
+     - Then, if the timer is running, offer the toast `Stop timer?` with action `Stop`.
+4. Replace the Plan menu's "Wrap up" item: `ACT['plan-wrap']` opens `SHEETS.shutdown` (ORC changes the menu item in `plan-sheets.js` on L2's request).
+5. **Tests:**
+   - pre-tick rules;
+   - minutes sum;
+   - shutdown writes for each of the 3 choices (check the `W()` writes);
+   - no card after the ritual doc exists.
+
+## D5. L3 Scheduler: algorithms (pure, `web/logic/sched.js`)
+```text
+estimateFactor(history):            // history = [{planned:min, actual:min}] for one subject, newest first
+  use the first 30 items where planned >= 10 and actual > 0
+  if count < 5: return 1
+  r = median(actual / planned); return clamp(round(r, 1 decimal), 0.8, 2.0)
+
+energyWindows(hourStats):           // hourStats[h] = {min: studied minutes, focus: avg rating 1..3 or null}, h = 0..23
+  score[h] = (focus ?? 2) * sqrt(min); rank hours by score desc; ignore hours with min < 30 total
+  return list of hours (top first)
+
+autoPlan({k, items, free, now, gapMin, windows, factor}):
+  items: [{id, activity, title, minutes, prio(1..3), hard:boolean}]
+  free: [[s,e], ...] free intervals today (from day capacity minus busy and fixed blocks), sorted
+  1. minutes' = ceil5(minutes * factor(activity))
+  2. order items: prio asc, hard first, longer first; then interleave so the same activity is never twice in a row if avoidable
+  3. buffer: total free * 0.10 is reserved; stop placing when placed > total free * 0.90
+  4. for each item: prefer the earliest free slot that starts in a top-3 energy hour if hard or prio 1; else the earliest slot
+     place max(25, min(minutes', slot length)); a remainder ≥ 25 min continues in the next slot; < 25 is dropped into `unplaced`
+     after each placement, insert gapMin before the next start
+  return {blocks:[{itemId, activity, title, at:'HH:MM', minutes}], unplaced:[itemId]}
+
+backwardPlan({today, deadline, hoursNeeded, hoursDone, maxPerDay=3}):
+  days = dates from today to deadline - 1 (exclude the deadline day); if none: return []
+  remaining = max(0, hoursNeeded - hoursDone); per = remaining / days.length
+  weights: linear 1.0 → 1.4 towards the deadline, last day 0.6 (lighter, review only); normalise to remaining
+  return [{date, minutes: round5(min(maxPerDay*60, w*60))}] (drop days < 25 min)
+```
+- **UI:** `Plan › ⋮ › Auto-plan` runs `autoPlan` on today's unplaced backlog items and opens a confirm sheet (the same preview as the L2 step 2). The block sheet shows `Usually takes ×1.3` (13 px text-2) when the factor is ≠ 1.
+- **Tests** (≥ 15): median, the clamps, history < 5 → 1; no overlap with busy; gap respected; buffer respected; hard items land in top windows; interleaving; remainder split; `backwardPlan` sums ≈ remaining (±5 min), never on the deadline day, and caps per day.
+
+## D6. L4 Subjects and spacing: steps
+1. **`VIEWS.subjects`:** a header `Subjects` with `quickadd` → capture (Task tab).
+   - Rows for each non-archived study activity: dot · name · right `4h 15m / 9h`, with a sub-line combining `next: Physics test in 3d` and `3 due`.
+   - Under the row, a thin 3 px goal bar. Tap → `pushPage('subject', {id})`.
+2. **`PAGES.subject`:** the title is the activity name; the action `edit` → `openPage('settings','settings.activity',{id})`. Sections (each `kGroup`, max 5 rows, then `All (n) ›`):
+   - Deadlines: from `deadlineList()` filtered by `activity`.
+   - Topics: due ones first, with the due label `today` / `in 3d` / `overdue 2d` in danger. Tap → topic sheet.
+   - Backlog: filtered by `activity`.
+   - Recent: the last 5 entries of this activity.
+   - Empty sections are hidden, except Topics, which shows `kEmpty('No topics yet', kBtn('Add topic', …))`.
+3. **Topic sheet `SHEETS.topic`:**
+   - Title field and a subject picker.
+   - A recall `kSeg` with icons `rate1`/`rate2`/`rate3` (poor/ok/good) and the label `How well did you recall it?`.
+   - Info line `Next review in 6d`.
+   - Buttons: primary `Save`; delete in the header.
+4. **Spacing** (`web/logic/spacing.js`):
+```text
+nextReview(topic, rating, todayKey, examKey|null):
+  base = topic.interval || 1
+  mult = {3: 2.5, 2: 1.8, 1: 0.5}[rating]
+  interval = max(1, round(base * mult)); if rating == 1: interval = 1
+  due = addDays(todayKey, interval)
+  if examKey and due >= examKey: due = max(addDays(todayKey,1), addDays(examKey, -max(1, round(daysBetween(todayKey, examKey) * 0.15))))
+  return {interval, due, reps: (topic.reps||0)+1, last: todayKey}
+dueTopics(topics, dayKey) = topics where !archived and due <= dayKey, sorted by due asc
+```
+   - The exam for a topic = the nearest undone deadline of kind `exam` with the same `activity`.
+5. A new topic gets `{v:1, subject, title, order, due: today+1, interval: 1, ease: 2.5, reps: 0, last: null, archived: false}`, written with `w.set('topics/'+uid('tp'), doc)`.
+6. **`CARDS.reviews`** (D2): body `3 reviews due · Kinematics, Optics`; tap → `SHEETS.reviews` with a list where each topic has the 3 rating icons. Rating a topic writes `nextReview` immediately (with Undo).
+7. **Contract:** define the global `l4DueTopics(k)` (returns `[{id, subject, title, due}]`) for L2 and L3.
+8. **Move Tasks:** the `PAGES.tasks` content stays reachable from Plan's tasks icon. In addition, the subject page lists that subject's tasks and deadlines. Don't delete `ui/tasks.js`.
+9. **Tests:** `nextReview` for each rating; the exam pull-forward; `dueTopics` order; the subject list sums match `aggregate`.
+
+## D7. L5 Focus v2: steps
+1. **Start options sheet:** add a collapsible `Intention` with `kText` (`What will you finish?`, max 80) and two `kText`s (`If…`, `then…`).
+   - Pass them through `startActivity(id, {at, pomoPreset})`, then write `w.update('state/current', {intent, ifThen})`. Stop writes them into the entry (`entryFromCur` copies `note`; add `intent`/`ifThen` to the entry through `w.day(k, {[id]: {intent, ifThen}})` right after stop).
+   - Ask ORC to add the 2 fields to `entryFromCur` in `core` if needed; until then, write them after stop yourself.
+2. **Timer card:** if `CUR.intent`, show it as the second line (it replaces the block title only when the block title is empty).
+3. **Flowtime** (`lab('flowtime')`, default on), in `web/logic/breaks.js`: `suggestBreak(focusMin) = clamp(round(focusMin / 5), 5, 20)`.
+   - When there's no pomodoro and elapsed ≥ 25 min, show a quiet chip under the buttons: `Break 9m` (`coffee` icon). Tap = `takeBreak()`, and store `UI.breakTarget = minutes`.
+   - During that break, the timer shows a countdown to the target.
+4. **Break sheet suggestions:** when a break starts, show for 10 s 3 chips (`Walk`, `Water`, `Stretch`, with icons `footprints`, `glass-water`, `stretch-horizontal` added through ORC). Tapping one sets the break note.
+5. **End-of-session sheet** (`lab('recall')`, default on): after `stopTimer` of a study entry ≥ 10 min, open `SHEETS.sessionEnd`:
+   - focus rating (3 icons, required for Save);
+   - topic chips of that subject (multi-select; from `V.topics`);
+   - `kArea` "What did you learn?" (optional, 280).
+   - Save writes `w.day(k, {[id]: {focus, topics, recall}})`. If topics are tagged, also set their `last` to today (don't change `due`; that needs a rating, in L4).
+   - Skip = close. This replaces the inline `Focus?` card prompt when the lab is on.
+6. **Energy** (`lab('energy')`, default off): 3 icons (`battery-low`/`battery-medium`/`battery-full`) in the start options, stored as the entry `energy`.
+7. **Tests:** `suggestBreak` bounds; the session-end write shape; intent shown on the card.
+
+## D8. L6 Distraction v2: steps
+1. **Android** (`live/UsageReader.kt`, `live/UsagePlugin` methods on `CarrelLivePlugin` through ORC review):
+   - `hasUsageAccess(): boolean` (AppOpsManager `OPSTR_GET_USAGE_STATS`).
+   - `openUsageAccess()` (`Settings.ACTION_USAGE_ACCESS_SETTINGS`).
+   - `sessionUsage(startMs, endMs, packages:[String]) → [{label, pkg, min, opens}]`, using `UsageStatsManager.queryEvents` and summing time between `ACTIVITY_RESUMED` and `ACTIVITY_PAUSED` for each package in the list, clipped to the window. `label` = `PackageManager.getApplicationLabel`.
+   - Default package list: `com.instagram.android, com.google.android.youtube, com.whatsapp, com.twitter.android, com.zhiliaoapp.musically, com.reddit.frontpage, com.snapchat.android, com.facebook.katana, in.startv.hotstar, com.netflix.mediaclient`.
+2. **Web:**
+   - L6 defines `l6DriftRow() → html` (a `kRow` with a switch `Detect drift`; on → if no access, call `openUsageAccess()`, then re-check on resume). ORC adds one call to it inside the Notifications page in `native.js` (L8's file) on L6's request.
+   - After a study entry stops (≥ 10 min) and access is granted: call `sessionUsage(s, e, list)`. If the total ≥ 2 min, write `usage/<k>` `{v:1, date:k, sessions:{[entryId]:{apps:{[label]:{min, opens}}}}}` and show the toast `Instagram 6m during Physics` with action `Log`. `Log` = the existing drift writer (`noticeDrift`-equivalent writing a drift with `driftMin = total`).
+   - Feature-detect the plugin method (old APKs have none): no method → hide the row.
+3. **Urge-surf** (`lab('urgesurf')`, default on): Noticed opens `SHEETS.urge`, a 60 s ring (SVG, countdown, `aria-live` off) with the text `Wait it out`. When the timer ends, or on tap: buttons `Back to work` (close) / `Log drift` (opens the existing drift chips). The urge itself is still recorded on open (existing `noticeNow()`).
+4. **`CARDS.distraction`** (D2): `Drift 1h 10m this week · ↑ 2×` plus a 7-bar sparkline (SVG 56×16).
+5. **Tests:** `web/test/distraction_test.js` with a stubbed plugin, covering the toast threshold (≥ 2 min), the `usage/<k>` write shape, and the card rule. The JVM test `UsageReaderTest.kt` covers clipping events to the session window.
+
+## D9. L7 Insights v2: steps
+1. **`VIEWS.insights`:**
+   - Header `‹ This week ›` + `Week|Month` (keep S1's).
+   - Hero: total + a ring vs the weekly goal (sum of activity goals in hours, or `dailyGoal × 7` if there are none).
+   - Then **Suggestions** (≤ 3 rows from `advice.js`), then rows with previews: `Subjects ›` (n), `Focus ›` (best hour), `Estimates ›` (accuracy %), `Patterns ›`, `Streak ›` (days).
+2. **`advice.js`:** `advise(ctx) → [{id, text, action:{label, act, args}}]`. `ctx` is computed in the view from `aggregate`, the goals, `estimateFactor`, `energyWindows`, `l4DueTopics` and the drift totals. Rules are checked in this order; keep the first 3 that match:
+
+| id | Condition | Text | Action |
+|---|---|---|---|
+| `behind` | a subject < 50 % of its weekly goal and ≥ 3 days left | `Physics is at 29% of goal. Plan 2 sessions?` | `Plan it` → `SHEETS.morning` (or the auto-plan preview with that subject) |
+| `peak` | top energy hour ≠ the hour with most study minutes | `You focus best at 9 am. Start there tomorrow?` | `Set` → writes `planStart` = that hour |
+| `estimate` | any subject factor ≥ 1.3 | `Maths takes 1.4× your estimate. Plans now adjust.` | `OK` (dismiss) |
+| `reviews` | ≥ 5 topics overdue | `7 reviews overdue. Add a 30m review block?` | `Add` → a block for today |
+| `drift` | drift this week > last × 1.5 and > 30 min | `Drift is up to 1h 10m. Try urge-surf?` | `Turn on` → lab `urgesurf` |
+| `streak` | today < minimum day and now > planEnd − 2 h | `25 min keeps your 6-day streak.` | `Start` → resume the last study |
+
+   - Dismissed suggestion ids are stored per week in `store` (`advice:<weekKey>`).
+3. **Pages:**
+   - `stats.focus`: average rating by hour (bars) and by subject (rows).
+   - `stats.estimates`: per-subject factor rows plus overall accuracy = `1 − mean(|actual − planned| / planned)`.
+   - `stats.streak`: the flexible streak.
+4. **Streak rules:**
+   - Minimum day = `CFG.minDay` (minutes, default 25). ORC adds a `Minimum day` stepper (5–120, step 5) to `settings.day` on L7's request.
+   - A day counts if study ≥ minDay. One freeze is allowed per ISO week: the first missed day in a week is frozen if the user had ≥ 1 counted day that week before it.
+   - The streak = consecutive counted-or-frozen days ending yesterday (plus today if it already counts).
+5. **`CARDS.freshstart`** (D2): `New week. Set one goal?` → opens a sheet with one `kStepper` (weekly hours for the top subject) → `saveAct`.
+6. **Tests:** each advice rule (true and false cases); streak with a freeze; accuracy maths.
+
+## D10. L8 Android surfaces: steps
+1. **Widget** (`live/widget/CarrelWidget.kt`, `res/layout/widget_*.xml`, `res/xml/widget_info.xml`): sizes 2×1 and 4×1.
+   - Content: a dot, the activity name or `Not tracking`, a Chronometer (counting up from the start), today's total, and an icon button (stop if running, else start last).
+   - Updates on every engine state change (call `AppWidgetManager.updateAppWidget` from the place the notification is posted). Colours come from the DayNight resources (`#FAFAF9` / `#0C0C0D`, accent `#0F766E` / `#2DD4BF`).
+2. **Quick Settings tile** (`live/TimerTile.kt`, `TileService`): label `Carrel`, subtitle = the activity or `Start last`; tap = stop or start last. Use the existing `ActionReceiver` intents.
+3. **Shortcuts:** dynamic shortcuts for the top 3 study activities by minutes in the last 14 days (`app.carrel.study://start?act=<id>`), plus a static `Quick add` (`app.carrel.study://capture`). The web side handles the URLs in `native.js` `appUrlOpen` (start → `startActivity`; capture → `openSheet({type:'capture', text})`).
+4. **Share target:** an `intent-filter` for `ACTION_SEND` `text/plain` on `MainActivity` → forward as `app.carrel.study://capture?text=<urlencoded>`.
+5. **Live Update:** when `Build.VERSION.SDK_INT >= 36`, set `setRequestPromotedOngoing(true)` and a short critical text (`25:00`); otherwise unchanged.
+6. **Tests:** JVM unit tests for the URL building and parsing; Android CI build; a manual check list in the status file (widget, tile, shortcut, share).
+
+## D11. L9 Quick capture: parser spec (`web/logic/parse.js`)
+`parse(text, {now, acts:[{id,name}], weekStart}) → {type, title, activity, minutes, date, time, prio, kind}`
+
+1. **Tokens** (case-insensitive), each removed from the title once matched:
+   - **Priority:** `!` or `!!` → `prio: 1`.
+   - **Duration:** `(\d+(\.\d+)?)\s*(h|hr|hrs|hours?)` → minutes = n × 60; `(\d+)\s*(m|min|mins|minutes?)` → minutes; `1h30`, `1h 30m` → 90.
+   - **Time:** `(\d{1,2})(:(\d{2}))?\s*(am|pm)` or `(\d{1,2}):(\d{2})` (24 h).
+   - **Date:**
+     - `today` / `tod`, `tomorrow` / `tmr` / `tmrw`;
+     - weekday names and 3-letter forms → the next occurrence (today counts only if the time is still ahead);
+     - `in (\d+) (day|days|week|weeks)`;
+     - `(\d{1,2}) (jan…dec)` and `(jan…dec) (\d{1,2})` → this year, or next year if the date has passed;
+     - `(\d{1,2})/(\d{1,2})` = day/month.
+     - `by <date>` sets `due` for tasks.
+   - **Kind:** the words `exam`, `test`, `quiz`, `midterm`, `final` → deadline kind `exam`; `due`, `submit`, `assignment` → `due`.
+   - **Subject:** a leading word or words that fuzzily match an activity name (case-insensitive prefix ≥ 3 characters, or a known alias such as `maths` ↔ `mathematics` / `math`, `phy` ↔ `physics`, `chem` ↔ `chemistry`). Tie-break: longest match.
+2. **Type:**
+   - an explicit tab wins;
+   - otherwise kind present → `deadline`;
+   - otherwise a time and date present with a duration → `block`;
+   - otherwise → `task`.
+3. **Title:** the remaining text, trimmed and with whitespace collapsed; capitalise the first letter. Empty → the subject name.
+4. **Sheet:**
+   - One `kText`, autofocus.
+   - The chip row under it previews the parse: subject dot, `2h`, `Fri 30`, `!`, the type. Each chip opens its own small editor (fallback: tapping a chip clears that token).
+   - A `kSeg` with `Task | Deadline | Block | Ask Claude`. Enter = Save.
+   - **Saving:**
+     - task → `planning/backlog`;
+     - deadline → `planning/deadlines`;
+     - block → `plans/<date>` with `at`;
+     - ask → `coach/<id>` `{v:1, at, kind:'ask', from:'me', title:text, body:'', status:'new'}`.
+   - After saving: toast `Added to backlog · Undo`.
+5. **Tests:** ≥ 30 cases, including:
+   - `physics ch7 2h by fri !`
+   - `maths test 12 nov 9am`
+   - `chem revise in 3 days 45m`
+   - `read paper tmr 14:30 1h`
+   - `!! essay due 3/11`
+   - `bio` (an unknown subject stays in the title)
+   - an empty string
+   - a past date rolling to next year
+   - `today 25m`
+   - `1h30 optics`
+
+## D12. L10 Claude bridge: exact artefacts
+1. **`docs/v2/guide.json`** (loaded into `meta/guide` by ORC):
+   - `{v:1, read_first:true, collections:{…shapes from D0.2 and B6…}, write_rules:[…], examples:{…}}`.
+   - The write rules say:
+     - "Use `select public.doc_merge('<path>', '<json>'::jsonb, null, 'claude')` or `doc_set`."
+     - "Only write `coach/*`, `plans/*` (blocks with `from:'claude'`), `topics/*`."
+     - "Never modify `days/*`, `config/*`, `state/*`."
+     - "Dates are local `YYYY-MM-DD`; times `HH:MM`."
+2. **`005_v2_views.sql`** (security_invoker views, `revoke all … from anon, public; grant select … to authenticated`):
+   - `coach_inbox(id, at, kind, from, title, status)`.
+   - `topics_due(id, subject, title, due, interval, reps)` where `due <= current_date + 7`.
+   - `week_summary(activity, minutes, goal_minutes)` for the current ISO week, from `days` entries (reuse the `jsonb_each` pattern in `001_core.sql` line ~96).
+   - Apply with the Supabase MCP `apply_migration` (allowed per B6), then run the advisors.
+3. **Proposal format** that Claude writes and the app accepts: `coach/<id>.proposal = {date:'YYYY-MM-DD', blocks:[{activity, title, minutes, at|null}]}`.
+   - Validation: the date is within −1…+14 days; ≤ 12 blocks; `minutes` 5–240; the activity exists; strings ≤ 120.
+   - Invalid → hide the Accept button.
+4. **Prompts** (exact text for Settings › Claude prompts):
+   - `Use the Supabase connector for Carrel. Read meta/guide in public.docs, then plan my day: read week_summary and topics_due and write one coach plan proposal for today.`
+   - The same opener + `plan my week …`, `write my weekly review as a coach review …`, `make an exam plan for <subject> …`.
+
+## D13. ORC runbook (the orchestrator follows this loop)
+1. **Start:** read this file, create the F1 branch, do D1 yourself (F1 is ORC's lane), merge it.
+2. **Launch** the Phase 1 lanes (L1, L3, L4, L5, L8, L9) and QA in parallel. Give each agent only: "You are lane Lx. Read `docs/PLAN-v2.md` Parts B, C (your lane) and D (D0 + your section). Follow §B4 and §B7."
+3. **Every PR:**
+   - check `git diff --stat` against ownership;
+   - run the evidence commands (D0.6);
+   - look at the screenshots (do they match Part A's rules?);
+   - squash-merge with `gh api -X PUT repos/<owner>/<repo>/pulls/<n>/merge -f merge_method=squash`. Mark draft PRs ready first (`gh api -X POST repos/<owner>/<repo>/pulls/<n>/ccr/ready_for_review`).
+   - If GitHub blocks approval (same account), merging is enough.
+4. **Requests** in status files that touch frozen files: do them in a `v2/orc-*` PR within the same day.
+5. **Phase end:** QA runs the full matrix on `main`; fix or de-scope; flip the final Labs defaults (§B5 Phase 3); send the digest (template below); start the next phase.
+6. **User questions:** use the template below, at most once a day.
+7. **Native:** after merging any `android/**` change, confirm the Android CI built the signed APK, then raise `NATIVE_API` in `config.js` only if web code *requires* the new native methods (prefer feature detection; normally no raise).
+
+**Digest template** (one message):
+```
+Carrel v2 · Phase N done
+Shipped: • … (≤ 8 bullets, user-facing words)
+Install: <APK link or "no install needed, restart the app">
+Decide (optional, defaults apply in 24 h): 1) … [default: …]
+Next: Phase N+1: …
+```
+
+## D14. QA runbook
+- After every merge to `main`: build, all tests, `shots.py` × 4 configurations, `redesign_smoke.py`, and every `v2_*_smoke.py`.
+- **2-tap audit** (`tools/v2_reach_smoke.py`): from Today, for each `PAGES` id and `CARDS` id, find a path of ≤ 2 clicks (BFS over clickable `[data-act]` elements, max depth 2, resetting to Today between tries). Fail with the list of unreachable ids, except the allow-list (`kit`, `settings.keys`).
+- **Visual rules check:** grep the built `www/index.html` CSS for hex colours outside `kit.css`, and for `font-family` / `text-transform: uppercase` outside the kit; fail on new ones.
+- File regressions as rows in `BOARD.md` (`QA-<n>`), and fix trivial ones yourself in `v2/qa-<n>` PRs (≤ 30 changed lines, inside a lane's file only with a note to that lane).
