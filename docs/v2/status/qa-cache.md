@@ -13,8 +13,8 @@ Branch: `v2/qa-idb-realtime-fencing`. Status: in review. Scope: ORC-owned `web/s
 
 - Always persist empty snapshots, and serialize IndexedDB operations per account **across adapters**. Wait for transaction completion and close the IDB connection. Queue sign-out deletion synchronously before another adapter can hydrate.
 - Preserve a path-level revision/tombstone while network reads are in flight. Stage collection pages and apply only if no later realtime event, write or fetch changed that path. Suppress stale fetch errors/emissions from superseded listener generations.
-- Fence closed adapters' realtime callbacks, in-flight fetches, and write echoes. Keep pre-hydration DELETE tombstones so disk snapshots cannot resurrect them.
-- `web/test/supa_cache_test.js` covers out-of-order fetch/realtime UPDATE and DELETE, overlapping refreshes, last-document deletion persistence, pre-hydration DELETE and immediate reauthentication after sign-out.
+- Fence closed adapters' realtime callbacks, in-flight fetches, write echoes and authentication retries. Keep pre-hydration DELETE tombstones so disk snapshots cannot resurrect them.
+- `web/test/supa_cache_test.js` covers out-of-order fetch/realtime UPDATE and DELETE, overlapping refreshes, last-document deletion persistence, pre-hydration DELETE immediate reauthentication after sign-out, and late JWT retry suppression after account teardown.
 
 ## Acceptance
 
