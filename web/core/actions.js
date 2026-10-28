@@ -93,6 +93,7 @@ function takeBreak(o) {
   }
   startActivity(br.id, { at: now, pomoRaw: pomo, ret: { activity: c.activity, block: c.block || null },
     flowBreakMin: o && o.flowBreakMin });
+  if(typeof l5BreakStarted==='function'&&CUR&&act(CUR.activity).role==='break')l5BreakStarted();
 }
 function backFromBreak() {
   const c = CUR;
