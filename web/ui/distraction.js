@@ -165,8 +165,10 @@ ACT['l6-drift-toggle']=async ()=>{
   NP.detectDrift=next;
   if(!next)UI.l6Detected=null;
   changed();
+  let nativeSaved=false;
   try{
     const r=await CL.setPrefs({detectDrift:next});
+    nativeSaved=true;
     Object.assign(NP,r);
     changed();
     if(next&&CL.openUsageAccess){
@@ -176,8 +178,16 @@ ACT['l6-drift-toggle']=async ()=>{
       }
     }
   }catch(e){
-    NP.detectDrift=previous;changed();
-    toast('Could not change usage detection.');
+    if(!nativeSaved){
+      NP.detectDrift=previous;
+      toast('Could not change usage detection.');
+    }else{
+      // Android settings may be unavailable; opt-in was already saved.
+      // Preserve the true native preference and wait for a manual grant.
+      NP.usageAccess=false;
+      toast('Allow usage access in Android Settings.');
+    }
+    changed();
   }finally{l6UsagePrefsBusy=false;}
 };
 ACT['l6-usage-access']=async ()=>{
