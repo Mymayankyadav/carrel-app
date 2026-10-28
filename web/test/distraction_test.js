@@ -159,5 +159,14 @@ ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(async()=>{
   completeQuery({apps:[{pkg:'com.instagram.android',min:6,opens:2}]});
   await pendingSelection;
   assert.equal(writes.length,1,'a removed app cannot be persisted from an old query');
-  console.log('distraction_test: L6 urge surf, offline write, old APK, and revoked consent passed');
+
+  await ctx.ACT['l6-use-app']({getAttribute:()=> 'com.instagram.android'});
+  ctx.S={db:{identity:'old-login'}};
+  const oldAccount=ctx.l6AfterStudyStop('entry4',0,20*60000,'physics');
+  ctx.S.db={identity:'new-login'};
+  completeQuery({apps:[{pkg:'com.instagram.android',min:6,opens:2}]});
+  await oldAccount;
+  assert.equal(writes.length,1,'data from a previous signed-in session must never sync');
+
+  console.log('distraction_test: L6 urge surf, offline write, old APK, account and consent isolation passed');
 }).catch(e=>{console.error(e);process.exitCode=1;});
