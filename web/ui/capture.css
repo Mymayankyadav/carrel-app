@@ -1,1 +1,11 @@
-/* Carrel v2 reserved for lane implementation: ui/capture.css */
+/* L9 — native-feeling capture sheet; all surfaces use kit theme tokens. */
+.l9-sheet{display:grid;gap:14px;}
+.l9-sheet #l9-text{width:100%;min-height:48px;font-size:16px;}
+.l9-chips{display:flex;flex-wrap:wrap;gap:8px;align-items:center;}
+.l9-chip{display:inline-flex;align-items:center;gap:6px;min-height:44px;padding:8px 12px;border:1px solid var(--line);border-radius:999px;background:var(--surface);color:var(--text);font:inherit;font-size:13px;cursor:pointer;}
+.l9-chip[aria-pressed="true"]{border-color:var(--accent);color:var(--accent);}
+.l9-type{padding-top:6px;}
+.l9-type .k-seg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));}
+.l9-type .k-seg button{min-height:44px;}
+.l9-help{margin:0;font-size:13px;color:var(--text-2);}
+.l9-error{font-size:13px;color:var(--danger);}
