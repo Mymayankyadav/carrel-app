@@ -168,5 +168,11 @@ ctx.l6AfterStudyStop('entry1',0,20*60000,'physics').then(async()=>{
   await oldAccount;
   assert.equal(writes.length,1,'data from a previous signed-in session must never sync');
 
+  await ctx.ACT['l6-drift-toggle'](); // disable
+  ctx.CL.openUsageAccess=async()=>{throw Error('settings unavailable');};
+  await ctx.ACT['l6-drift-toggle'](); // native enable saved, but OS settings unavailable
+  assert.equal(ctx.NP.detectDrift,true,'native opt-in must survive a permission-screen failure');
+  assert.equal(ctx.NP.usageAccess,false,'failed permission prompt cannot be mistaken for access');
+
   console.log('distraction_test: L6 urge surf, offline write, old APK, account and consent isolation passed');
 }).catch(e=>{console.error(e);process.exitCode=1;});
