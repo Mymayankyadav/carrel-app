@@ -61,7 +61,7 @@ with sync_playwright() as p:
       page.locator('#sheet [data-act="k-flow-next"]').click()
       assert page.evaluate('UI.sheet.step===2')
       page.locator('#sheet [data-act="k-flow-next"]').click()
-      page.wait_for_function("k => V.rituals[k] && !!V.rituals[k].shutdown",arg=day)
+      page.wait_for_function("() => V.rituals[todayKey()] && !!V.rituals[todayKey()].shutdown")
       assert page.evaluate('UI.sheet===null')
       assert not errors,errors
       page.screenshot(path=str(out/f'{width}-{theme}-closed.png'),full_page=True)
