@@ -28,6 +28,7 @@ class TimerTile : TileService() {
         tile.updateTile()
     }
 
+    @Suppress("DEPRECATION")
     override fun onClick() {
         super.onClick()
         val store = applicationContext.live.store
@@ -41,10 +42,7 @@ class TimerTile : TileService() {
             val pending = PendingIntent.getActivity(this, 204, intent,
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
             if (Build.VERSION.SDK_INT >= 34) startActivityAndCollapse(pending)
-            else {
-                @Suppress("DEPRECATION")
-                startActivityAndCollapse(intent)
-            }
+            else startActivityAndCollapse(intent)
         }
         onStartListening()
     }
