@@ -5,11 +5,14 @@ function t2ActivityRows(kind,totals){
     const running=CUR&&CUR.activity===a.id;
     const duration=totals[a.id]||0;
     const right=running?'Now':duration?fmtDur(duration):'';
-    return '<button type="button" class="t2-activity" data-act="t2-start" data-long="t2-start-opts" data-id="'+esc(a.id)+
+    return '<div class="t2-activity-row">'+
+      '<button type="button" class="t2-activity" data-act="t2-start" data-long="t2-start-opts" data-id="'+esc(a.id)+
       '" aria-label="'+esc('Start '+a.name)+'" aria-pressed="'+!!running+'">'+
       '<span class="t2-activity-left"><i class="t2-act-dot" style="--c:'+kSafeColour(a.color)+'"></i>'+
       '<span>'+esc(a.name)+'</span></span><span class="t2-activity-right">'+
-      esc(right)+'</span></button>';
+      esc(right)+'</span></button>'+
+      '<button type="button" class="k-icon t2-activity-edit" data-act="t2-edit-one" data-id="'+esc(a.id)+
+      '" aria-label="'+esc('Edit '+a.name)+'" title="'+esc('Edit '+a.name)+'">'+icon('edit')+'</button></div>';
   }).join('');
 }
 function sActivities(){
@@ -128,6 +131,12 @@ Object.assign(ACT,{
     closeSheet(true);startActivity(id);
   },
   't2-edit-activities'(){closeSheet(true);openPage('settings','settings.activities');},
+  't2-edit-one'(el){
+    const id=el.getAttribute('data-id'),a=ACTMAP[id];
+    if(!a||a.archived)return;
+    closeSheet(true);
+    openPage('settings','settings.activity',{id});
+  },
   't2-from'(el){
     const sh=UI.sheet;if(!sh||sh.type!=='start')return;
     const v=el.getAttribute('data-v');

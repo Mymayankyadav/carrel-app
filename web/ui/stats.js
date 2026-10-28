@@ -151,6 +151,7 @@ function vStats(){
     kRow({icon:'stats',label:'Estimates',value:acc==null?'—':acc+'% accuracy',open:true,
       attrs:'data-act="l7-estimates"'})+
     kRow({icon:'patterns',label:'Patterns',open:true,attrs:'data-act="s1-patterns"'})+
+    kRow({icon:'note',label:'Study observations',open:true,attrs:'data-act="s1-insights"'})+
     kRow({icon:'today',label:'Streak',value:context.streak+' days',open:true,
       attrs:'data-act="l7-streak"'});
   const fromClaude=typeof l10FromClaude==='function'?l10FromClaude():'';

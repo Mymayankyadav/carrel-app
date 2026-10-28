@@ -26,6 +26,7 @@ const ctx = { ACT, SHEETS, UI, V, CUR:null, DAY, ACTMAP, ACTS: Object.values(ACT
   fmtT: () => '14:30', msToHm:()=>'14:25', parseT:()=>now-HOUR,
   lastEntry:()=>entry, parkedItems:()=>parked,
   kIconBtn: (_i,label,attrs)=>kButton(label,attrs),
+  icon:name=>'<svg data-icon="'+esc(name)+'"></svg>',
   kSheetHead: (title,actions='')=>'<header>'+esc(title)+actions+'</header>',
   kSheetFoot: html=>'<footer>'+html+'</footer>',
   kField: (title,html)=>'<label>'+title+html+'</label>',
@@ -134,6 +135,20 @@ assert.equal(calls.at(-1),'guard-save');
 assert.equal(UI.sheet,null,'valid custom time closes the edit sheet');
 ACT['t2-edit-activities']();
 assert.deepEqual(calls.at(-1),['page','settings','settings.activities']);
+assert(activities.includes('data-act="t2-edit-one" data-id="math"'),
+  'Today activities sheet has a dedicated direct-edit shortcut');
+assert(activities.includes('aria-label="Edit Math &lt;proofs&gt;"'),
+  'edit label is escaped and accessible');
+const previousStarts=calls.filter(x=>Array.isArray(x)&&x[0]==='start').length;
+ACT['t2-edit-one']({getAttribute:()=> 'math'});
+assert.deepEqual(calls.at(-1),['page','settings','settings.activity']);
+assert.equal(calls.filter(x=>Array.isArray(x)&&x[0]==='start').length,previousStarts,
+  'edit must never start a session');
+const pagesBefore=calls.filter(x=>Array.isArray(x)&&x[0]==='page').length;
+ACT['t2-edit-one']({getAttribute:()=> 'archived'});
+ACT['t2-edit-one']({getAttribute:()=> 'not-an-id'});
+assert.equal(calls.filter(x=>Array.isArray(x)&&x[0]==='page').length,pagesBefore,
+  'archived/unknown activity cannot navigate from forged edit target');
 
 
 // L5 reflection writes include sanitized topic ids and one atomic write set.
