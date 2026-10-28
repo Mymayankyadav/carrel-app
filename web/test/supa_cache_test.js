@@ -143,6 +143,20 @@ function fakeIndexedDb() {
     assert.equal(current.n, 8, 'older refresh must not replace newer snapshot');
     db.close();
   }
+  // An old adapter must not refresh credentials and retry an RPC after
+  // account teardown (a new account may already own the auth session).
+  {
+    const env = fakeSb();
+    const held = deferred();
+    let refreshes = 0;
+    env.sb.rpc = () => held.promise;
+    const db = makeDb(env.sb, 'u1', { refresh: async () => { refreshes++; } });
+    const write = db.doc('days/2026-10-29').set({ date: '2026-10-29' });
+    db.close();
+    held.resolve({ data: null, error: { code: '42501', message: 'JWT expired' } });
+    await assert.rejects(write, e => e.code === 'unavailable');
+    assert.equal(refreshes, 0, 'closed adapter must never retry auth under another account');
+  }
   // Simulate IndexedDB persistence, with the 1s debounce accelerated.
   const oldIndexedDB = global.indexedDB, oldTimeout = global.setTimeout;
   const idb = fakeIndexedDb();
