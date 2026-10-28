@@ -137,7 +137,8 @@ function sBlock(sh){
     kField('Activity',kActPick({bind:'sheet.b.activity',id:b.activity,study:true,life:true,none:false}))+
     p2Input('Title','sheet.b.title',b.title,'Title (optional)','b-title',80)+
     kField('Start',timeRow)+
-    kField('Length',p2Duration('sheet.b.minutes',b.minutes||60))+more+p2Error(sh);
+    kField('Length',p2Duration('sheet.b.minutes',b.minutes||60))+
+    l3EstimateNote(b.activity)+more+p2Error(sh);
   const foot='<div class="p2-two">'+
     (available?kBtn('Start now','data-act="block-start"',{kind:'tonal',icon:'start'}):'')+
     kBtn('Save','data-act="block-save"',{kind:'primary'})+'</div>';
@@ -225,6 +226,7 @@ function p2OpenPlanMenu(el,k){
   if(!el)return;
   const day=k||UI.cal.anchor||todayKey(),hasPlan=!!(V.plans&&V.plans[day]);
   const items=[
+    {icon:'autoplan',label:'Auto-plan',act:'l3-auto-open',attrs:'data-k="'+esc(day)+'"'},
     {icon:'copy',label:'Copy to tomorrow',act:'p2-menu-copy',attrs:'data-k="'+esc(day)+'"'},
     {icon:'wrap',label:'Wrap up',act:'p2-menu-wrap',attrs:'data-k="'+esc(day)+'"'},
     {icon:'later',label:'Plan ends at…',act:'p2-menu-end',attrs:'data-k="'+esc(day)+'"'}
@@ -233,6 +235,97 @@ function p2OpenPlanMenu(el,k){
     attrs:'data-k="'+esc(day)+'"',danger:true});
   openMenu(el,items);
 }
+/* L3: estimate correction from completed plan-linked sessions. */
+function l3History(activity) {
+  return (ENTRIES||[]).filter(e=>e && e.a===activity && e.e!=null && e.e>e.s && e.block)
+    .sort((a,b)=>b.e-a.e).map(e=>{
+      const b=V.plans&&V.plans[e.day]&&V.plans[e.day].blocks&&V.plans[e.day].blocks[e.block];
+      return b?{planned:+b.orig||+b.minutes,actual:(e.e-e.s)/MIN}:null;
+    }).filter(Boolean).slice(0,30);
+}
+function l3Factor(activity) {
+  return typeof estimateFactor==='function'?estimateFactor(l3History(activity)):1;
+}
+function l3EstimateNote(activity) {
+  const f=l3Factor(activity);
+  return f===1?'':'<div class="p2-muted">Usually takes ×'+f.toFixed(1)+' from your history</div>';
+}
+function l3HourStats() {
+  const h={};
+  for(const e of ENTRIES||[]){
+    if(!e||e.e==null||e.e<=e.s)continue;
+    const hour=new Date(e.s).getHours(),mins=(e.e-e.s)/MIN;
+    if(!h[hour])h[hour]={min:0,sum:0};
+    h[hour].min+=mins;h[hour].sum+=mins*(+e.focus||2);
+  }
+  return Object.fromEntries(Object.entries(h).map(([hour,v])=>[hour,{min:v.min,focus:v.sum/v.min}]));
+}
+/* Subtract commitments, calendar busy time and existing projected plan blocks. */
+function l3FreeIntervals(k){
+  const p=V.plans[k]||{},start=hmOnDay(k,p.start||CFG.planStart||'08:00'),
+    end=hmOnDay(k,p.end||CFG.planEnd||'22:30'),now=Date.now();
+  const begin=k===todayKey()?Math.max(start,now+5*MIN):start;
+  if(!(end>begin))return [];
+  const pm=planModelFor(k,now),all=(busyIv(k)||[]).slice();
+  if(pm&&pm.rows)pm.rows.forEach(row=>(row.pieces||[]).forEach(pair=>all.push(pair)));
+  const blocks=mergeIntervals(all.map(([s,e])=>[Math.max(begin,s),Math.min(end,e)]).filter(([s,e])=>e>s));
+  const out=[];let cursor=begin;
+  for(const [s,e] of blocks){if(s>cursor)out.push([cursor,s]);cursor=Math.max(cursor,e);}
+  if(cursor<end)out.push([cursor,end]);
+  return out;
+}
+function l3OpenAuto(k){
+  k=k||UI.cal.anchor||todayKey();
+  if(k<todayKey()){toast('Choose today or later.');return;}
+  const items=backlogList().map(t=>({
+    id:t.id,activity:ACTMAP[t.activity]?t.activity:firstStudyId(),
+    title:t.title,minutes:t.minutes,prio:t.prio,hard:t.prio===1
+  }));
+  if(!items.length){toast('Backlog is empty.');return;}
+  const factors={};items.forEach(item=>{factors[item.activity]=l3Factor(item.activity);});
+  const free=l3FreeIntervals(k);
+  const proposal=autoPlan({k,items,free,now:k===todayKey()?Date.now():undefined,
+    gapMin:+CFG.gap||0,windows:energyWindows(l3HourStats()),
+    factor:id=>factors[id]||1});
+  if(!proposal.blocks.length){toast('Nothing fits in this day.');return;}
+  openSheet({type:'autoplan',k,items,proposal,factors});
+}
+function l3AutoSheet(sh){
+  const rows=sh.proposal.blocks.map(b=>kRow({dot:act(b.activity).color,
+    label:b.title||act(b.activity).name,
+    sub:act(b.activity).name,value:fmtHM(b.at)+' · '+b.minutes+'m'})).join('');
+  const left=sh.proposal.unplaced.length?'<div class="p2-muted">'+
+    sh.proposal.unplaced.length+' task(s) have remaining work</div>':'';
+  return kSheetHead('Auto-plan')+
+    '<div class="k-sheet-body p2-sheet">'+
+    '<div class="p2-muted">Preview · '+sh.proposal.blocks.length+' block(s)</div>'+
+    rows+left+'</div>'+
+    kSheetFoot(kBtn('Accept plan','data-act="l3-auto-accept"',{kind:'primary'}));
+}
+SHEETS.autoplan=l3AutoSheet;
+ACT['l3-auto-open']=el=>l3OpenAuto(el&&el.getAttribute('data-k'));
+ACT['l3-auto-accept']=()=>{
+  const sh=UI.sheet;
+  if(!sh||sh.type!=='autoplan'||!sh.proposal.blocks.length)return;
+  const blocks={},done={},w=W(),base=nextOrder(sh.k);
+  sh.proposal.blocks.forEach((b,i)=>{
+    blocks[uid('b')]=blockDoc({activity:b.activity,title:b.title,minutes:b.minutes,
+      orig:b.minutes,order:base+i,at:b.at,from:'auto'});
+    done[b.itemId]=(done[b.itemId]||0)+b.minutes;
+  });
+  w.plan(sh.k,{blocks});
+  const items={};
+  for(const t of sh.items){
+    const used=done[t.id]||0;if(!used)continue;
+    const factor=sh.factors[t.activity]||1;
+    const total=Math.max(25,Math.ceil(t.minutes*factor/5)*5);
+    if(used>=total)items[t.id]=null;
+    else items[t.id]={minutes:Math.max(25,Math.ceil((total-used)/factor/5)*5)};
+  }
+  if(Object.keys(items).length)w.update('planning/backlog',{items},{items:{}});
+  closeSheet(true);
+  commit('Auto-planned '+sh.proposal.blocks.length+' block(s).',w);
+};
 SHEETS.qnew=sQnew;
 SHEETS.block=sBlock;
 SHEETS.wrap=sWrap;
