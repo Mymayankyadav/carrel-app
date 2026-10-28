@@ -27,8 +27,10 @@ with sync_playwright() as p:
    expect(page.locator('#sheet').get_by_text('Auto planned Topology')).to_be_visible()
    page.screenshot(path=str(out/f'{width}-{theme}-preview.png'),full_page=True)
    page.locator('[data-act="l3-auto-accept"]').click()
-   assert page.evaluate("""(k) => Object.values((V.plans[k]||{}).blocks||{})
-      .some(b=>b && b.from==='auto')""",day),'accepted schedule persisted'
+   # The mock subscription/pending-write projection is asynchronous.
+   # Wait for the accepted plan to become visible instead of racing the queue.
+   page.wait_for_function("""(k) => Object.values((V.plans[k]||{}).blocks||{})
+      .some(b=>b && b.from==='auto')""",arg=day,timeout=10000)
    assert page.evaluate("UI.sheet===null"),'sheet closed after acceptance'
    assert not errors,errors
    page.screenshot(path=str(out/f'{width}-{theme}-accepted.png'),full_page=True)
