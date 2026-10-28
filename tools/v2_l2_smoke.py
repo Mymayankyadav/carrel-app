@@ -16,9 +16,13 @@ with sync_playwright() as p:
       page.wait_for_function("S.loaded.current && S.loaded.rituals && S.loaded.planning && ACTS.length>0")
       day=page.evaluate("""() => {
         const k=todayKey();
-        commit(null,W().update('planning/backlog',{items:{
+        // Control the mock's busy baseline so the preview has placement capacity.
+        const w=W();
+        w.set('plans/'+k,{date:k,source:'me',blocks:{}});
+        w.update('planning/backlog',{items:{
           qa_l2:{title:'L2 realistic planning',activity:'physics',minutes:35,prio:1,
-            order:999,created:isoLocal(Date.now())}}},{items:{}}),{undo:false});
+            order:999,created:isoLocal(Date.now())}}},{items:{}});
+        commit(null,w,{undo:false});
         l2OpenMorning(k);return k;
       }""")
       expect(page.locator('#sheet')).to_contain_text('Pick today')
