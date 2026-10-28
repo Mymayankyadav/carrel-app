@@ -30,7 +30,7 @@ with sync_playwright() as p:
             page.locator('[data-act="l9-save"]').click()
             page.wait_for_function("""() => Object.values(((V.planning.backlog||{}).items)||{})
                  .some(t=>t&&t.title==='Write notes'&&t.minutes===45)""")
-            page.evaluate("l9OpenCapture('exam tomorrow 9am')")
+            page.evaluate("l9OpenCapture('physics exam tomorrow 9am')")
             exam_date=page.evaluate("l9CaptureResult(UI.sheet).date")
             page.locator('[data-act="l9-save"]').click()
             page.wait_for_function("""(date) => Object.values(((V.planning.deadlines||{}).items)||{})
