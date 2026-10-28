@@ -15,10 +15,11 @@ import app.carrel.study.live.CarrelLivePlugin;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Persist first: Capacitor can begin bootstrapping JavaScript in super.onCreate.
+        dispatchCaptureIntent(getIntent());
         registerPlugin(CarrelLivePlugin.class);
         super.onCreate(savedInstanceState);
         configureSystemBars();
-        dispatchCaptureIntent(getIntent());
     }
 
     @Override
