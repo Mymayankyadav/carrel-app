@@ -2,8 +2,9 @@
  * NOT connected to sync.js yet. The current shared queue remains authoritative
  * until a separately reviewed migration preserves sign-out/recovery semantics.
  *
- * Each operation has its own immutable localStorage key. Unlike a shared JSON
- * array, two tabs never need a read/modify/write cycle for different edits.
+ * Each action has its own immutable localStorage key (one operation or an
+ * atomic batch). Unlike a shared JSON array, independent tabs cannot replace
+ * one another's queued actions. A batch is one durable acknowledgement unit.
  * This is local durability, NOT server-side exactly-once delivery.
  */
 'use strict';
@@ -27,17 +28,23 @@ function qaOutboxJournal(storage, uid, session, makeId) {
     typeof op.path === 'string' && op.path.includes('/') &&
     ['set', 'update', 'delete'].includes(op.kind) &&
     Object.prototype.hasOwnProperty.call(op, 'data');
+  // An action may write several documents. Keep the whole write set in
+  // ONE immutable key: a crash or quota failure cannot expose half an action.
+  // Legacy single-op records remain readable without migration.
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const validRecord = (record, id) => !!record && record.v === 1 &&
     record.uid === uid && record.session === session && record.id === id &&
-    validOp(record.op);
+    ((own(record, 'op') && !own(record, 'ops') && validOp(record.op)) ||
+     (!own(record, 'op') && Array.isArray(record.ops) &&
+      record.ops.length >= 1 && record.ops.length <= 256 &&
+      record.ops.every(validOp)));
   function read(key) {
     try { return { ok: true, raw: storage.getItem(key) }; }
     catch (e) { return { ok: false, error: 'read' }; }
   }
   // A failed read-back is *uncertain*, not evidence that the write failed.
   // Never remove the key automatically: it may contain the only saved copy.
-  function append(op) {
-    if (!validOp(op)) return { ok: false, error: 'invalid' };
+  function appendRecord(payload) {
     let id;
     try { id = generate(); }
     catch (e) { return { ok: false, error: 'id' }; }
@@ -48,7 +55,7 @@ function qaOutboxJournal(storage, uid, session, makeId) {
     if (before.raw !== null) return { ok: false, error: 'collision', key };
     let raw;
     try {
-      raw = JSON.stringify({ v: 1, uid, session, id, op });
+      raw = JSON.stringify({ v: 1, uid, session, id, ...payload });
       if (!raw || !validRecord(JSON.parse(raw), id))
         return { ok: false, error: 'serialize' };
     } catch (e) { return { ok: false, error: 'serialize' }; }
@@ -58,6 +65,18 @@ function qaOutboxJournal(storage, uid, session, makeId) {
     if (!after.ok || after.raw !== raw)
       return { ok: false, error: 'verify', key, uncertain: true };
     return { ok: true, key, raw, id };
+  }
+  function append(op) {
+    return validOp(op) ? appendRecord({ op }) : { ok: false, error: 'invalid' };
+  }
+  // Persist the complete W()/commit() action in one localStorage operation.
+  // Reject invalid/oversized batches before any storage mutation. Each batch
+  // remains a single acknowledgement unit until all its remote writes succeed.
+  function appendBatch(ops) {
+    if (!Array.isArray(ops) || !ops.length || ops.length > 256 ||
+        !ops.every(validOp))
+      return { ok: false, error: 'invalid' };
+    return appendRecord({ ops });
   }
   // Enumeration is fail-closed: malformed data or an inaccessible key cannot
   // be treated as an empty outbox. A caller must not discard partial results.
@@ -105,7 +124,7 @@ function qaOutboxJournal(storage, uid, session, makeId) {
     const after = read(item.key);
     return after.ok && after.raw === null;
   }
-  return { prefix, append, list, acknowledge };
+  return { prefix, append, appendBatch, list, acknowledge };
 }
 if (typeof module !== 'undefined' && module.exports)
   module.exports = { qaOutboxJournal };
