@@ -40,6 +40,7 @@ with sync_playwright() as p:
     assert b.evaluate("""async () => (await journal.appendBatchOrdered([
       {path:'days/b',kind:'set',data:{note:'B1'}}],
       navigator.locks,()=>true)).ok""")
+    a.wait_for_function('journal.list().records.length === 2')
     a.evaluate("""() => {
       window.waiting=new Promise(resolve=>window.release=resolve);
       window.started=false;
