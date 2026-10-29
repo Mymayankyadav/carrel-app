@@ -81,8 +81,7 @@ function qaOutboxJournal(storage, uid, session, makeId) {
   }
   // Order is assigned under the SAME origin-wide Web Lock as delivery/ack.
   // This prevents an ack from deleting the highest sequence mid-append.
-  // No shared counter needs
-  // to be persisted: a crash before append leaves no phantom reservation.
+  // No shared counter is persisted: a crash before append leaves no phantom reservation.
   // All pending actions participate in the sequence. If older unsequenced
   // records exist, migration must explicitly handle them first.
   async function appendBatchOrdered(ops, locks, isCurrent) {
