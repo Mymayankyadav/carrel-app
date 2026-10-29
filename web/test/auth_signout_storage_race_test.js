@@ -7,6 +7,29 @@ const fs = require('node:fs');
 const path = require('node:path');
 const vm = require('node:vm');
 const source = fs.readFileSync(path.join(__dirname, '../auth.js'), 'utf8');
+const stateSource = fs.readFileSync(path.join(__dirname, '../core/state.js'), 'utf8');
+{
+  // Test the real checked storage helper, not just the auth mock.
+  const start = stateSource.indexOf('const store = {');
+  const end = stateSource.indexOf('\n};', start) + 3;
+  assert.ok(start >= 0 && end > start);
+  const disk = new Map();
+  let blocked = false;
+  const localStorage = {
+    getItem(k) { if (blocked) throw Error('SecurityError'); return disk.get(k) ?? null; }
+  };
+  const ctx = {localStorage};
+  vm.createContext(ctx);
+  vm.runInContext(stateSource.slice(start,end)+'\nthis.checkedStore=store;',ctx);
+  assert.equal(ctx.checkedStore.getChecked('pending:alice').ok,true);
+  assert.equal(ctx.checkedStore.getChecked('pending:alice').value,null);
+  disk.set('carrel.pending:alice','[{"path":"days/2026-10-29"}]');
+  assert.equal(ctx.checkedStore.getChecked('pending:alice').value.length,1);
+  disk.set('carrel.pending:alice','{not-json');
+  assert.equal(ctx.checkedStore.getChecked('pending:alice').ok,false);
+  blocked = true;
+  assert.equal(ctx.checkedStore.getChecked('pending:alice').ok,false);
+}
 
 async function scenario(opts={}) {
   const key = 'pending:alice:session-12345678';
