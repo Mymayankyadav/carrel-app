@@ -47,14 +47,27 @@ with sync_playwright() as p:
     assert a.evaluate("""async () => (await journal.appendOrdered(
       {path:'days/same',kind:'set',data:{note:'second'}},
       navigator.locks,()=>true)).ok""")
-    assert b.evaluate("""() => {
-      const rows=journal.list();
-      return rows.ok && rows.records.length===2 &&
-        rows.records[0].record.seq===1 &&
-        rows.records[1].record.seq===2 &&
-        rows.records[0].record.ops[0].data.note==='first' &&
-        rows.records[1].record.ops[0].data.note==='second';
-    }"""), "lexically reversed IDs must not reorder writes"
+    # localStorage changes from another renderer may arrive after the other
+    # tab's append promise resolves. Wait for visibility, then verify durable
+    # ordering; never silently accept a duplicate sequence or missing record.
+    try:
+        b.wait_for_function("""() => {
+          const rows=journal.list();
+          return rows.ok && rows.records.length===2;
+        }""", timeout=5000)
+    except Exception as exc:
+        snapshot = b.evaluate("""() => {
+          const rows=journal.list();
+          return {rows, keys:Array.from({length:localStorage.length},
+            (_,i)=>localStorage.key(i))};
+        }""")
+        raise AssertionError(f"Cross-tab journal visibility failed: {snapshot}") from exc
+    snapshot = b.evaluate("""() => journal.list().records.map(x=>({
+      seq:x.record.seq, note:x.record.ops[0].data.note
+    }))""")
+    assert snapshot == [
+        {"seq": 1, "note": "first"}, {"seq": 2, "note": "second"}
+    ], f"Journal append order violation: {snapshot}"
     b.reload()
     b.add_script_tag(path=str(root / "web/logic/outbox-journal.js"))
     b.add_script_tag(path=str(root / "web/logic/outbox-delivery.js"))
