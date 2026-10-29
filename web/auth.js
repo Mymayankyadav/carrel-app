@@ -136,12 +136,32 @@ async function startSession() {
   sb.auth.onAuthStateChange((ev, session) => {
     // Never call auth methods synchronously inside this callback.
     setTimeout(() => {
-      if (ev === 'SIGNED_OUT') { teardownDb(true); nativeClear(); showSignedOut(); }
-      else if (session) {
+      if (ev === 'SIGNED_OUT') {
+        teardownDb(true); nativeClear(); showSignedOut();
+        return;
+      }
+      const uid = session && session.user && session.user.id;
+      if (!uid) {
+        if (ev === 'INITIAL_SESSION') showSignedOut();
+        return;
+      }
+      if (ev === 'INITIAL_SESSION' || ev === 'SIGNED_IN') {
+        // These are the only events that may establish/switch identity.
+        // A delayed TOKEN_REFRESHED/USER_UPDATED from an old account must
+        // never replace the current native token or replay its write queue.
         nativeSession(session);
-        if (ev === 'INITIAL_SESSION' || ev === 'SIGNED_IN') openDb(session);
-        if (S.conn === 'readonly') { S.conn = 'live'; pumpAll(); changed(); }
-      } else if (ev === 'INITIAL_SESSION') showSignedOut();
+        openDb(session);
+        if (S.db && S.uid === uid && S.conn === 'readonly') {
+          S.conn = 'live'; pumpAll(); changed();
+        }
+      } else if (S.db && S.uid === uid) {
+        // A matching refresh can recover read-only mode; USER_UPDATED and
+        // other metadata events are not proof that authentication recovered.
+        nativeSession(session);
+        if (ev === 'TOKEN_REFRESHED' && S.conn === 'readonly') {
+          S.conn = 'live'; pumpAll(); changed();
+        }
+      }
     }, 0);
   });
 }
