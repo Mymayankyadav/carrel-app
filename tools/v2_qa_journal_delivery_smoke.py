@@ -30,11 +30,16 @@ with sync_playwright() as p:
         }""")
     a.evaluate("window.qaId='actionA_00001'")
     b.evaluate("window.qaId='actionB_00002'")
-    assert a.evaluate("""() => journal.appendBatch([
+    # The delivery lock only establishes FIFO when producers use ordered
+    # appends. Two old-style unsequenced records now correctly fail closed.
+    assert a.evaluate("""async () => (await journal.appendBatchOrdered([
       {path:'days/a',kind:'set',data:{note:'A1'}},
-      {path:'plans/a',kind:'set',data:{note:'A2'}}]).ok""")
-    assert b.evaluate("""() => journal.appendBatch([
-      {path:'days/b',kind:'set',data:{note:'B1'}}]).ok""")
+      {path:'plans/a',kind:'set',data:{note:'A2'}}],
+      navigator.locks,()=>true)).ok""")
+    b.wait_for_function('journal.list().records.length === 1')
+    assert b.evaluate("""async () => (await journal.appendBatchOrdered([
+      {path:'days/b',kind:'set',data:{note:'B1'}}],
+      navigator.locks,()=>true)).ok""")
     a.evaluate("""() => {
       window.waiting=new Promise(resolve=>window.release=resolve);
       window.started=false;
