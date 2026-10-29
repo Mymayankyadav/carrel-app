@@ -33,6 +33,14 @@ const PROMPTS = [
 
 const store = {
   get(k) { try { const v = localStorage.getItem('carrel.' + k); return v == null ? null : JSON.parse(v); } catch (e) { return null; } },
+  // Unlike get(), preserve read/parse failures for destructive-action guards.
+  // A missing key is safe; inaccessible or corrupt storage is not an empty queue.
+  getChecked(k) {
+    try {
+      const raw = localStorage.getItem('carrel.' + k);
+      return { ok: true, value: raw == null ? null : JSON.parse(raw) };
+    } catch (e) { return { ok: false, value: null }; }
+  },
   keys(prefix) {
     try {
       const out = [], p = 'carrel.' + prefix;
