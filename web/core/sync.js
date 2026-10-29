@@ -37,6 +37,26 @@ function computeView() {
 
 let opSeq = 0;
 const retryT = {};
+// A remote acknowledgement is not durable until its removal from the local
+// outbox is persisted. Keep acknowledged operations in memory (but never
+// resend them) while device storage is unavailable, and retry cleanup.
+let qaSyncAckCleanup = null;
+function qaSyncScheduleAckCleanup() {
+  if (!S.uid || !S.db) return;
+  if (qaSyncAckCleanup) {
+    if (qaSyncAckCleanup.uid === S.uid && qaSyncAckCleanup.db === S.db) return;
+    clearTimeout(qaSyncAckCleanup.id);
+  }
+  const token = { uid: S.uid, db: S.db, id: null };
+  qaSyncAckCleanup = token;
+  token.id = setTimeout(() => {
+    if (qaSyncAckCleanup !== token) return;
+    qaSyncAckCleanup = null;
+    if (S.uid !== token.uid || S.db !== token.db) return;
+    if (!savePending()) qaSyncScheduleAckCleanup();
+    changed();
+  }, 5000);
+}
 // Persist an entire user action before any of its writes can reach Supabase.
 // If localStorage rejects the new queue, leave the old durable queue intact
 // and refuse the new action instead of claiming an offline-safe save.
@@ -67,13 +87,32 @@ function savePending() {
   const key = pendingStoreKey();
   // The in-memory browser fixture has no authenticated UID and never sends
   // real network writes. Production must have an account-scoped durable key.
-  if (!key) return typeof MOCK !== 'undefined' && MOCK;
+  if (!key) {
+    const mock = typeof MOCK !== 'undefined' && MOCK;
+    // The browser fixture has no durable account key, but completed writes
+    // must still leave its in-memory queue as they did before this change.
+    if (mock) S.pending = S.pending.filter(o => !o.acked);
+    return mock;
+  }
   // The real store returns false for quota, security and read-back failures.
   // Older test adapters return undefined on success; only explicit failure
   // rejects the queue.
-  return store.set(key, S.pending.length ? S.pending.map(o => ({
+  const remaining = S.pending.filter(o => !o.acked);
+  const saved = store.set(key, remaining.length ? remaining.map(o => ({
     path: o.path, kind: o.kind, data: o.data, ensure: o.ensure, cond: o.cond
   })) : null) !== false;
+  if (saved) {
+    // Only release acknowledged operations after their durable outbox
+    // removal succeeds. An interrupted cleanup must not resend them in this
+    // session or claim the local queue is clean.
+    S.pending = remaining;
+    if (S.pendingAckStorageError === S.uid) S.pendingAckStorageError = null;
+    if (qaSyncAckCleanup && qaSyncAckCleanup.uid === S.uid) {
+      clearTimeout(qaSyncAckCleanup.id);
+      qaSyncAckCleanup = null;
+    }
+  }
+  return saved;
 }
 function restorePending() {
   const key = pendingStoreKey();
@@ -138,7 +177,7 @@ async function execOp(op) {
 }
 async function pump(path) {
   if (!S.db || S.inflight.has(path) || S.conn === 'readonly') return;
-  const op = S.pending.find(o => o.path === path);
+  const op = S.pending.find(o => o.path === path && !o.acked);
   if (!op) return;
   S.inflight.add(path);
   const db = S.db;
@@ -175,7 +214,15 @@ async function pump(path) {
     }
   }
   S.inflight.delete(path);
-  if (complete) { S.pending = S.pending.filter(o => o !== op); savePending(); }
+  if (complete) {
+    op.acked = true;
+    if (!savePending()) {
+      if (S.pendingAckStorageError !== S.uid)
+        toast('Change synced, but device cleanup failed. Keep Carrel open while it retries.');
+      S.pendingAckStorageError = S.uid;
+      qaSyncScheduleAckCleanup();
+    }
+  }
   if (retry) {
     S.offline = true;
     // Bounded backoff, not bounded attempts: never silently lose unsent work.
@@ -183,7 +230,7 @@ async function pump(path) {
     clearTimeout(retryT[path]);
     retryT[path] = setTimeout(() => pump(path), delay);
   } else {
-    S.offline = S.pending.some(o => o.tries > 0 && !S.inflight.has(o.path));
+    S.offline = S.pending.some(o => !o.acked && o.tries > 0 && !S.inflight.has(o.path));
     if (complete) pump(path);
   }
   changed();

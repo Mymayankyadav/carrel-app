@@ -10,6 +10,8 @@ function vSyncLine() {
   const status = syncState(), count = S.pending.length;
   if (S.uid && S.pendingStorageError === S.uid)
     return '<div class="r0-sync error" role="alert">'+icon('warn')+'Storage unavailable · change not saved</div>';
+  if (S.uid && S.pendingAckStorageError === S.uid)
+    return '<div class="r0-sync error" role="alert">'+icon('warn')+'Sync cleanup failed · keep open</div>';
   if (status === 'offline' && count) return '<div class="r0-sync" role="status">'+icon('offline')+'Offline · '+count+' waiting</div>';
   if (status === 'readonly') return '<div class="r0-sync error" role="alert">'+icon('warn')+"Can't save"+kBtn('Retry','data-act="a1-reconnect"',{kind:'text'})+'</div>';
   return '';
