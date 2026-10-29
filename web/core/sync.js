@@ -172,12 +172,13 @@ const canWrite = () => !!S.db && S.conn !== 'readonly' && S.owner;
 let qaSyncSubscriptionEpoch = 0;
 function qaSyncRetrySubscription(db, epoch) {
   if (S.db !== db || epoch !== qaSyncSubscriptionEpoch || S.resubT) return;
-  S.resubT = setTimeout(() => {
-    S.resubT = 0;
-    // A canceled timer can already be queued; it must not tear down a newer
-    // subscription or reschedule an obsolete connection.
+  const timer = setTimeout(() => {
+    // A canceled timer may fire after a new generation schedules its own
+    // retry. Never erase that newer timer's handle.
+    if (S.resubT === timer) S.resubT = 0;
     if (S.db === db && epoch === qaSyncSubscriptionEpoch) subscribe();
   }, 5000);
+  S.resubT = timer;
 }
 
 /* F1: realtime subscriptions for additive v2 collections. */
