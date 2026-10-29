@@ -49,5 +49,22 @@ d.block(false);
 assert.equal(journal.appendBatch([op('journal')]).ok, true);
 assert.equal(pre.inspect().error, 'journal-not-empty', 'never combine two authoritative queues');
 assert.equal(d.disk.get(key), JSON.stringify(original));
+// A concurrent tab can change the source during preflight enumeration.
+const savedRead = d.storage.getItem;
+let reads = 0;
+d.storage.getItem = k => {
+  const raw = savedRead(k);
+  if (k === key && ++reads === 1)
+    d.disk.set(key, JSON.stringify([op('raced')]));
+  return raw;
+};
+assert.equal(pre.inspect().error, 'source-changed');
+d.storage.getItem = savedRead;
+d.disk.set(key, JSON.stringify(original));
+// A malformed journal is unknown, not evidence that it is empty.
+const badKey = journal.prefix + 'corrupt';
+d.disk.set(badKey, '{');
+assert.equal(pre.inspect().error, 'journal-unreadable');
+d.disk.delete(badKey);
 assert.throws(() => qaJournalLegacyPreflight(d.storage, journal, 'bob', 'session_1'));
 console.log('QA JOURNAL LEGACY PREFLIGHT TESTS PASSED');
