@@ -1,6 +1,6 @@
 # QA-ack-storage — durable outbox acknowledgement recovery
 
-Owner: QA/ORC · Branch: `v2/qa-ack-storage-recovery` · Status: review
+Owner: QA/ORC · Branch: `v2/qa-ack-storage-recovery` · Status: merged
 
 ## Risk
 A remote write could succeed while device storage refused the subsequent deletion of its outbox entry. The app previously removed the operation from memory regardless, leaving an old copy on disk. Reloading could replay the acknowledged write and overwrite a newer remote value; the user saw no indication that local cleanup had failed.
@@ -19,7 +19,7 @@ No client-only change can guarantee exactly-once remote writes if the device is 
 No new permissions, recipients, services, schema changes, production data mutations or v1 feature removals. L6 PR #44 remains draft; physical-device gates #49/#52 are unchanged.
 
 ## Evidence
-- [ ] Node and web build CI on final PR head.
-- [ ] Browser acceptance and navigation audit on final PR head.
-- [ ] Four QA-ack-storage screenshots inspected.
-- [ ] ORC review and merge after gates pass.
+- [x] [Web build, all Node suites and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40841045377) passed on final head `5507420` (including QA ack smoke).
+- [x] [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40841045386) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40841045222) passed on final head.
+- [x] Reviewed four 390/1280 light/dark QA-ack-storage screenshots from artifact `12882538222`; warning is visible and layout remains usable.
+- [x] ORC reviewed changed files, repaired a mock-only regression exposed by CI, verified final-head checks and screenshots, and [squash-merged PR #84](https://github.com/Mymayankyadav/carrel-app/pull/84) at [`b466f25`](https://github.com/Mymayankyadav/carrel-app/commit/b466f253ce80a03ba8204a9c1e849e58bd67b175).
