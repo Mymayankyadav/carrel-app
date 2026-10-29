@@ -57,8 +57,14 @@ function qaSyncCheckedPending(key) {
     result = typeof store.getChecked === 'function' ?
       store.getChecked(key) : { ok: true, value: store.get(key) };
   } catch (e) { return { ok: false, value: null }; }
+  // Even a syntactically valid JSON array may contain broken operations.
+  // Silently skipping those entries during restore would delete them on the
+  // next save, so quarantine the entire queue instead.
   if (!result || result.ok !== true ||
-      (result.value != null && !Array.isArray(result.value)))
+      (result.value != null && !Array.isArray(result.value)) ||
+      (Array.isArray(result.value) && result.value.some(o =>
+        !o || typeof o.path !== 'string' || !o.path.includes('/') ||
+        !['set', 'update', 'delete'].includes(o.kind))))
     return { ok: false, value: null };
   return { ok: true, value: result.value == null ? null : result.value };
 }
