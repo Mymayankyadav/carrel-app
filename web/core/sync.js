@@ -170,15 +170,19 @@ const canWrite = () => !!S.db && S.conn !== 'readonly' && S.owner;
 /* F1: realtime subscriptions for additive v2 collections. */
 function watchColl(name) {
   if (!['topics','rituals','coach','usage'].includes(name) || !S.db) return null;
+  // A closed account's subscription can still deliver an already queued callback.
+  const db = S.db;
   const ranged = name === 'rituals' || name === 'usage';
   const from = S.windowFrom || addDaysKey(todayKey(), -WINDOW_DAYS);
-  const query = ranged ? S.db.collection(name).where('date', '>=', from) : S.db.collection(name);
+  const query = ranged ? db.collection(name).where('date', '>=', from) : db.collection(name);
   return query.onSnapshot(q => {
+    if (S.db !== db) return;
     const m = {};
     if (ranged) for (const id in S.base[name]) if (id < from) m[id] = S.base[name][id];
     q.docs.forEach(d => { if (d.exists) m[d.id] = d.data(); });
     S.base[name] = m; S.loaded[name] = true; changed();
   }, e => {
+    if (S.db !== db) return;
     console.warn('Carrel subscription', name, e);
     if (e && e.code === 'revoked') { S.conn='readonly'; if (typeof recoverAuth === 'function') recoverAuth(); changed(); }
     else if (e && e.code !== 'invalid_argument') { clearTimeout(S.resubT); S.resubT=setTimeout(subscribe,5000); }
@@ -188,15 +192,18 @@ function subscribe() {
   S.unsubs.forEach(u => { try { u(); } catch (e) { /* already closed */ } });
   S.unsubs = [];
   const db = S.db, from = S.windowFrom;
+  if (!db) return;
   const onErr = name => e => {
+    if (S.db !== db) return;
     console.warn('Carrel subscription', name, e);
     if (e && e.code === 'revoked') { S.conn = 'readonly'; if (typeof recoverAuth === 'function') recoverAuth(); changed(); }
     else if (e && e.code !== 'invalid_argument') { clearTimeout(S.resubT); S.resubT = setTimeout(subscribe, 5000); }
   };
-  S.unsubs.push(db.doc('state/current').onSnapshot(s => { S.base.current = s.exists ? s.data() : null; S.loaded.current = true; changed(); }, onErr('current')));
-  S.unsubs.push(db.doc('config/activities').onSnapshot(s => { S.base.activities = s.exists ? s.data() : null; S.loaded.activities = true; changed(); }, onErr('activities')));
-  S.unsubs.push(db.doc('config/settings').onSnapshot(s => { S.base.settings = s.exists ? s.data() : null; S.loaded.settings = true; changed(); }, onErr('settings')));
+  S.unsubs.push(db.doc('state/current').onSnapshot(s => { if (S.db !== db) return; S.base.current = s.exists ? s.data() : null; S.loaded.current = true; changed(); }, onErr('current')));
+  S.unsubs.push(db.doc('config/activities').onSnapshot(s => { if (S.db !== db) return; S.base.activities = s.exists ? s.data() : null; S.loaded.activities = true; changed(); }, onErr('activities')));
+  S.unsubs.push(db.doc('config/settings').onSnapshot(s => { if (S.db !== db) return; S.base.settings = s.exists ? s.data() : null; S.loaded.settings = true; changed(); }, onErr('settings')));
   const coll = (name, key) => db.collection(name).where('date', '>=', from).onSnapshot(q => {
+    if (S.db !== db) return;
     const m = {};
     for (const k in S.base[key]) if (k < from) m[k] = S.base[key][k];
     q.docs.forEach(d => { if (d.exists) m[d.id] = d.data(); });
@@ -209,11 +216,13 @@ function subscribe() {
   S.unsubs.push(coll('distractions', 'distractions'));
   for (const name of ['topics','rituals','coach','usage']) S.unsubs.push(watchColl(name));
   S.unsubs.push(db.collection('reviews').orderBy('week', 'desc').limit(12).onSnapshot(q => {
+    if (S.db !== db) return;
     S.base.reviews = q.docs.filter(d => d.exists).map(d => Object.assign({ id: d.id }, d.data()));
     S.loaded.reviews = true;
     changed();
   }, onErr('reviews')));
   S.unsubs.push(db.collection('planning').onSnapshot(q => {
+    if (S.db !== db) return;
     const m = {};
     q.docs.forEach(d => { if (d.exists) m[d.id] = d.data(); });
     S.base.planning = m;
@@ -223,19 +232,25 @@ function subscribe() {
 }
 function ensureRange(fromK, toK) {
   if (!S.db || !S.windowFrom || fromK >= S.windowFrom) return;
+  const db = S.db, fetched = S.fetched;
   const hi = toK < S.windowFrom ? toK : addDaysKey(S.windowFrom, -1);
   const tag = fromK + '>' + hi;
-  if (S.fetched.has(tag)) return;
-  S.fetched.add(tag);
+  if (fetched.has(tag)) return;
+  fetched.add(tag);
   Promise.all([
-    S.db.collection('days').where('date', '>=', fromK).where('date', '<=', hi).get(),
-    S.db.collection('plans').where('date', '>=', fromK).where('date', '<=', hi).get(),
-    S.db.collection('distractions').where('date', '>=', fromK).where('date', '<=', hi).get()
+    db.collection('days').where('date', '>=', fromK).where('date', '<=', hi).get(),
+    db.collection('plans').where('date', '>=', fromK).where('date', '<=', hi).get(),
+    db.collection('distractions').where('date', '>=', fromK).where('date', '<=', hi).get()
   ]).then(([d, p, ds]) => {
+    // A previous account's range fetch must never populate the new view.
+    if (S.db !== db || S.fetched !== fetched) return;
     ds.docs.forEach(x => { if (x.exists) S.base.distractions[x.id] = x.data(); });
     d.docs.forEach(x => { if (x.exists) S.base.days[x.id] = x.data(); });
     p.docs.forEach(x => { if (x.exists) S.base.plans[x.id] = x.data(); });
     changed();
-  }).catch(e => { S.fetched.delete(tag); console.warn('Carrel fetch', e); });
+  }).catch(e => {
+    if (S.db !== db || S.fetched !== fetched) return;
+    fetched.delete(tag); console.warn('Carrel fetch', e);
+  });
 }
 
