@@ -284,8 +284,12 @@ Object.assign(ACT, {
   },
   async 'a1-recover-legacy-pending'() {
     const uid = S.uid, scopedKey = uid && 'pending:' + uid;
-    const scoped = scopedKey && !a1PendingClearFailed.has(scopedKey) && store.get(scopedKey);
-    const old = Array.isArray(scoped) && scoped.length ? scoped : store.get('pending');
+    const candidates = [scopedKey,
+      ...(uid && typeof store.keys === 'function' ?
+        store.keys(scopedKey + ':').filter(k => k !== pendingStoreKey()) : []), 'pending'];
+    const source = candidates.find(k => k && !a1PendingClearFailed.has(k) &&
+      Array.isArray(store.get(k)) && store.get(k).length);
+    const old = source && store.get(source);
     if (!uid || !S.db || S.conn === 'readonly' || !Array.isArray(old) || !old.length) return;
     const ok = await confirmDialog({
       title: 'Older offline edits',
