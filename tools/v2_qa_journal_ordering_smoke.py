@@ -47,14 +47,52 @@ with sync_playwright() as p:
     assert a.evaluate("""async () => (await journal.appendOrdered(
       {path:'days/same',kind:'set',data:{note:'second'}},
       navigator.locks,()=>true)).ok""")
-    assert b.evaluate("""() => {
+    # localStorage changes from another renderer may arrive after the other
+    # tab's append promise resolves. Wait for visibility, then verify durable
+    # ordering; never silently accept a duplicate sequence or missing record.
+    try:
+        b.wait_for_function("""() => {
+          const rows=journal.list();
+          return rows.ok && rows.records.length===2;
+        }""", timeout=5000)
+    except Exception as exc:
+        snapshot = b.evaluate("""() => {
+          const rows=journal.list();
+          return {rows, keys:Array.from({length:localStorage.length},
+            (_,i)=>localStorage.key(i))};
+        }""")
+        raise AssertionError(f"Cross-tab journal visibility failed: {snapshot}") from exc
+    snapshot = b.evaluate("""() => journal.list().records.map(x=>({
+      seq:x.record.seq, note:x.record.ops[0].data.note
+    }))""")
+    assert snapshot == [
+        {"seq": 1, "note": "first"}, {"seq": 2, "note": "second"}
+    ], f"Journal append order violation: {snapshot}"
+    # Simultaneous independent-tab appends must produce unique FIFO sequence
+    # numbers even when both paths are identical.
+    a.evaluate("""() => {
+      window.qaId='z_third';
+      window.third=journal.appendOrdered(
+        {path:'days/same',kind:'set',data:{note:'third'}},
+        navigator.locks,()=>true);
+    }""")
+    b.evaluate("""() => {
+      window.qaId='a_fourth';
+      window.fourth=journal.appendOrdered(
+        {path:'days/same',kind:'set',data:{note:'fourth'}},
+        navigator.locks,()=>true);
+    }""")
+    assert a.evaluate("window.third")["ok"]
+    assert b.evaluate("window.fourth")["ok"]
+    b.wait_for_function("""() => {
       const rows=journal.list();
-      return rows.ok && rows.records.length===2 &&
-        rows.records[0].record.seq===1 &&
-        rows.records[1].record.seq===2 &&
-        rows.records[0].record.ops[0].data.note==='first' &&
-        rows.records[1].record.ops[0].data.note==='second';
-    }"""), "lexically reversed IDs must not reorder writes"
+      return rows.ok && rows.records.length===4;
+    }""", timeout=5000)
+    expected = b.evaluate("""() => journal.list().records.map(x=>({
+      seq:x.record.seq, note:x.record.ops[0].data.note
+    }))""")
+    assert [x["seq"] for x in expected] == [1, 2, 3, 4], expected
+    assert set(x["note"] for x in expected[2:]) == {"third", "fourth"}, expected
     b.reload()
     b.add_script_tag(path=str(root / "web/logic/outbox-journal.js"))
     b.add_script_tag(path=str(root / "web/logic/outbox-delivery.js"))
@@ -64,8 +102,8 @@ with sync_playwright() as p:
     }""")
     result = b.evaluate("""async () => qaJournalDelivery(journal,navigator.locks,
       'qa_order','s1',async op=>delivered.push(op.data.note),()=>true).drain()""")
-    assert result == {"ok": True, "sent": 2, "acknowledged": 2}, result
-    assert b.evaluate("delivered") == ["first", "second"]
+    assert result == {"ok": True, "sent": 4, "acknowledged": 4}, result
+    assert b.evaluate("delivered") == [x["note"] for x in expected]
     assert b.evaluate("journal.list().records.length") == 0
     assert not errors, errors
     context.close()
