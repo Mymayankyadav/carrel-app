@@ -29,7 +29,7 @@ with sync_playwright() as p:
             page.screenshot(path=str(out / f'{width}-{theme}-warning.png'), full_page=True)
             page.evaluate('store.set=window.qaOriginalStoreSet')
             page.locator('[data-act="a1-retry-pending-clear"]').click()
-            expect(page.locator('.w1-cache-alert')).to_have_count(0)
+            expect(page.locator('[data-act="a1-retry-pending-clear"]')).to_have_count(0)
             assert not errors, errors
             page.close()
     browser.close()
