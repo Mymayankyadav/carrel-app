@@ -160,7 +160,10 @@ function qaOutboxJournal(storage, uid, session, makeId) {
         !item.key.startsWith(prefix) || typeof item.raw !== 'string')
       return false;
     const id = item.key.slice(prefix.length);
-    if (!validPart(id)) return false;
+    // A migration COPY has not become authoritative. Only the future
+    // exclusive handoff may retire it; a generic remote ack never may.
+    if (!validPart(id) || id === 'legacy_stage_v1' ||
+        /^legacy_chunk_v1_[0-9]{6,}$/.test(id)) return false;
     let record;
     try { record = JSON.parse(item.raw); } catch (e) { return false; }
     if (!validRecord(record, id)) return false;
