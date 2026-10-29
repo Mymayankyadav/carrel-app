@@ -133,18 +133,43 @@ async function startSession() {
   if (typeof supabase === 'undefined' || !supabase.createClient) { showSignedOut(); return; }
   await adoptNativeSession();
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: !NATIVE } });
-  // INITIAL_SESSION is only a bootstrap snapshot. A late snapshot must
-  // never replace a newer explicit sign-in or resurrect a signed-out user.
-  // Mark transitions at event receipt, not in the deferred callback.
-  let explicitAuthSeen = false;
-  sb.auth.onAuthStateChange((ev, session) => {
-    const staleInitial = ev === 'INITIAL_SESSION' && explicitAuthSeen;
-    if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') explicitAuthSeen = true;
-    // Never call auth methods synchronously inside this callback.
-    setTimeout(() => {
-      if (staleInitial || (ev === 'INITIAL_SESSION' && S.db)) return;
+  // Supabase emits auth events synchronously, but their handlers must run
+  // outside its callback. Drain a single ordered batch so independently
+  // deferred handlers cannot run out of order and restore an older account.
+  let explicitAuthSeen = false, authScheduled = false;
+  const authEvents = [];
+  function drainAuthEvents() {
+    authScheduled = false;
+    const batch = authEvents.splice(0);
+    // Coalesce superseded sign-ins and metadata before the latest explicit
+    // transition. Never coalesce SIGNED_OUT: it must clear the old account's
+    // offline cache even when another account signs in immediately afterward.
+    const latestExplicit = batch.reduce((last, item, i) =>
+      item.ev === 'SIGNED_IN' || item.ev === 'SIGNED_OUT' ? i : last, -1);
+    let batchSigninUid = null;
+    batch.forEach(({ ev, session }, i) => {
+      // Track even skipped sign-ins: SIGNED_OUT applies to the last actual
+      // signed-in UID, not necessarily the account currently open in the UI.
+      if (ev === 'SIGNED_IN' && session && session.user && session.user.id)
+        batchSigninUid = session.user.id;
+      if (ev === 'INITIAL_SESSION' && (explicitAuthSeen || S.db)) return;
+      if (i < latestExplicit && ev !== 'SIGNED_OUT') return;
       if (ev === 'SIGNED_OUT') {
-        teardownDb(true); nativeClear(); showSignedOut();
+        const signedOutUid = batchSigninUid || S.uid;
+        batchSigninUid = null;
+        if (signedOutUid && (signedOutUid !== S.uid || !S.db)) {
+          // The signed-out account was coalesced before opening. Preserve the
+          // previous account's queue, but delete the signed-out UID's cache
+          // and unsent edits without hydrating or connecting to Supabase.
+          teardownDb(false);
+          store.set('pending:' + signedOutUid, null);
+          a1ClearCache(signedOutUid, () => {
+            const cleanup = makeDb(null, signedOutUid, { idb: true, clearOnly: true });
+            cleanup.close();
+            return cleanup.clear();
+          });
+        } else teardownDb(true);
+        nativeClear(); showSignedOut();
         return;
       }
       const uid = session && session.user && session.user.id;
@@ -153,23 +178,28 @@ async function startSession() {
         return;
       }
       if (ev === 'INITIAL_SESSION' || ev === 'SIGNED_IN') {
-        // These are the only events that may establish/switch identity.
-        // A delayed TOKEN_REFRESHED/USER_UPDATED from an old account must
-        // never replace the current native token or replay its write queue.
+        // Only bootstrap and explicit sign-in can establish identity.
         nativeSession(session);
         openDb(session);
         if (S.db && S.uid === uid && S.conn === 'readonly') {
           S.conn = 'live'; pumpAll(); changed();
         }
       } else if (S.db && S.uid === uid) {
-        // A matching refresh can recover read-only mode; USER_UPDATED and
-        // other metadata events are not proof that authentication recovered.
+        // Metadata from an outgoing UID cannot alter the active credentials.
         nativeSession(session);
         if (ev === 'TOKEN_REFRESHED' && S.conn === 'readonly') {
           S.conn = 'live'; pumpAll(); changed();
         }
       }
-    }, 0);
+    });
+  }
+  sb.auth.onAuthStateChange((ev, session) => {
+    if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') explicitAuthSeen = true;
+    authEvents.push({ ev, session });
+    if (!authScheduled) {
+      authScheduled = true;
+      setTimeout(drainAuthEvents, 0);
+    }
   });
 }
 Object.assign(ACT, {

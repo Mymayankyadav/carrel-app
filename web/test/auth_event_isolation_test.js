@@ -35,10 +35,10 @@ const ctx = {
   async adoptNativeSession(){},
   nativeSession(session) { nativeTokens.push(session.user.id); },
   nativeClear() { nativeClears++; }, nativeBoot(){},
-  makeDb(_sb, uid) {
+  makeDb(_sb, uid, opts) {
     const db = {
-      uid, closed: false, close(){this.closed = true;},
-      clear(){ return Promise.resolve(true); }
+      uid, clearOnly: !!(opts && opts.clearOnly), closed: false, close(){this.closed = true;},
+      clear(){ this.cleared = (this.cleared || 0) + 1; return Promise.resolve(true); }
     };
     adapters.push(db);
     return db;
@@ -147,5 +147,62 @@ function flush() {
   assert.equal(pumps.at(-1),'charlie');
   emit('INITIAL_SESSION','alice'); flush();
   assert.equal(S.uid,'charlie','stale bootstrap cannot undo rapid sign-in');
+  // Multiple SIGNED_IN events delivered before the deferred handler runs
+  // must not briefly open the outgoing identity or replay its offline queue.
+  const adapterCount = adapters.length, pumpCount = pumps.length;
+  const tokenCount = nativeTokens.length;
+  emit('SIGNED_IN','phantom');
+  emit('TOKEN_REFRESHED','charlie');
+  emit('SIGNED_IN','delta');
+  flush();
+  assert.equal(S.uid,'delta');
+  assert.equal(adapters.length,adapterCount + 1,'superseded sign-in never opens an adapter');
+  assert.equal(adapters.some(a => a.uid === 'phantom'),false);
+  assert.deepEqual(pumps.slice(pumpCount),['delta'],'only final account may pump');
+  assert.deepEqual(nativeTokens.slice(tokenCount),['delta'],'no stale native credentials');
+
+  // A superseded sign-in must be skipped, but a real SIGNED_OUT between
+  // accounts must still clear the previous account's offline disk cache.
+  const deltaDb = S.db, clears = nativeClears, pumpsBefore = pumps.length;
+  emit('SIGNED_IN','phantom2');
+  emit('SIGNED_OUT');
+  emit('SIGNED_IN','echo');
+  flush();
+  assert.equal(S.uid,'echo');
+  assert.equal(deltaDb.closed,true);
+  assert.equal(deltaDb.cleared || 0,0,'switching away preserves the prior account cache');
+  const phantomCleanup = adapters.filter(a => a.uid === 'phantom2');
+  assert.equal(phantomCleanup.length,1);
+  assert.equal(phantomCleanup[0].clearOnly,true,'sign-out uses disk-only cleanup for coalesced UID');
+  assert.equal(phantomCleanup[0].cleared,1,'coalesced account cache must be cleared');
+  assert.equal(nativeClears,clears + 1);
+  assert.equal(adapters.some(a => a.uid === 'phantom2' && !a.clearOnly),false);
+  assert.deepEqual(pumps.slice(pumpsBefore),['echo']);
+
+  // A later sign-out wins without ever starting a transient account.
+  const echoDb = S.db, count = adapters.length;
+  emit('SIGNED_IN','temporary');
+  emit('SIGNED_OUT');
+  flush();
+  assert.equal(S.uid,null);
+  assert.equal(S.conn,'none');
+  assert.equal(echoDb.cleared || 0,0,'prior account survives a different UID sign-out');
+  assert.equal(adapters.length,count + 1,'temporary account only gets a cleanup adapter');
+  const temporary = adapters.find(a => a.uid === 'temporary');
+  assert.equal(temporary.clearOnly,true);
+  assert.equal(temporary.cleared,1);
+
+  // INITIAL_SESSION received before an explicit sign-in in the same tick
+  // must not load or pump the stale bootstrap identity.
+  await ctx.startSession(); // fresh listener, no explicit auth seen yet
+  const initialAdapters = adapters.length, initialPumps = pumps.length;
+  emit('INITIAL_SESSION','stale-bootstrap');
+  emit('SIGNED_IN','fresh');
+  flush();
+  assert.equal(S.uid,'fresh');
+  assert.equal(adapters.length,initialAdapters + 1);
+  assert.equal(adapters.some(a => a.uid === 'stale-bootstrap'),false);
+  assert.deepEqual(pumps.slice(initialPumps),['fresh']);
+
   console.log('AUTH EVENT ACCOUNT ISOLATION TESTS PASSED');
 })().catch(e => { console.error(e); process.exitCode=1; });
