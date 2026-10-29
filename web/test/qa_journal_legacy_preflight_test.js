@@ -31,6 +31,8 @@ assert.equal(inspected.ok, true);
 assert.equal(inspected.count, 2);
 assert.deepEqual(inspected.ops, original);
 assert.deepEqual(pre.verify(inspected, () => true), {ok:true,count:2});
+assert.equal(pre.verify({...inspected, ops:[op('tampered')]}, () => true).error,
+  'plan-changed', 'a mutated plan cannot reuse a valid source snapshot');
 assert.equal(pre.verify(inspected, () => false).error, 'stale-session');
 assert.equal(journal.list().records.length, 0, 'preflight never copies into journal');
 assert.equal(d.disk.size, 4, 'preflight never removes or changes source or legacy queues');
