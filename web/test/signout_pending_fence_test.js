@@ -10,7 +10,7 @@ const session = (id,sid) => ({user:{id},access_token:jwt(sid)});
 function harness() {
   const S = {uid:null,db:null,conn:'none',owner:false,pending:[],inflight:new Set(),
     unsubs:[],resubT:0,base:{},loaded:{},fetched:new Set()};
-  const ctx = {S,ACT:{},UI:{view:'today',pages:[],sheet:null},UNDO:[],console,
+  const ctx = {S,ACT:{},VIEWS:{},UI:{view:'today',pages:[],sheet:null},UNDO:[],console,
     atob: s=>Buffer.from(s,'base64').toString('utf8'),
     store:{
       get(k){return disk.has(k)?structuredClone(disk.get(k)):null;},
