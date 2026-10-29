@@ -8,6 +8,8 @@ VIEWS.insights = VIEWS.insights || (()=>VIEWS.stats());
 VIEWS.subjects = VIEWS.subjects || (()=>kEmpty('Coming soon'));
 function vSyncLine() {
   const status = syncState(), count = S.pending.length;
+  if (S.uid && S.pendingStorageError === S.uid)
+    return '<div class="r0-sync error" role="alert">'+icon('warn')+'Storage full · change not saved</div>';
   if (status === 'offline' && count) return '<div class="r0-sync" role="status">'+icon('offline')+'Offline · '+count+' waiting</div>';
   if (status === 'readonly') return '<div class="r0-sync error" role="alert">'+icon('warn')+"Can't save"+kBtn('Retry','data-act="a1-reconnect"',{kind:'text'})+'</div>';
   return '';
