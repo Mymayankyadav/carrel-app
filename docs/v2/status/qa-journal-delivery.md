@@ -17,4 +17,6 @@ Date: 2026-10-29 · Owner: QA/ORC · Branch: `v2/qa-journal-delivery-lock`.
 ## Evidence
 - Local Node test: `node web/test/qa_outbox_delivery_lock_test.js` passed before push.
 - Browser smoke was authored for CI; local Chromium is blocked by container administrator policy on file/localhost navigation. **Do not claim local browser acceptance.**
-- PR CI and screenshot evidence: pending.
+- Implementation head `dc0d3d2`: [web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40910519051) **passed**, with explicit `QA JOURNAL DELIVERY LOCK TESTS PASSED` and `QA JOURNAL TWO-TAB WEB LOCK DELIVERY SMOKE PASSED` log markers. The first smoke attempt failed because browser lock release after closing a tab is asynchronous; the test now retries `busy` briefly and the final run passed.
+- [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40910519014) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40910519015) **passed**.
+- No new UI surface was introduced; screenshot review is not applicable to this isolated, unregistered logic module. Existing browser acceptance checks still ran.
