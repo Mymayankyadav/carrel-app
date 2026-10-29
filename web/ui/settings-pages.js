@@ -75,9 +75,13 @@ function g2Data(){
     kRow({label:'JSON backup',icon:'export',attrs:'data-act="export" data-f="json"'})+'</div>';
 }
 function g2Account(){
-  const legacy = store.get('pending');
-  const recover = S.uid && Array.isArray(legacy) && legacy.length ?
-    kRow({label:'Older unsaved edits',value:legacy.length+' waiting',icon:'refresh',open:true,
+  const scopedKey = S.uid && 'pending:' + S.uid;
+  const scoped = scopedKey && store.get(scopedKey);
+  const legacyKey = Array.isArray(scoped) && scoped.length &&
+    !(typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(scopedKey)) ?
+    scoped : store.get('pending');
+  const recover = S.uid && Array.isArray(legacyKey) && legacyKey.length ?
+    kRow({label:'Older unsaved edits',value:legacyKey.length+' waiting',icon:'refresh',open:true,
       attrs:'data-act="a1-recover-legacy-pending"'}) : '';
   return '<div class="g2-page">'+
     kRow({label:'Signed in as',value:S.user&&S.user.email?S.user.email:'—'})+
