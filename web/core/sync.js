@@ -81,7 +81,11 @@ function enqueue(w) { return enqueueBatch([w]); }
 // unscoped "pending" key: it has no owner and may be from another account.
 // Keep that legacy key untouched for manual recovery instead of guessing.
 function pendingStoreKey() {
-  return S.uid ? 'pending:' + S.uid : null;
+  // A fresh Supabase sign-in gets a different JWT session_id. Even if
+  // sign-out cannot remove a stale queue, the next login never replays it.
+  // Test fixtures without auth sessions retain the original key.
+  return S.uid ? 'pending:' + S.uid +
+    (S.pendingSession ? ':' + S.pendingSession : '') : null;
 }
 function savePending() {
   const key = pendingStoreKey();
@@ -116,7 +120,8 @@ function savePending() {
 }
 function restorePending() {
   const key = pendingStoreKey();
-  if (!key || S.pending.length) return;
+  if (!key || S.pending.length ||
+      (typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(key))) return;
   const arr = store.get(key);
   if (!Array.isArray(arr)) return;
   for (const o of arr) if (o && typeof o.path === 'string' && o.path.includes('/') &&
@@ -127,8 +132,15 @@ function restorePending() {
 // A pre-upgrade queue has no owner. It can only be assigned by an explicit
 // account-level recovery action, never by the authentication callback.
 function importLegacyPending() {
-  const key = pendingStoreKey(), arr = store.get('pending');
-  if (!key || !Array.isArray(arr) || !arr.length) return 0;
+  const key = pendingStoreKey();
+  // Pre-session-key account queues are retained for explicit recovery, not
+  // silently replayed after a sign-out or app upgrade.
+  const oldScoped = S.uid && 'pending:' + S.uid;
+  const source = oldScoped && Array.isArray(store.get(oldScoped)) &&
+    store.get(oldScoped).length ? oldScoped : 'pending';
+  if (typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(source)) return -1;
+  const arr = store.get(source);
+  if (!key || source === key || !Array.isArray(arr) || !arr.length) return 0;
   const valid = o => {
     if (!o || typeof o.path !== 'string') return false;
     const parts = o.path.split('/');
@@ -146,7 +158,14 @@ function importLegacyPending() {
     S.pending.splice(-ops.length, ops.length); // leave legacy data untouched
     return -1;
   }
-  store.set('pending', null);
+  // Do not delete the source until the account's new outbox is durable.
+  // A failed source deletion remains visible for manual cleanup, never auto replay.
+  if (store.set(source, null) === false) {
+    if (typeof a1PendingClearFailed !== 'undefined') {
+      a1PendingClearFailed.add(source);
+      a1SavePendingClear();
+    }
+  }
   pumpAll();
   changed();
   return ops.length;
