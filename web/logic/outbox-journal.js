@@ -79,7 +79,9 @@ function qaOutboxJournal(storage, uid, session, makeId) {
       return { ok: false, error: 'invalid' };
     return appendRecord({ ops });
   }
-  // Order is assigned under an origin-wide Web Lock. No shared counter needs
+  // Order is assigned under the SAME origin-wide Web Lock as delivery/ack.
+  // This prevents an ack from deleting the highest sequence mid-append.
+  // No shared counter needs
   // to be persisted: a crash before append leaves no phantom reservation.
   // All pending actions participate in the sequence. If older unsequenced
   // records exist, migration must explicitly handle them first.
@@ -90,7 +92,7 @@ function qaOutboxJournal(storage, uid, session, makeId) {
       return { ok: false, error: 'locks-unavailable' };
     if (typeof isCurrent !== 'function' || !isCurrent())
       return { ok: false, error: 'stale-session' };
-    const lockName = 'carrel-journal-append.v1:' + uid + ':' + session;
+    const lockName = 'carrel-journal-delivery.v1:' + uid + ':' + session;
     try {
       return await locks.request(lockName, { mode: 'exclusive' }, async lock => {
         if (!lock) return { ok: false, error: 'lock' };
