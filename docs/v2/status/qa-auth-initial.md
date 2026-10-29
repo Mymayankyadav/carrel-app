@@ -1,6 +1,6 @@
 # QA — stale INITIAL_SESSION ordering
 
-Owner: QA/ORC (frozen `web/auth.js`). Branch: `v2/qa-auth-initial-session-order`. Status: in review.
+Owner: QA/ORC (frozen `web/auth.js`). Branch: `v2/qa-auth-initial-session-order`. Status: merged via [PR #70](https://github.com/Mymayankyadav/carrel-app/pull/70), squash commit `d591dc086cc32f67da2b768bcef88a1b17920ac9`.
 
 ## Failure mode
 
@@ -15,9 +15,9 @@ Supabase's `INITIAL_SESSION` is a bootstrap snapshot, not proof of a new login. 
 
 - [x] No production document, schema, native permission, new destination, or destructive migration changes.
 - [x] Only ORC-owned auth, QA test and handoff files changed; L6 and L8 remain untouched.
-- [ ] Full Node/web build and v2 smoke CI passes on final head.
-- [ ] Browser acceptance and navigation audit pass on final head.
-- [ ] Review phone/desktop light/dark screenshots before merge.
-- [ ] ORC merge and update board with verified commit and CI links.
+- [x] [Full Node/web build and v2 smoke CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/40798605812) passed on final head `c62b057e`.
+- [x] [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40798605978) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40798605992) passed on final head.
+- [x] Reviewed Today screenshots at 390px/1280px in light/dark from the CI `v2-f1-shots` artifact; no layout regression observed.
+- [x] ORC squash merged at `d591dc0`; board updated with verified commit and CI links.
 
 L6 [PR #44](https://github.com/Mymayankyadav/carrel-app/pull/44) remains draft until physical Android privacy/Usage Access gate [#52](https://github.com/Mymayankyadav/carrel-app/issues/52) passes. Real-device QA [#49](https://github.com/Mymayankyadav/carrel-app/issues/49) remains open. No physical-device acceptance is claimed.
