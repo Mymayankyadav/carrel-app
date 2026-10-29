@@ -34,6 +34,7 @@ function qaOutboxJournal(storage, uid, session, makeId) {
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const validRecord = (record, id) => !!record && record.v === 1 &&
     record.uid === uid && record.session === session && record.id === id &&
+    (!own(record, 'seq') || (Number.isSafeInteger(record.seq) && record.seq > 0)) &&
     ((own(record, 'op') && !own(record, 'ops') && validOp(record.op)) ||
      (!own(record, 'op') && Array.isArray(record.ops) &&
       record.ops.length >= 1 && record.ops.length <= 256 &&
@@ -44,7 +45,7 @@ function qaOutboxJournal(storage, uid, session, makeId) {
   }
   // A failed read-back is *uncertain*, not evidence that the write failed.
   // Never remove the key automatically: it may contain the only saved copy.
-  function appendRecord(payload) {
+  function appendRecord(payload, seq) {
     let id;
     try { id = generate(); }
     catch (e) { return { ok: false, error: 'id' }; }
@@ -55,7 +56,7 @@ function qaOutboxJournal(storage, uid, session, makeId) {
     if (before.raw !== null) return { ok: false, error: 'collision', key };
     let raw;
     try {
-      raw = JSON.stringify({ v: 1, uid, session, id, ...payload });
+      raw = JSON.stringify({ v: 1, uid, session, id, ...(seq === undefined ? {} : { seq }), ...payload });
       if (!raw || !validRecord(JSON.parse(raw), id))
         return { ok: false, error: 'serialize' };
     } catch (e) { return { ok: false, error: 'serialize' }; }
@@ -77,6 +78,38 @@ function qaOutboxJournal(storage, uid, session, makeId) {
         !ops.every(validOp))
       return { ok: false, error: 'invalid' };
     return appendRecord({ ops });
+  }
+  // Order is assigned under an origin-wide Web Lock. No shared counter needs
+  // to be persisted: a crash before append leaves no phantom reservation.
+  // All pending actions participate in the sequence. If older unsequenced
+  // records exist, migration must explicitly handle them first.
+  async function appendBatchOrdered(ops, locks, isCurrent) {
+    if (!Array.isArray(ops) || !ops.length || ops.length > 256 ||
+        !ops.every(validOp)) return { ok: false, error: 'invalid' };
+    if (!locks || typeof locks.request !== 'function')
+      return { ok: false, error: 'locks-unavailable' };
+    if (typeof isCurrent !== 'function' || !isCurrent())
+      return { ok: false, error: 'stale-session' };
+    const lockName = 'carrel-journal-append.v1:' + uid + ':' + session;
+    try {
+      return await locks.request(lockName, { mode: 'exclusive' }, async lock => {
+        if (!lock) return { ok: false, error: 'lock' };
+        if (!isCurrent()) return { ok: false, error: 'stale-session' };
+        const snapshot = list();
+        if (!snapshot.ok) return { ok: false, error: snapshot.error };
+        if (snapshot.records.some(item => !own(item.record, 'seq')))
+          return { ok: false, error: 'legacy-pending' };
+        const last = snapshot.records.length ?
+          snapshot.records[snapshot.records.length - 1].record.seq : 0;
+        if (last >= Number.MAX_SAFE_INTEGER)
+          return { ok: false, error: 'sequence-exhausted' };
+        if (!isCurrent()) return { ok: false, error: 'stale-session' };
+        return appendRecord({ ops }, last + 1);
+      });
+    } catch (_) { return { ok: false, error: 'lock' }; }
+  }
+  async function appendOrdered(op, locks, isCurrent) {
+    return appendBatchOrdered([op], locks, isCurrent);
   }
   // Enumeration is fail-closed: malformed data or an inaccessible key cannot
   // be treated as an empty outbox. A caller must not discard partial results.
@@ -103,6 +136,19 @@ function qaOutboxJournal(storage, uid, session, makeId) {
         records.push({ key, raw: got.raw, record });
       }
     } catch (e) { return { ok: false, error: 'enumerate' }; }
+    // localStorage key enumeration is NOT a FIFO guarantee. Ordered records
+    // must all carry distinct sequence numbers; mixed modes fail closed.
+    const ordered = records.filter(item => own(item.record, 'seq'));
+    if (ordered.length && ordered.length !== records.length)
+      return { ok: false, error: 'mixed-order' };
+    if (ordered.length) {
+      const seqs = new Set();
+      for (const item of ordered) {
+        if (seqs.has(item.record.seq)) return { ok: false, error: 'duplicate-order' };
+        seqs.add(item.record.seq);
+      }
+      records.sort((a, b) => a.record.seq - b.record.seq);
+    }
     return { ok: true, records };
   }
   // Only an acknowledged operation may be passed here by the sync layer.
@@ -124,7 +170,7 @@ function qaOutboxJournal(storage, uid, session, makeId) {
     const after = read(item.key);
     return after.ok && after.raw === null;
   }
-  return { prefix, append, appendBatch, list, acknowledge };
+  return { prefix, append, appendBatch, appendOrdered, appendBatchOrdered, list, acknowledge };
 }
 if (typeof module !== 'undefined' && module.exports)
   module.exports = { qaOutboxJournal };
