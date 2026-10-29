@@ -15,3 +15,8 @@ Date: 2026-10-29 · Owner: QA/ORC · Branch: `v2/qa-atomic-outbox-journal-founda
 4. Only after those gates pass, register this module in `web/files.json` and switch `sync.js` behind a reviewed migration.
 
 L6 physical-device privacy acceptance #52 and native QA #49 remain separate and unclaimed.
+
+## Verified handoff
+- [PR #98](https://github.com/Mymayankyadav/carrel-app/pull/98) squash-merged at [`de7a035`](https://github.com/Mymayankyadav/carrel-app/commit/de7a0350aef710166cbf8b640f7af8dd3b635ba0).
+- Final-head `9f19e36`: [web build, Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40890308576), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40890308557), and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40890308551) all completed successfully.
+- No new UI or screenshot surface; no physical-device tests claimed. Existing runtime still uses the old queue. Issue #90 remains **open** until end-to-end integration and two-context browser tests.
