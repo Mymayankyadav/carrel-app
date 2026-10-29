@@ -118,5 +118,14 @@ const edit=(id)=>({path:'days/'+id,kind:'set',data:{date:id,entries:{x:{minutes:
   assert.equal(switched.S.pending.length,0);
   assert.equal(switched.S.pendingAckStorageError,null);
 
+  // The unauthenticated browser fixture has no disk key; completed mock
+  // writes must still leave its queue, otherwise L4's smoke cannot finish.
+  const mock=harness();
+  mock.S.uid=null;mock.ctx.MOCK=true;
+  assert.equal(mock.ctx.enqueue(edit('2026-10-29')),true);
+  mock.resolve();await settle();
+  assert.equal(mock.S.pending.length,0,'mock success must clear in-memory queue');
+  assert.equal(mock.timers.size,0);
+
   console.log('SYNC ACK STORAGE RECOVERY TESTS PASSED');
 })().catch(e=>{console.error(e);process.exitCode=1;});
