@@ -94,6 +94,7 @@ function harness() {
 
   // Switching accounts without signing out preserves prior-session edits,
   // but requires explicit recovery under the new session.
+  disk.delete('pending:alice:session-legacy-123');
   disk.set('pending:alice:session-orphan-123',[edit]);
   const orphan=harness();
   orphan.ctx.openDb(session('alice','session-current-123'));
