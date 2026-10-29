@@ -40,6 +40,15 @@ function qaJournalDelivery(journal, locks, uid, session, send, isCurrent) {
           return id === 'legacy_stage_v1' ||
             (typeof id === 'string' && /^legacy_chunk_v1_[0-9]{6,}$/.test(id));
         })) return failure('migration-staged');
+        // Pre-ordered journal actions were written without the shared Web Lock.
+        // localStorage key enumeration is not chronological: sending two such
+        // actions could replay a later same-path edit before an earlier one.
+        // One legacy action remains safe to drain for backwards compatibility.
+        // Never send ANY action from an ambiguous multi-record snapshot.
+        if (snapshot.records.length > 1 &&
+            snapshot.records.some(item =>
+              !Object.prototype.hasOwnProperty.call(item.record, 'seq')))
+          return failure('unordered-pending');
         for (const item of snapshot.records) {
           if (!isCurrent()) return failure('stale-session');
           const record = item && item.record;
