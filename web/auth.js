@@ -146,11 +146,30 @@ async function startSession() {
     // offline cache even when another account signs in immediately afterward.
     const latestExplicit = batch.reduce((last, item, i) =>
       item.ev === 'SIGNED_IN' || item.ev === 'SIGNED_OUT' ? i : last, -1);
+    let batchSigninUid = null;
     batch.forEach(({ ev, session }, i) => {
+      // Track even skipped sign-ins: SIGNED_OUT applies to the last actual
+      // signed-in UID, not necessarily the account currently open in the UI.
+      if (ev === 'SIGNED_IN' && session && session.user && session.user.id)
+        batchSigninUid = session.user.id;
       if (ev === 'INITIAL_SESSION' && (explicitAuthSeen || S.db)) return;
       if (i < latestExplicit && ev !== 'SIGNED_OUT') return;
       if (ev === 'SIGNED_OUT') {
-        teardownDb(true); nativeClear(); showSignedOut();
+        const signedOutUid = batchSigninUid || S.uid;
+        batchSigninUid = null;
+        if (signedOutUid && (signedOutUid !== S.uid || !S.db)) {
+          // The signed-out account was coalesced before opening. Preserve the
+          // previous account's queue, but delete the signed-out UID's cache
+          // and unsent edits without hydrating or connecting to Supabase.
+          teardownDb(false);
+          store.set('pending:' + signedOutUid, null);
+          a1ClearCache(signedOutUid, () => {
+            const cleanup = makeDb(null, signedOutUid, { idb: true, clearOnly: true });
+            cleanup.close();
+            return cleanup.clear();
+          });
+        } else teardownDb(true);
+        nativeClear(); showSignedOut();
         return;
       }
       const uid = session && session.user && session.user.id;
