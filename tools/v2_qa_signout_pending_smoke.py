@@ -24,10 +24,10 @@ with sync_playwright() as p:
               store.set=(k,v)=>v===null && k===key ? false : window.qaOriginalStoreSet(k,v);
               teardownDb(true); showSignedOut();
             }""")
-            expect(page.locator('.w1-cache-alert[role="alert"]')).to_contain_text('Offline edits not cleared')
+            expect(page.locator('.w1-cache-alert[role="alert"]').filter(has_text='Offline edits not cleared')).to_be_visible()
             expect(page.locator('[data-act="a1-retry-pending-clear"]')).to_be_visible()
             page.screenshot(path=str(out / f'{width}-{theme}-warning.png'), full_page=True)
-            page.evaluate('store.set=window.qaOriginalStoreSet')
+            page.evaluate('() => { store.set=window.qaOriginalStoreSet; }')
             page.locator('[data-act="a1-retry-pending-clear"]').click()
             expect(page.locator('[data-act="a1-retry-pending-clear"]')).to_have_count(0)
             assert not errors, errors
