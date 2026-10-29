@@ -16,5 +16,5 @@ Date: 2026-10-29 · Owner: QA/ORC · Branch: `v2/qa-journal-ordered-append`.
 
 ## Evidence
 - New test files are picked up automatically by `.github/workflows/ci.yml` via `web/test/*_test.js` and `tools/v2_*_smoke.py`.
-- CI and merge evidence: **pending**. Do not mark tests or screenshots passed until runs finish.
+- Initial PR-head CI: [web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40918564647) **passed**, with explicit `QA JOURNAL ORDERED APPEND TESTS PASSED` and `QA JOURNAL ORDERED TWO-TAB SMOKE PASSED` markers in job logs. [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40918564767) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40918564506) **passed**. Documentation cleanup will rerun checks; merge evidence pending.
 - No UI surface is introduced; screenshots are not applicable to this isolated, unregistered logic module.
