@@ -81,7 +81,7 @@ function teardownDb(clearData) {
   }
   S.db = null; S.uid = null; S.user = null;
   // In-flight completions from the old adapter are fenced in pump().
-  S.pending = []; S.inflight.clear(); S.pendingStorageError = null;
+  S.pending = []; S.inflight.clear(); S.pendingStorageError = null; S.pendingAckStorageError = null;
   for (const path of Object.keys(retryT)) { clearTimeout(retryT[path]); delete retryT[path]; }
   S.base = { current: undefined, activities: undefined, settings: undefined, days: {}, plans: {}, reviews: [], planning: {}, distractions: {}, topics: {}, rituals: {}, coach: {}, usage: {} };
   S.loaded = { current: false, activities: false, settings: false, days: false, plans: false, reviews: false, planning: false, distractions: false, topics: false, rituals: false, coach: false, usage: false };
