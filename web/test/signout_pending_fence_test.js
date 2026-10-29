@@ -14,6 +14,7 @@ function harness() {
     atob: s=>Buffer.from(s,'base64').toString('utf8'),
     store:{
       get(k){return disk.has(k)?structuredClone(disk.get(k)):null;},
+      keys(prefix){return [...disk.keys()].filter(k=>k.startsWith(prefix));},
       set(k,v){
         if (v===null && failDeletes.has(k)) return false; // read-back detected no-op
         if (v==null) disk.delete(k); else disk.set(k,structuredClone(v));
@@ -90,5 +91,16 @@ function harness() {
   assert.equal(legacy.S.pending.length,1);
   assert.equal(disk.has('pending:alice'),false);
   assert.equal(disk.get('pending:alice:session-legacy-123').length,1);
+
+  // Switching accounts without signing out preserves prior-session edits,
+  // but requires explicit recovery under the new session.
+  disk.set('pending:alice:session-orphan-123',[edit]);
+  const orphan=harness();
+  orphan.ctx.openDb(session('alice','session-current-123'));
+  assert.equal(orphan.S.pending.length,0);
+  assert.equal(orphan.ctx.importLegacyPending(),1);
+  assert.equal(orphan.S.pending.length,1);
+  assert.equal(disk.has('pending:alice:session-orphan-123'),false);
+  assert.equal(disk.get('pending:alice:session-current-123').length,1);
   console.log('SIGN-OUT PENDING SESSION FENCE TESTS PASSED');
 })().catch(e=>{console.error(e);process.exitCode=1;});
