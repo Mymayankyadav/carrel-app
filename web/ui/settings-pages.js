@@ -76,12 +76,15 @@ function g2Data(){
 }
 function g2Account(){
   const scopedKey = S.uid && 'pending:' + S.uid;
-  const scoped = scopedKey && store.get(scopedKey);
-  const legacyKey = Array.isArray(scoped) && scoped.length &&
-    !(typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(scopedKey)) ?
-    scoped : store.get('pending');
-  const recover = S.uid && Array.isArray(legacyKey) && legacyKey.length ?
-    kRow({label:'Older unsaved edits',value:legacyKey.length+' waiting',icon:'refresh',open:true,
+  const candidates = [scopedKey,
+    ...(S.uid && typeof store.keys === 'function' ?
+      store.keys(scopedKey + ':').filter(k => k !== pendingStoreKey()) : []), 'pending'];
+  const source = candidates.find(k => k &&
+    !(typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(k)) &&
+    Array.isArray(store.get(k)) && store.get(k).length);
+  const legacy = source && store.get(source);
+  const recover = S.uid && Array.isArray(legacy) && legacy.length ?
+    kRow({label:'Older unsaved edits',value:legacy.length+' waiting',icon:'refresh',open:true,
       attrs:'data-act="a1-recover-legacy-pending"'}) : '';
   return '<div class="g2-page">'+
     kRow({label:'Signed in as',value:S.user&&S.user.email?S.user.email:'—'})+
