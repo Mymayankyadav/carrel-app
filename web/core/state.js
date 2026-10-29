@@ -33,7 +33,19 @@ const PROMPTS = [
 
 const store = {
   get(k) { try { const v = localStorage.getItem('carrel.' + k); return v == null ? null : JSON.parse(v); } catch (e) { return null; } },
-  set(k, v) { try { if (v == null) localStorage.removeItem('carrel.' + k); else localStorage.setItem('carrel.' + k, JSON.stringify(v)); } catch (e) { /* storage unavailable */ } }
+  set(k, v) {
+    try {
+      const key = 'carrel.' + k;
+      if (v == null) {
+        localStorage.removeItem(key);
+        return localStorage.getItem(key) === null;
+      }
+      const raw = JSON.stringify(v);
+      if (raw === undefined) return false;
+      localStorage.setItem(key, raw);
+      return localStorage.getItem(key) === raw;
+    } catch (e) { return false; } // quota, disabled storage, or failed read-back
+  }
 };
 
 const S = {
@@ -264,7 +276,11 @@ function commit(msg, w, opt) {
   const writes = Array.isArray(w) ? w : w.list();
   if (!writes.length) return false;
   const inv = writes.map(x => inverseOf(x, readPath(V, x.path))).reverse();
-  writes.forEach(enqueue);
+  if (!enqueueBatch(writes)) {
+    toast('Device storage is unavailable. Change not saved. Free space and retry.');
+    render();
+    return false;
+  }
   if (opt.undo !== false) { UNDO.push({ msg, inv }); if (UNDO.length > 40) UNDO.shift(); }
   recompute();
   render();
@@ -275,7 +291,12 @@ function undo() {
   const u = UNDO.pop();
   if (!u) { toast('Nothing to undo.'); return; }
   if (!canWrite()) return;
-  u.inv.forEach(enqueue);
+  if (!enqueueBatch(u.inv)) {
+    UNDO.push(u);
+    toast('Device storage is unavailable. Undo not saved. Free space and retry.');
+    render();
+    return;
+  }
   recompute();
   render();
   toast('Undone: ' + String(u.msg || 'last change').replace(/\.$/, '') + '.', { undo: false });
