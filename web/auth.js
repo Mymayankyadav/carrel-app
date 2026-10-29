@@ -11,6 +11,42 @@ let a1CleanupPending = store.get(a1CleanupKey);
 a1CleanupPending = Array.isArray(a1CleanupPending) ?
   [...new Set(a1CleanupPending.filter(id => typeof id === 'string' && id.length > 0 && id.length <= 128))] : [];
 const a1CleanupBusy = new Set(), a1CleanupVersions = new Map();
+// A failed outbox deletion must not silently resurrect discarded edits.
+// The session-specific queue key also prevents replay after a fresh login,
+// even if localStorage rejects both deletion and this cleanup marker.
+const a1PendingClearKey = 'pendingClearFailed';
+let a1PendingClearFailed = store.get(a1PendingClearKey);
+a1PendingClearFailed = new Set(Array.isArray(a1PendingClearFailed) ?
+  a1PendingClearFailed.filter(k => typeof k === 'string' &&
+    /^pending:[a-zA-Z0-9_-]{1,128}(?::[a-zA-Z0-9_-]{1,128})?$/.test(k)) : []);
+function a1SavePendingClear() {
+  return store.set(a1PendingClearKey,
+    a1PendingClearFailed.size ? [...a1PendingClearFailed] : null);
+}
+function a1SessionKey(session) {
+  try {
+    const parts = session && session.access_token && session.access_token.split('.');
+    const body = parts && parts[1] && JSON.parse(atob(parts[1].replace(/-/g, '+').replace(/_/g, '/')));
+    if (body && typeof body.session_id === 'string' &&
+        /^[a-zA-Z0-9_-]{8,128}$/.test(body.session_id)) return body.session_id;
+  } catch (e) { /* old or malformed session token: use a non-reusable key */ }
+  // No trustworthy stable session identifier: preserve edits on disk, but
+  // require manual recovery after a reload rather than risk a signed-out replay.
+  return 'ephemeral-' + Date.now().toString(36) + Math.random().toString(36).slice(2);
+}
+function a1DiscardPending(uid, activeKey) {
+  if (!uid) return true;
+  const keys = [...new Set(['pending:' + uid, activeKey].filter(Boolean))];
+  for (const key of keys) a1PendingClearFailed.add(key);
+  a1SavePendingClear(); // Best effort: localStorage itself may be unavailable.
+  let ok = true;
+  for (const key of keys) {
+    if (store.set(key, null) === false) ok = false;
+    else a1PendingClearFailed.delete(key);
+  }
+  a1SavePendingClear();
+  return ok;
+}
 function a1SaveCleanup() { store.set(a1CleanupKey, a1CleanupPending.length ? a1CleanupPending : null); }
 function a1ClearCache(uid, clear) {
   if (!uid) return Promise.resolve(true);
@@ -68,7 +104,8 @@ function teardownDb(clearData) {
   const oldUid = S.uid, oldDb = S.db;
   let cacheClearResult = Promise.resolve(true);
   if (oldUid) {
-    if (clearData) store.set('pending:' + oldUid, null);
+    if (clearData) a1DiscardPending(oldUid, S.pendingSession ?
+      'pending:' + oldUid + ':' + S.pendingSession : 'pending:' + oldUid);
     else savePending();
   }
   clearTimeout(recoverT); recoverT = 0;
@@ -79,7 +116,7 @@ function teardownDb(clearData) {
   if (clearData && oldDb && oldDb.clear) {
     cacheClearResult = a1ClearCache(oldUid, () => oldDb.clear());
   }
-  S.db = null; S.uid = null; S.user = null;
+  S.db = null; S.uid = null; S.user = null; S.pendingSession = null;
   // In-flight completions from the old adapter are fenced in pump().
   S.pending = []; S.inflight.clear(); S.pendingStorageError = null; S.pendingAckStorageError = null;
   for (const path of Object.keys(retryT)) { clearTimeout(retryT[path]); delete retryT[path]; }
@@ -103,6 +140,7 @@ function openDb(session) {
   if (S.db && S.uid === session.user.id) return;
   teardownDb(false);
   S.uid = session.user.id; S.user = session.user;
+  S.pendingSession = a1SessionKey(session);
   // Never hydrate an old on-device snapshot while a failed sign-out
   // deletion is pending for this account. Network data remains available.
   S.db = makeDb(sb, S.uid, { idb: true, skipHydrate: a1CleanupPending.includes(S.uid), refresh: async () => { const r = await sb.auth.refreshSession(); if (r.error) throw r.error; } });
@@ -162,7 +200,7 @@ async function startSession() {
           // previous account's queue, but delete the signed-out UID's cache
           // and unsent edits without hydrating or connecting to Supabase.
           teardownDb(false);
-          store.set('pending:' + signedOutUid, null);
+          a1DiscardPending(signedOutUid, null);
           a1ClearCache(signedOutUid, () => {
             const cleanup = makeDb(null, signedOutUid, { idb: true, clearOnly: true });
             cleanup.close();
@@ -223,6 +261,14 @@ Object.assign(ACT, {
     const r = await sb.auth.signOut();
     if (r.error) toast('Could not sign out: ' + r.error.message);
   },
+  'a1-retry-pending-clear'() {
+    if (S.conn !== 'none' || S.db) return;
+    for (const key of [...a1PendingClearFailed]) {
+      if (store.set(key, null) !== false) a1PendingClearFailed.delete(key);
+    }
+    a1SavePendingClear();
+    render();
+  },
   async 'a1-retry-cache-clear'() {
     // Only run while signed out: do not erase an active account's cache.
     if (S.conn !== 'none' || S.db) return;
@@ -238,11 +284,18 @@ Object.assign(ACT, {
     recoverAuth(0);
   },
   async 'a1-recover-legacy-pending'() {
-    const uid = S.uid, old = store.get('pending');
+    const uid = S.uid, scopedKey = uid && 'pending:' + uid;
+    const candidates = [scopedKey,
+      ...(uid && typeof store.keys === 'function' ?
+        store.keys(scopedKey + ':').filter(k => k !==
+          scopedKey + (S.pendingSession ? ':' + S.pendingSession : '')) : []), 'pending'];
+    const source = candidates.find(k => k && !a1PendingClearFailed.has(k) &&
+      Array.isArray(store.get(k)) && store.get(k).length);
+    const old = source && store.get(source);
     if (!uid || !S.db || S.conn === 'readonly' || !Array.isArray(old) || !old.length) return;
     const ok = await confirmDialog({
       title: 'Older offline edits',
-      text: old.length + ' unsent edits from an older version have no account label. Restore only if they belong to this signed-in account.',
+      text: old.length + ' older unsent edits have no account label or may belong to a prior session. Restore only if they belong to this signed-in account; a previous sign-out may have discarded them.',
       ok: 'Restore here', danger: true
     });
     if (!ok || S.uid !== uid || !S.db || S.conn === 'readonly') return;
