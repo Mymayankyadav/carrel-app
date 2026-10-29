@@ -167,8 +167,22 @@ function syncState() {
 }
 const canWrite = () => !!S.db && S.conn !== 'readonly' && S.owner;
 
+/* QA: callbacks from an unsubscribed generation can still arrive after a
+   reconnect on the SAME adapter. Adapter identity alone cannot fence them. */
+let qaSyncSubscriptionEpoch = 0;
+function qaSyncRetrySubscription(db, epoch) {
+  if (S.db !== db || epoch !== qaSyncSubscriptionEpoch || S.resubT) return;
+  const timer = setTimeout(() => {
+    // A canceled timer may fire after a new generation schedules its own
+    // retry. Never erase that newer timer's handle.
+    if (S.resubT === timer) S.resubT = 0;
+    if (S.db === db && epoch === qaSyncSubscriptionEpoch) subscribe();
+  }, 5000);
+  S.resubT = timer;
+}
+
 /* F1: realtime subscriptions for additive v2 collections. */
-function watchColl(name) {
+function watchColl(name, epoch = qaSyncSubscriptionEpoch) {
   if (!['topics','rituals','coach','usage'].includes(name) || !S.db) return null;
   // A closed account's subscription can still deliver an already queued callback.
   const db = S.db;
@@ -176,34 +190,38 @@ function watchColl(name) {
   const from = S.windowFrom || addDaysKey(todayKey(), -WINDOW_DAYS);
   const query = ranged ? db.collection(name).where('date', '>=', from) : db.collection(name);
   return query.onSnapshot(q => {
-    if (S.db !== db) return;
+    if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return;
     const m = {};
     if (ranged) for (const id in S.base[name]) if (id < from) m[id] = S.base[name][id];
     q.docs.forEach(d => { if (d.exists) m[d.id] = d.data(); });
     S.base[name] = m; S.loaded[name] = true; changed();
   }, e => {
-    if (S.db !== db) return;
+    if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return;
     console.warn('Carrel subscription', name, e);
     if (e && e.code === 'revoked') { S.conn='readonly'; if (typeof recoverAuth === 'function') recoverAuth(); changed(); }
-    else if (e && e.code !== 'invalid_argument') { clearTimeout(S.resubT); S.resubT=setTimeout(subscribe,5000); }
+    else if (e && e.code !== 'invalid_argument') qaSyncRetrySubscription(db, epoch);
   });
 }
 function subscribe() {
+  // Invalidate old handlers BEFORE unsubscribing: some adapters may deliver
+  // already-queued callbacks (including errors) during or after unsubscribe.
+  const epoch = ++qaSyncSubscriptionEpoch;
+  clearTimeout(S.resubT); S.resubT = 0;
   S.unsubs.forEach(u => { try { u(); } catch (e) { /* already closed */ } });
   S.unsubs = [];
   const db = S.db, from = S.windowFrom;
   if (!db) return;
   const onErr = name => e => {
-    if (S.db !== db) return;
+    if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return;
     console.warn('Carrel subscription', name, e);
     if (e && e.code === 'revoked') { S.conn = 'readonly'; if (typeof recoverAuth === 'function') recoverAuth(); changed(); }
-    else if (e && e.code !== 'invalid_argument') { clearTimeout(S.resubT); S.resubT = setTimeout(subscribe, 5000); }
+    else if (e && e.code !== 'invalid_argument') qaSyncRetrySubscription(db, epoch);
   };
-  S.unsubs.push(db.doc('state/current').onSnapshot(s => { if (S.db !== db) return; S.base.current = s.exists ? s.data() : null; S.loaded.current = true; changed(); }, onErr('current')));
-  S.unsubs.push(db.doc('config/activities').onSnapshot(s => { if (S.db !== db) return; S.base.activities = s.exists ? s.data() : null; S.loaded.activities = true; changed(); }, onErr('activities')));
-  S.unsubs.push(db.doc('config/settings').onSnapshot(s => { if (S.db !== db) return; S.base.settings = s.exists ? s.data() : null; S.loaded.settings = true; changed(); }, onErr('settings')));
+  S.unsubs.push(db.doc('state/current').onSnapshot(s => { if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return; S.base.current = s.exists ? s.data() : null; S.loaded.current = true; changed(); }, onErr('current')));
+  S.unsubs.push(db.doc('config/activities').onSnapshot(s => { if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return; S.base.activities = s.exists ? s.data() : null; S.loaded.activities = true; changed(); }, onErr('activities')));
+  S.unsubs.push(db.doc('config/settings').onSnapshot(s => { if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return; S.base.settings = s.exists ? s.data() : null; S.loaded.settings = true; changed(); }, onErr('settings')));
   const coll = (name, key) => db.collection(name).where('date', '>=', from).onSnapshot(q => {
-    if (S.db !== db) return;
+    if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return;
     const m = {};
     for (const k in S.base[key]) if (k < from) m[k] = S.base[key][k];
     q.docs.forEach(d => { if (d.exists) m[d.id] = d.data(); });
@@ -214,15 +232,15 @@ function subscribe() {
   S.unsubs.push(coll('days', 'days'));
   S.unsubs.push(coll('plans', 'plans'));
   S.unsubs.push(coll('distractions', 'distractions'));
-  for (const name of ['topics','rituals','coach','usage']) S.unsubs.push(watchColl(name));
+  for (const name of ['topics','rituals','coach','usage']) S.unsubs.push(watchColl(name, epoch));
   S.unsubs.push(db.collection('reviews').orderBy('week', 'desc').limit(12).onSnapshot(q => {
-    if (S.db !== db) return;
+    if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return;
     S.base.reviews = q.docs.filter(d => d.exists).map(d => Object.assign({ id: d.id }, d.data()));
     S.loaded.reviews = true;
     changed();
   }, onErr('reviews')));
   S.unsubs.push(db.collection('planning').onSnapshot(q => {
-    if (S.db !== db) return;
+    if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return;
     const m = {};
     q.docs.forEach(d => { if (d.exists) m[d.id] = d.data(); });
     S.base.planning = m;
