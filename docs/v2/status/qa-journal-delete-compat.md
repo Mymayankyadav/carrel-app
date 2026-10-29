@@ -14,4 +14,10 @@ Date: 2026-10-30 · Owner: QA/ORC · Branch: `v2/qa-journal-legacy-delete-compat
 This change is to **isolated, non-production** QA migration modules only. No production sync authority change, automatic legacy import, source deletion, user-data rewrite, new recipient, permissions or Android change. Existing queues remain authoritative. The actual cross-tab producer lock, migration promotion, sign-out coordination and end-to-end production acceptance are still open under #90. L6 #44 physical-device privacy #52 and native QA #49 remain hard gates.
 
 ## Evidence
-Pending CI and PR verification; do not claim physical-device or screenshot acceptance for this non-UI change.
+- [PR #117](https://github.com/Mymayankyadav/carrel-app/pull/117) squash-merged at [`74a577e`](https://github.com/Mymayankyadav/carrel-app/commit/74a577e63c99dd94af0c668528dae22216edd368).
+- [Final-head web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40971093294) — **success**; new `QA JOURNAL LEGACY DELETE COMPAT TESTS PASSED` suite also passed in the earlier implementation run.
+- [Second final-head CI run](https://github.com/Mymayankyadav/carrel-app/actions/runs/40971086688) — **success**.
+- [Final-head browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40971093290) — **success**.
+- [Final-head v2 navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40971093280) — **success**.
+- Initial CI failed because an existing test expected the original `serialize` error for an explicit undefined `set` payload; the validator was adjusted to preserve that contract, and all final-head checks passed. No failed run is counted as acceptance.
+- No UI or native changes; no new screenshots or physical-device tests claimed.
