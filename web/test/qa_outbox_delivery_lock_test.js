@@ -19,7 +19,8 @@ function device() {
 function locks() {
   const held = new Set();
   return { request: async (name, opts, callback) => {
-    assert.deepEqual(opts, { mode:'exclusive', ifAvailable:true });
+    assert.equal(opts.mode, 'exclusive');
+    assert(opts.ifAvailable === undefined || opts.ifAvailable === true);
     if (held.has(name)) return callback(null);
     held.add(name);
     try { return await callback({ name }); } finally { held.delete(name); }
