@@ -25,6 +25,7 @@ const intervals = new Map();
 const savedSettings = [];
 const ctx = {
   S, ACT: {}, UI: {view:'today', pages:[], sheet:null}, UNDO: [],
+  atob: s => Buffer.from(s, 'base64').toString('utf8'),
   store: {
     get(k) { return storage.has(k) ? JSON.parse(JSON.stringify(storage.get(k))) : null; },
     set(k, v) { if (v == null) storage.delete(k); else storage.set(k, JSON.parse(JSON.stringify(v))); }
@@ -62,7 +63,8 @@ for (const file of ['core/sync.js', 'auth.js']) {
 // requires a larger UI/data harness and is covered by existing integration CI.
 vm.runInContext('subscribe = () => {}', ctx);
 const flush = async () => { for (let i=0;i<5;i++) await Promise.resolve(); };
-const session = id => ({user:{id}});
+const session = id => ({user:{id},access_token:'header.' +
+  Buffer.from(JSON.stringify({session_id:'session-' + id + '-123'})).toString('base64url') + '.sig'});
 
 (async () => {
   // Legacy unowned queues must remain recoverable but NEVER auto-replayed.
@@ -91,7 +93,7 @@ const session = id => ({user:{id}});
   assert.equal(S.loaded.activities, false);
   assert.equal(ctx.UI.pages.length, 0);
   assert.equal(ctx.UI.view, 'today');
-  assert.equal(storage.get('pending:alice')[0].data.secret, 'alice');
+  assert.equal(storage.get('pending:alice:session-alice-123')[0].data.secret, 'alice');
   assert.equal(requests.length, 1, 'Alice queue never replayed as Bob');
   const aliceTimezoneTimer = [...intervals.values()][0];
   S.loaded.settings = true; S.base.settings = {};
@@ -108,7 +110,7 @@ const session = id => ({user:{id}});
   ctx.enqueue({path:'days/2026-10-29',kind:'set',data:{secret:'bob'}});
   assert.equal(requests.at(-1).uid, 'bob');
   ctx.openDb(session('alice'));
-  assert.equal(storage.get('pending:bob')[0].data.secret, 'bob');
+  assert.equal(storage.get('pending:bob:session-bob-123')[0].data.secret, 'bob');
   assert.equal(S.pending.length, 1, 'Alice pending restored only to Alice');
   assert.equal(S.pending[0].data.secret, 'alice');
   assert.equal(requests.at(-1).uid, 'alice');
@@ -120,8 +122,8 @@ const session = id => ({user:{id}});
 
   // Explicit sign-out discards only the current account's unsaved queue.
   ctx.teardownDb(true);
-  assert.equal(storage.has('pending:alice'), false);
-  assert.equal(storage.get('pending:bob')[0].data.secret, 'bob');
+  assert.equal(storage.has('pending:alice:session-alice-123'), false);
+  assert.equal(storage.get('pending:bob:session-bob-123')[0].data.secret, 'bob');
   assert.equal(storage.has('pending'), true, 'unowned legacy queue not silently destroyed');
   assert.equal(S.pending.length, 0);
 
@@ -135,7 +137,7 @@ const session = id => ({user:{id}});
   ctx.confirmDialog = async opts => {
     prompts++;
     assert.equal(opts.danger, true);
-    assert.match(opts.text, /no account label/);
+    assert.match(opts.text, /older unsent edits/);
     return false;
   };
   await ctx.ACT['a1-recover-legacy-pending']();
@@ -147,7 +149,7 @@ const session = id => ({user:{id}});
   assert.equal(prompts, 2);
   assert.equal(storage.has('pending'), false);
   assert.equal(S.pending.length, 2);
-  assert.equal(storage.get('pending:bob').length, 2);
+  assert.equal(storage.get('pending:bob:session-bob-123').length, 2);
   assert.equal(requests.at(-1).uid, 'bob', 'import is queued only on confirmed account');
   console.log('ACCOUNT SWITCH ISOLATION TESTS PASSED');
 })().catch(e => { console.error(e); process.exitCode = 1; });
