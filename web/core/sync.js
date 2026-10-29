@@ -121,39 +121,49 @@ async function pump(path) {
   if (!op) return;
   S.inflight.add(path);
   const db = S.db;
-  let drop = false, retry = false;
+  // Only a confirmed remote success (including a superseded conditional
+  // write) may dequeue an edit. Even permanent-looking errors can be caused by
+  // a temporary schema/quota mismatch; keep the user's local copy recoverable.
+  let complete = false, retry = false;
   try {
     await execOp(op);
     if (S.db !== db) return; // stale completion after account switch
-    drop = true;
+    complete = true;
   }
   catch (e) {
     if (S.db !== db) return; // never change the new account's queue/connection
     const code = e && e.code;
-    if (code === 'invalid_argument' || code === 'transform_error' || code === 'quota_exceeded') {
-      drop = true;
-      console.warn('Carrel write dropped', op.path, e);
-      toast(code === 'quota_exceeded' ? 'Storage is full. Export your data from Setup, then remove old days.' : 'One change could not be saved and was dropped.');
-    } else if (code === 'revoked' || code === 'not_granted' || code === 'capability_disabled' || code === 'capability_removed') {
+    if (code === 'revoked' || code === 'not_granted' || code === 'capability_disabled' || code === 'capability_removed') {
       S.conn = 'readonly';
       if (typeof recoverAuth === 'function') recoverAuth();
-    } else retry = true;
+    } else {
+      retry = true;
+      if ((code === 'invalid_argument' || code === 'transform_error' || code === 'quota_exceeded') && op.tries === 0) {
+        console.warn('Carrel write retained after rejection', op.path, e);
+        toast(code === 'quota_exceeded'
+          ? 'Storage is full. Change kept on this device; export data from Setup.'
+          : 'Change could not sync. Kept on this device; export data from Setup.');
+      }
+    }
   }
-  if (retry && ++op.tries >= 10) {
-    retry = false; drop = true;
-    console.warn('Carrel write retry limit reached', op.path, op);
-    toast('One change kept failing and was dropped.');
+  if (retry) {
+    op.tries++;
+    if (op.tries === 10) {
+      console.warn('Carrel write still pending after repeated retries', op.path);
+      toast('A change is still on this device. Carrel will keep retrying.');
+    }
   }
   S.inflight.delete(path);
-  if (drop) { S.pending = S.pending.filter(o => o !== op); savePending(); }
+  if (complete) { S.pending = S.pending.filter(o => o !== op); savePending(); }
   if (retry) {
     S.offline = true;
+    // Bounded backoff, not bounded attempts: never silently lose unsent work.
     const delay = Math.min(60000, 1500 * Math.pow(2, Math.min(op.tries, 6))) * (0.75 + Math.random() * 0.5);
     clearTimeout(retryT[path]);
     retryT[path] = setTimeout(() => pump(path), delay);
   } else {
     S.offline = S.pending.some(o => o.tries > 0 && !S.inflight.has(o.path));
-    if (drop) pump(path);
+    if (complete) pump(path);
   }
   changed();
 }
