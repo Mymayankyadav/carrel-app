@@ -28,7 +28,10 @@ function qaJournalLegacyPreflight(storage, journal, uid, session) {
     for (const op of parsed) {
       if (!op || typeof op !== 'object' || Array.isArray(op) ||
           typeof op.path !== 'string' || !op.path.includes('/') ||
-          !['set', 'update', 'delete'].includes(op.kind) || !own(op, 'data') ||
+          !['set', 'update', 'delete'].includes(op.kind) ||
+          // sync.js serializes delete operations with no data property.
+          // They are valid offline edits, not corrupt queue entries.
+          (op.kind !== 'delete' && !own(op, 'data')) ||
           (own(op, 'ensure') && op.ensure !== null &&
            (typeof op.ensure !== 'object' || Array.isArray(op.ensure))) ||
           (own(op, 'cond') && op.cond !== null &&
@@ -37,7 +40,8 @@ function qaJournalLegacyPreflight(storage, journal, uid, session) {
     }
     // Copy only the fields supported by the journal. Never infer identity
     // from the legacy unscoped or pre-session pending keys.
-    const ops = parsed.map(op => ({ path: op.path, kind: op.kind, data: op.data,
+    const ops = parsed.map(op => ({ path: op.path, kind: op.kind,
+      ...(own(op, 'data') ? { data: op.data } : {}),
       ensure: own(op, 'ensure') ? op.ensure : null,
       cond: own(op, 'cond') ? op.cond : null }));
     return { ok: true, raw, ops };
