@@ -14,7 +14,7 @@ function w1Welcome() {
       '<p class="w1-private">This tracker is private</p>' +
       kBtn('Sign out','data-act="signout"',{kind:'text'}) :
       kBtn('Continue with Google','data-act="signin"',{kind:'primary',icon:'signin'})) +
-    (S.conn === 'none' && a1PendingClearFailed.size ?
+    (S.conn === 'none' && typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.size ?
       '<div class="w1-cache-alert" role="alert"><strong>Offline edits not cleared</strong>' +
       '<p>Discarded edits may remain on this device, but cannot sync automatically.</p>' +
       kBtn('Retry clearing','data-act="a1-retry-pending-clear"',{kind:'text'}) +
