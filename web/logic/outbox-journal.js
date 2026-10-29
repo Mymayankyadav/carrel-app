@@ -27,7 +27,11 @@ function qaOutboxJournal(storage, uid, session, makeId) {
   const validOp = op => !!op && typeof op === 'object' && !Array.isArray(op) &&
     typeof op.path === 'string' && op.path.includes('/') &&
     ['set', 'update', 'delete'].includes(op.kind) &&
-    Object.prototype.hasOwnProperty.call(op, 'data');
+    // Legacy delete writes have no payload: JSON.stringify omits data:undefined.
+    // Requiring a data property here would strand an otherwise valid offline
+    // delete during migration. Set/update still require a serializable payload.
+    (op.kind === 'delete' || (Object.prototype.hasOwnProperty.call(op, 'data') &&
+      op.data !== undefined));
   // An action may write several documents. Keep the whole write set in
   // ONE immutable key: a crash or quota failure cannot expose half an action.
   // Legacy single-op records remain readable without migration.
