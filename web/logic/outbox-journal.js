@@ -49,7 +49,8 @@ function qaOutboxJournal(storage, uid, session, makeId) {
     let raw;
     try {
       raw = JSON.stringify({ v: 1, uid, session, id, op });
-      if (!raw) return { ok: false, error: 'serialize' };
+      if (!raw || !validRecord(JSON.parse(raw), id))
+        return { ok: false, error: 'serialize' };
     } catch (e) { return { ok: false, error: 'serialize' }; }
     try { storage.setItem(key, raw); }
     catch (e) { return { ok: false, error: 'write', key, uncertain: true }; }
