@@ -48,6 +48,20 @@ let qaSyncPendingDisk = { key: null, raw: 'null' };
 function qaSyncPendingRaw(value) {
   return JSON.stringify(value == null ? null : value);
 }
+// Ordinary store.get() deliberately hides parse and permission errors.
+// Offline writes cannot use that forgiving API: a corrupt or unreadable
+// durable outbox must never be treated as empty and overwritten.
+function qaSyncCheckedPending(key) {
+  let result;
+  try {
+    result = typeof store.getChecked === 'function' ?
+      store.getChecked(key) : { ok: true, value: store.get(key) };
+  } catch (e) { return { ok: false, value: null }; }
+  if (!result || result.ok !== true ||
+      (result.value != null && !Array.isArray(result.value)))
+    return { ok: false, value: null };
+  return { ok: true, value: result.value == null ? null : result.value };
+}
 function qaSyncScheduleAckCleanup() {
   if (!S.uid || !S.db) return;
   if (qaSyncAckCleanup) {
@@ -109,8 +123,8 @@ function savePending() {
   // it. Refuse to overwrite those edits, including during remote-ack cleanup.
   // If no restore occurred, an existing outbox is not ours to replace.
   if (qaSyncPendingDisk.key !== key) qaSyncPendingDisk = { key, raw: 'null' };
-  const diskNow = qaSyncPendingRaw(store.get(key));
-  if (diskNow !== qaSyncPendingDisk.raw ||
+  const disk = qaSyncCheckedPending(key);
+  if (!disk.ok || qaSyncPendingRaw(disk.value) !== qaSyncPendingDisk.raw ||
       (typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(key))) {
     S.pendingConflictError = S.uid;
     return false;
@@ -141,8 +155,15 @@ function savePending() {
 function restorePending() {
   const key = pendingStoreKey();
   if (!key) return;
-  const arr = store.get(key);
-  qaSyncPendingDisk = { key, raw: qaSyncPendingRaw(arr) };
+  const disk = qaSyncCheckedPending(key);
+  // An unreadable outbox cannot be assumed empty, even if the device
+  // becomes readable again before the next write. Require a fresh restore.
+  qaSyncPendingDisk = { key, raw: disk.ok ? qaSyncPendingRaw(disk.value) : undefined };
+  if (!disk.ok) {
+    S.pendingConflictError = S.uid;
+    return;
+  }
+  const arr = disk.value;
   if (S.pending.length ||
       (typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(key))) return;
   if (!Array.isArray(arr)) return;
