@@ -283,11 +283,13 @@ Object.assign(ACT, {
     recoverAuth(0);
   },
   async 'a1-recover-legacy-pending'() {
-    const uid = S.uid, old = store.get('pending');
+    const uid = S.uid, scopedKey = uid && 'pending:' + uid;
+    const scoped = scopedKey && !a1PendingClearFailed.has(scopedKey) && store.get(scopedKey);
+    const old = Array.isArray(scoped) && scoped.length ? scoped : store.get('pending');
     if (!uid || !S.db || S.conn === 'readonly' || !Array.isArray(old) || !old.length) return;
     const ok = await confirmDialog({
       title: 'Older offline edits',
-      text: old.length + ' unsent edits from an older version have no account label. Restore only if they belong to this signed-in account.',
+      text: old.length + ' older unsent edits are on this device. Restore only if they belong to this session; a previous sign-out may have discarded them.',
       ok: 'Restore here', danger: true
     });
     if (!ok || S.uid !== uid || !S.db || S.conn === 'readonly') return;
