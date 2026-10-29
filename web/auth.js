@@ -47,6 +47,16 @@ function a1DiscardPending(uid, activeKey) {
   a1SavePendingClear();
   return ok;
 }
+// A second Carrel tab may have queued edits under the same authenticated
+// session while this tab's in-memory queue is empty or stale. Sign-out must
+// inspect the durable outbox too before asking to discard unsent work.
+function a1UnsentCount() {
+  if (!S.uid) return S.pending.length;
+  const key = 'pending:' + S.uid +
+    (S.pendingSession ? ':' + S.pendingSession : '');
+  const disk = store.get(key);
+  return Math.max(S.pending.length, Array.isArray(disk) ? disk.length : 0);
+}
 function a1SaveCleanup() { store.set(a1CleanupKey, a1CleanupPending.length ? a1CleanupPending : null); }
 function a1ClearCache(uid, clear) {
   if (!uid) return Promise.resolve(true);
@@ -250,14 +260,23 @@ Object.assign(ACT, {
   },
   async signout() {
     if (!sb) return;
-    if (S.pending.length) {
+    const uid = S.uid, db = S.db;
+    if (a1UnsentCount()) {
       pumpAll();
       const deadline = Date.now() + 3000;
       while (S.pending.length && Date.now() < deadline) {
         await new Promise(resolve => setTimeout(resolve, 250));
       }
-      if (S.pending.length && !await confirmDialog({title:'Unsaved changes',text:S.pending.length+' waiting. Discard and sign out?',ok:'Sign out',danger:true})) return;
     }
+    // Read disk AFTER the drain attempt: another tab can have a durable
+    // outbox that this tab has never loaded. Do not silently discard it.
+    const waiting = a1UnsentCount();
+    if (waiting && !await confirmDialog({title:'Unsaved changes',
+      text:waiting+' waiting on this device (possibly in another tab). Discard and sign out?',
+      ok:'Sign out',danger:true})) return;
+    // An account transition during the asynchronous confirmation must not
+    // sign out a different identity that subsequently opened in this tab.
+    if (S.uid !== uid || S.db !== db) return;
     const r = await sb.auth.signOut();
     if (r.error) toast('Could not sign out: ' + r.error.message);
   },
