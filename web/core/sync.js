@@ -181,6 +181,27 @@ function qaSyncRetrySubscription(db, epoch) {
   S.resubT = timer;
 }
 
+/* Historical reads can finish after a newer live snapshot or a newer,
+   overlapping range read. Track revisions per account's fetched Set, not
+   globally, so stale responses never revive deleted or updated documents. */
+const qaSyncHistoricalStates = new WeakMap();
+function qaSyncHistoricalState(fetched) {
+  let state = qaSyncHistoricalStates.get(fetched);
+  if (!state) {
+    state = { seq: 0, touched: new Map(), completed: new Map() };
+    qaSyncHistoricalStates.set(fetched, state);
+  }
+  return state;
+}
+function qaSyncHistoricalLiveUpdate(name, from, docs) {
+  const state = qaSyncHistoricalState(S.fetched);
+  const revision = ++state.seq;
+  // Include missing old rows: a live snapshot with no row is a deletion.
+  for (const id in S.base[name]) if (id >= from)
+    state.touched.set(name + '/' + id, revision);
+  docs.forEach(doc => state.touched.set(name + '/' + doc.id, revision));
+}
+
 /* F1: realtime subscriptions for additive v2 collections. */
 function watchColl(name, epoch = qaSyncSubscriptionEpoch) {
   if (!['topics','rituals','coach','usage'].includes(name) || !S.db) return null;
@@ -222,6 +243,7 @@ function subscribe() {
   S.unsubs.push(db.doc('config/settings').onSnapshot(s => { if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return; S.base.settings = s.exists ? s.data() : null; S.loaded.settings = true; changed(); }, onErr('settings')));
   const coll = (name, key) => db.collection(name).where('date', '>=', from).onSnapshot(q => {
     if (S.db !== db || epoch !== qaSyncSubscriptionEpoch) return;
+    qaSyncHistoricalLiveUpdate(key, from, q.docs);
     const m = {};
     for (const k in S.base[key]) if (k < from) m[k] = S.base[key][k];
     q.docs.forEach(d => { if (d.exists) m[d.id] = d.data(); });
@@ -252,23 +274,51 @@ function ensureRange(fromK, toK) {
   if (!S.db || !S.windowFrom || fromK >= S.windowFrom) return;
   const db = S.db, fetched = S.fetched;
   const hi = toK < S.windowFrom ? toK : addDaysKey(S.windowFrom, -1);
+  if (hi < fromK) return;
   const tag = fromK + '>' + hi;
   if (fetched.has(tag)) return;
   fetched.add(tag);
+  const history = qaSyncHistoricalState(fetched);
+  const revision = ++history.seq;
   Promise.all([
     db.collection('days').where('date', '>=', fromK).where('date', '<=', hi).get(),
     db.collection('plans').where('date', '>=', fromK).where('date', '<=', hi).get(),
     db.collection('distractions').where('date', '>=', fromK).where('date', '<=', hi).get()
   ]).then(([d, p, ds]) => {
-    // A previous account's range fetch must never populate the new view.
+    // Account-switch and reconnect guards are independent: an old fetch
+    // cannot write into a new account or override a newer live snapshot.
     if (S.db !== db || S.fetched !== fetched) return;
-    ds.docs.forEach(x => { if (x.exists) S.base.distractions[x.id] = x.data(); });
-    d.docs.forEach(x => { if (x.exists) S.base.days[x.id] = x.data(); });
-    p.docs.forEach(x => { if (x.exists) S.base.plans[x.id] = x.data(); });
+    const merge = (name, snap) => {
+      const rows = new Map(snap.docs.filter(x => x.exists).map(x => [x.id, x.data()]));
+      const newerRange = id => {
+        for (const other of history.completed.values())
+          if (other.name === name && other.revision > revision &&
+              other.from <= id && id <= other.hi) return true;
+        return false;
+      };
+      const canApply = id => id < S.windowFrom &&
+        (history.touched.get(name + '/' + id) || 0) <= revision &&
+        !newerRange(id);
+      // The completed query is authoritative for its historical interval.
+      // Missing rows are deletions, but never delete newer live/fetch data.
+      for (const id in S.base[name]) {
+        if (id >= fromK && id <= hi && !rows.has(id) && canApply(id)) {
+          delete S.base[name][id];
+          history.touched.set(name + '/' + id, revision);
+        }
+      }
+      for (const [id, data] of rows) if (canApply(id)) {
+        S.base[name][id] = data;
+        history.touched.set(name + '/' + id, revision);
+      }
+      history.completed.set(tag + '/' + name, { name, from: fromK, hi, revision });
+    };
+    merge('days', d);
+    merge('plans', p);
+    merge('distractions', ds);
     changed();
   }).catch(e => {
     if (S.db !== db || S.fetched !== fetched) return;
     fetched.delete(tag); console.warn('Carrel fetch', e);
   });
 }
-
