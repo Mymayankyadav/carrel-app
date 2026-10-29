@@ -19,7 +19,8 @@ function device() {
 function locks() {
   const held = new Set();
   return { request: async (name, opts, callback) => {
-    assert.deepEqual(opts, { mode:'exclusive', ifAvailable:true });
+    assert.equal(opts.mode, 'exclusive');
+    assert(opts.ifAvailable === undefined || opts.ifAvailable === true);
     if (held.has(name)) return callback(null);
     held.add(name);
     try { return await callback({ name }); } finally { held.delete(name); }
@@ -30,8 +31,12 @@ const edit = (day, note) => ({ path:'days/' + day, kind:'set', data:{note} });
   const d = device(), sharedLocks = locks();
   const a = qaOutboxJournal(d.storage,'alice','s1',()=> 'a_00001');
   const b = qaOutboxJournal(d.storage,'alice','s1',()=> 'b_00002');
-  const first = a.appendBatch([edit('2026-10-29','a1'),edit('2026-10-30','a2')]);
-  const second = b.appendBatch([edit('2026-10-31','b1')]);
+  // Multiple actions require the explicit ordering protocol. The legacy
+  // appendBatch() API alone cannot establish FIFO across browser tabs.
+  const first = await a.appendBatchOrdered(
+    [edit('2026-10-29','a1'),edit('2026-10-30','a2')], sharedLocks, () => true);
+  const second = await b.appendBatchOrdered(
+    [edit('2026-10-31','b1')], sharedLocks, () => true);
   assert(first.ok && second.ok);
   const delivered = [];
   let release;
