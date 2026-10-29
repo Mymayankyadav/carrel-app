@@ -94,6 +94,9 @@ function qaOutboxJournal(storage, uid, session, makeId) {
       return false;
     const id = item.key.slice(prefix.length);
     if (!validPart(id)) return false;
+    let record;
+    try { record = JSON.parse(item.raw); } catch (e) { return false; }
+    if (!validRecord(record, id)) return false;
     const got = read(item.key);
     if (!got.ok || got.raw !== item.raw) return false;
     try { storage.removeItem(item.key); }
