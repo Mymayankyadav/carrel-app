@@ -33,6 +33,13 @@ function qaJournalDelivery(journal, locks, uid, session, send, isCurrent) {
         const snapshot = journal.list();
         if (!snapshot || snapshot.ok !== true || !Array.isArray(snapshot.records))
           return failure('storage');
+        // Migration copies are NOT authoritative for delivery. Check every
+        // record before sending anything: key enumeration is not FIFO.
+        if (snapshot.records.some(item => {
+          const id = item && item.record && item.record.id;
+          return id === 'legacy_stage_v1' ||
+            (typeof id === 'string' && /^legacy_chunk_v1_[0-9]{6,}$/.test(id));
+        })) return failure('migration-staged');
         for (const item of snapshot.records) {
           if (!isCurrent()) return failure('stale-session');
           const record = item && item.record;
