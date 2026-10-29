@@ -1,6 +1,6 @@
 # QA — historical range fetch vs realtime ordering
 
-Owner: QA/ORC (frozen `web/core/sync.js`). Branch: `v2/qa-historical-range-realtime-fence`. Status: review; physical-device L6 gate is separate.
+Owner: QA/ORC (frozen `web/core/sync.js`). Branch: `v2/qa-historical-range-realtime-fence`. Status: merged via [PR #78](https://github.com/Mymayankyadav/carrel-app/pull/78), squash `4c15a47c3c695cfcbfc8b0a094a6b6934903df39`; physical-device L6 gate is separate.
 
 ## Failure mode
 
@@ -17,9 +17,9 @@ Owner: QA/ORC (frozen `web/core/sync.js`). Branch: `v2/qa-historical-range-realt
 
 ## Evidence and gates
 
-- [ ] Full web/Node/v2 smoke CI on final PR head.
-- [ ] Browser acceptance and navigation audit on final PR head.
-- [ ] Four responsive Today screenshots (390/1280 light/dark) reviewed if artifacts are available.
-- [ ] ORC merge only after required checks and screenshot review.
+- [x] [Full web build, Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40822186377) passed on final PR head `200c9a2` (including the new historical range test).
+- [x] [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40822186378) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40822186373) passed on the same head.
+- [x] Reviewed four final-head `v2-f1-shots/l1/*-today.png` screenshots (390/1280, light/dark); no new visual regression identified.
+- [x] ORC squash merged `4c15a47` after final-head checks and screenshot review.
 
 L6 [PR #44](https://github.com/Mymayankyadav/carrel-app/pull/44) stays draft pending physical Android privacy acceptance [#52](https://github.com/Mymayankyadav/carrel-app/issues/52); device QA [#49](https://github.com/Mymayankyadav/carrel-app/issues/49) remains open. No physical-device verification claimed.
