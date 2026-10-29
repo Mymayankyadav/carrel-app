@@ -15,7 +15,7 @@ Sign-out attempts both legacy and active-session deletion, records failed keys a
 - [x] [Web/Node/v2 smoke CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/40849254853) and [second web CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/40849262884) succeeded.
 - [x] [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40849262495) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40849262863) succeeded.
 - [x] Empty/signed-out, failed cleanup, retry, legacy queue recovery, and account isolation covered; no new Android permission or native code.
-- [ ] Merge only after documentation-only final-head CI reconfirms these checks.
+- [x] Documentation-head [web/Node/v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40849591725), [browser](https://github.com/Mymayankyadav/carrel-app/actions/runs/40849599588), and [navigation](https://github.com/Mymayankyadav/carrel-app/actions/runs/40849599405) all succeeded. PR [#87](https://github.com/Mymayankyadav/carrel-app/pull/87) squash-merged as [`a7a830c`](https://github.com/Mymayankyadav/carrel-app/commit/a7a830c04c44b51246fbc60b0045f8dc169196d9).
 
 ## Caveats
 The device can reject both the queue deletion and the cleanup-marker write. In that case a warning cannot be guaranteed to persist across a process restart, but the old outbox cannot be automatically replayed under a *new* session ID. The bytes may remain until storage recovers. Old account-scoped outboxes require explicit recovery after upgrade, protecting data rather than silently dropping it. Do not claim exactly-once server delivery or physical Android QA.
