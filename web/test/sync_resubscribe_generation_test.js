@@ -96,11 +96,6 @@ assert.deepEqual(Object.keys(S.base.topics),[]);
 assert.deepEqual(Object.keys(S.base.planning),[]);
 assert.equal(S.base.reviews.length,0);
 
-// Even if the canceled timer was already queued, it must be harmless.
-obsoleteTimer.fn();
-assert.equal(handlers.get('state/current').length,count);
-assert.equal(S.resubT,0);
-
 // Fresh callbacks work, and one current network error reconnects once.
 latest('state/current').next({exists:true,data:()=>({owner:'fresh'})});
 latest('topics').next(docs(row('topic1',{owner:'fresh'})));
@@ -109,6 +104,11 @@ assert.equal(S.base.topics.topic1.owner,'fresh');
 latest('days').err({code:'unavailable'});
 assert.equal(timers.size,2);
 const liveTimer = timers.get(2);
+// A canceled older callback can run AFTER a newer retry was scheduled.
+// It must neither reconnect nor erase that newer retry's handle.
+obsoleteTimer.fn();
+assert.equal(handlers.get('state/current').length,count);
+assert.equal(S.resubT,2);
 liveTimer.fn();
 assert.equal(handlers.get('state/current').length,count+1);
 assert.equal(S.resubT,0);
