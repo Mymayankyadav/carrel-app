@@ -35,9 +35,9 @@ const ctx = {
   async adoptNativeSession(){},
   nativeSession(session) { nativeTokens.push(session.user.id); },
   nativeClear() { nativeClears++; }, nativeBoot(){},
-  makeDb(_sb, uid) {
+  makeDb(_sb, uid, opts) {
     const db = {
-      uid, closed: false, close(){this.closed = true;},
+      uid, clearOnly: !!(opts && opts.clearOnly), closed: false, close(){this.closed = true;},
       clear(){ this.cleared = (this.cleared || 0) + 1; return Promise.resolve(true); }
     };
     adapters.push(db);
@@ -170,9 +170,13 @@ function flush() {
   flush();
   assert.equal(S.uid,'echo');
   assert.equal(deltaDb.closed,true);
-  assert.equal(deltaDb.cleared,1,'superseded sign-in cannot suppress sign-out cleanup');
+  assert.equal(deltaDb.cleared || 0,0,'switching away preserves the prior account cache');
+  const phantomCleanup = adapters.filter(a => a.uid === 'phantom2');
+  assert.equal(phantomCleanup.length,1);
+  assert.equal(phantomCleanup[0].clearOnly,true,'sign-out uses disk-only cleanup for coalesced UID');
+  assert.equal(phantomCleanup[0].cleared,1,'coalesced account cache must be cleared');
   assert.equal(nativeClears,clears + 1);
-  assert.equal(adapters.some(a => a.uid === 'phantom2'),false);
+  assert.equal(adapters.some(a => a.uid === 'phantom2' && !a.clearOnly),false);
   assert.deepEqual(pumps.slice(pumpsBefore),['echo']);
 
   // A later sign-out wins without ever starting a transient account.
@@ -182,8 +186,11 @@ function flush() {
   flush();
   assert.equal(S.uid,null);
   assert.equal(S.conn,'none');
-  assert.equal(echoDb.cleared,1);
-  assert.equal(adapters.length,count,'temporary account was never opened');
+  assert.equal(echoDb.cleared || 0,0,'prior account survives a different UID sign-out');
+  assert.equal(adapters.length,count + 1,'temporary account only gets a cleanup adapter');
+  const temporary = adapters.find(a => a.uid === 'temporary');
+  assert.equal(temporary.clearOnly,true);
+  assert.equal(temporary.cleared,1);
 
   // INITIAL_SESSION received before an explicit sign-in in the same tick
   // must not load or pump the stale bootstrap identity.
