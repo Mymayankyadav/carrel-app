@@ -16,33 +16,7 @@ function device() {
   };
   return { disk, storage, quota: v => quota = v, unreadable: v => unreadable = v };
 }
-function webLocks() {
-  const held = new Set(), waiters = new Map();
-  async function request(name, opts, cb) {
-    if (opts.ifAvailable && held.has(name)) return cb(null);
-    if (held.has(name)) await new Promise(resolve => {
-      const q = waiters.get(name) || [];
-      q.push(resolve);
-      waiters.set(name, q);
-    });
-    held.add(name);
-    try { return await cb({ name }); }
-    finally {
-      held.delete(name);
-      const q = waiters.get(name);
-      if (q && q.length) {
-        // Reserve the lock for the next waiter before it resumes.
-        held.add(name);
-        const next = q.shift();
-        // The next callback's acquisition uses the reservation.
-        next();
-      }
-    }
-  }
-  return { request };
-}
-// A real Web Locks queue grants ownership directly to the waiter. This fake
-// instead uses a serial promise chain to avoid a scheduling race in tests.
+// A serial Web Locks mock exercises queued acquisition without timing races.
 function serialLocks() {
   const tails = new Map(), held = new Set();
   return { request: async (name, opts, cb) => {
