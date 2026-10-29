@@ -1,6 +1,6 @@
 # QA — deferred Supabase auth event ordering
 
-Owner: QA/ORC (frozen `web/auth.js`). Branch: `v2/qa-auth-deferred-event-order`. Status: review, pending CI and ORC merge.
+Owner: QA/ORC (frozen `web/auth.js`). Branch: `v2/qa-auth-deferred-event-order`. Status: merged via [PR #72](https://github.com/Mymayankyadav/carrel-app/pull/72), squash commit `43e116a27b42a63e541f1ec60bb02911b4c95364`.
 
 ## Failure mode
 
@@ -14,9 +14,9 @@ Supabase auth events are received synchronously but processed with independent z
 
 ## Evidence and boundaries
 
-- [ ] Full web/Node and v2 smoke CI green on final PR head.
-- [ ] Browser acceptance and navigation audit green on final PR head.
-- [ ] Phone/desktop light/dark screenshots reviewed for regression.
-- [ ] ORC merge and board handoff recorded.
+- [x] [Full web/Node and v2 smoke CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/40805322611) green on final PR head `470700ec`.
+- [x] [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40805322662) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40805322619) green on final PR head.
+- [x] Reviewed final-head CI `v2-f1-shots` Today screenshots at 390px/1280px in light and dark; no visual regression observed.
+- [x] ORC squash merged `43e116a`; board and status updated in follow-up.
 
 L6 [PR #44](https://github.com/Mymayankyadav/carrel-app/pull/44) remains draft until physical Android privacy acceptance [#52](https://github.com/Mymayankyadav/carrel-app/issues/52). Device QA [#49](https://github.com/Mymayankyadav/carrel-app/issues/49) remains open; no physical-device verification is claimed.
