@@ -15,4 +15,7 @@ This does **not** replace the production shared `pending:<uid>:<session>` queue.
 The next integration must implement per-path FIFO and cross-tab delivery ownership (Web Locks or a verified safe fallback), migrate legacy queues without silent replay, and coordinate sign-out/cleanup with active writers. At-least-once remote delivery is not server-side exactly-once. L6 physical-device acceptance #52 and native QA #49 are separate hard gates.
 
 ## Verification
-Pending final-head CI and browser smoke evidence. Do not mark merged until checks complete.
+- [PR #100](https://github.com/Mymayankyadav/carrel-app/pull/100) squash-merged at [`7e662a9`](https://github.com/Mymayankyadav/carrel-app/commit/7e662a9e34d6f69373752fa6f3913d1d9de3a3c3).
+- Final-head `dc5352b` [web build, Node tests and all v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40899449821), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40899449671), and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40899449639) completed successfully.
+- Web CI logs explicitly report `QA OUTBOX JOURNAL BATCH TESTS PASSED` and `QA JOURNAL TWO-TAB ATOMIC ACTION SMOKE PASSED`.
+- No new UI surface or screenshots required. Production sync continues using the existing queue; #90 and the physical-device gates remain open.
