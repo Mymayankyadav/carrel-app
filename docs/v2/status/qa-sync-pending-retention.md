@@ -1,6 +1,6 @@
 # QA — preserve failed offline writes
 
-Owner: QA/ORC (frozen `web/core/sync.js`). Branch: `v2/qa-preserve-failed-offline-writes`. Status: implementation in review.
+Owner: QA/ORC (frozen `web/core/sync.js`). Branch: `v2/qa-preserve-failed-offline-writes`. Status: merged via [PR #80](https://github.com/Mymayankyadav/carrel-app/pull/80), squash `197ed75fff2509797e90dd918e776221fa1a8631`.
 
 ## Failure mode
 
@@ -16,8 +16,8 @@ The write pump removed an offline edit after ten transient failures, and also di
 
 ## Verification
 
-- [ ] Final-head web build, Node tests, v2 smoke, browser acceptance and navigation audit.
-- [ ] Review four Today screenshots (390/1280, light/dark) before merge.
-- [ ] Merge only after checks pass and no ownership conflicts.
+- [x] [Final-head web build, Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40827907616), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40827907618) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40827907651) all passed on `03ec96b`.
+- [x] Reviewed four final-head Today screenshots (390/1280, light/dark) from the CI `v2-f1-shots` artifact; no new visual regression found.
+- [x] ORC verified main SHA, ownership/diff and open PRs; squash merged `197ed75` after all checks.
 
 L6 [PR #44](https://github.com/Mymayankyadav/carrel-app/pull/44) remains draft pending physical-device Usage Access/privacy acceptance [#52](https://github.com/Mymayankyadav/carrel-app/issues/52); device QA [#49](https://github.com/Mymayankyadav/carrel-app/issues/49) remains open.
