@@ -198,5 +198,149 @@ function qaJournalStageLegacy(storage, makeJournal, uid, session, locks, isCurre
   return { markerKey, lockName, stage };
 }
 
+
+/* Non-authoritative, chunked legacy staging for #90.
+ * Large legacy queues are copied as ordered, immutable 128-op records under
+ * the journal Web Lock. A durable source-byte marker precedes every record;
+ * retries verify existing records exactly and resume without duplication.
+ * NEVER drain these records or remove the legacy source before a separately
+ * reviewed production handoff. Legacy writers still do not share this lock.
+ */
+function qaJournalStageLegacyChunks(storage, journal, uid, session, locks, isCurrent) {
+  const pre = qaJournalLegacyPreflight(storage, journal, uid, session);
+  if (typeof isCurrent !== 'function')
+    throw new TypeError('Identity fence required');
+  const chunkSize = 128;
+  const maxOps = 8192;
+  const markerKey = 'carrel.pending-migration-chunks.v1:' + uid + ':' + session;
+  const lockName = 'carrel-journal-delivery.v1:' + uid + ':' + session;
+  const fail = error => ({ ok: false, error });
+  const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
+
+  function source() {
+    const first = pre.snapshot();
+    if (!first.ok) return first;
+    const second = pre.snapshot();
+    if (!second.ok) return second;
+    return first.raw === second.raw ? first : fail('source-changed');
+  }
+  function readMarker() {
+    let raw;
+    try { raw = storage.getItem(markerKey); }
+    catch (_) { return fail('marker-unreadable'); }
+    if (raw === null) return { ok: true, raw: null };
+    let value;
+    try { value = JSON.parse(raw); }
+    catch (_) { return fail('marker-corrupt'); }
+    if (!value || typeof value !== 'object' || Array.isArray(value) ||
+        value.v !== 1 || value.uid !== uid || value.session !== session ||
+        value.sourceKey !== pre.sourceKey || typeof value.sourceRaw !== 'string' ||
+        value.chunkSize !== chunkSize || !Number.isSafeInteger(value.count) ||
+        value.count < 1 || value.count > maxOps ||
+        value.chunks !== Math.ceil(value.count / chunkSize) ||
+        Object.keys(value).some(k => !['v','uid','session','sourceKey',
+          'sourceRaw','chunkSize','count','chunks'].includes(k)))
+      return fail('marker-corrupt');
+    return { ok: true, raw, value };
+  }
+  function list() {
+    try {
+      const result = journal.list();
+      return result && result.ok === true && Array.isArray(result.records) ?
+        result : fail('journal-unreadable');
+    } catch (_) { return fail('journal-unreadable'); }
+  }
+  function expectedRecords(snap) {
+    const records = new Map();
+    for (let i = 0; i < Math.ceil(snap.ops.length / chunkSize); i++) {
+      const id = 'legacy_chunk_v1_' + String(i + 1).padStart(6, '0');
+      const key = journal.prefix + id;
+      const ops = snap.ops.slice(i * chunkSize, (i + 1) * chunkSize);
+      const raw = JSON.stringify({ v: 1, uid, session, id, seq: i + 1, ops });
+      records.set(key, raw);
+    }
+    return records;
+  }
+  async function stage() {
+    if (!locks || typeof locks.request !== 'function')
+      return fail('locks-unavailable');
+    if (!isCurrent()) return fail('stale-session');
+    try {
+      return await locks.request(lockName, { mode: 'exclusive', ifAvailable: true }, async lock => {
+        if (!lock) return fail('busy');
+        if (!isCurrent()) return fail('stale-session');
+        const snap = source();
+        if (!snap.ok) return snap;
+        if (snap.ops.length > maxOps) return fail('queue-too-large');
+        const marker = readMarker();
+        if (!marker.ok) return marker;
+        const existing = list();
+        if (!existing.ok) return existing;
+        if (snap.raw === null || !snap.ops.length) {
+          if (marker.raw !== null || existing.records.length)
+            return fail('source-changed');
+          return { ok: true, empty: true, staged: false };
+        }
+        const expected = expectedRecords(snap);
+        if (marker.raw === null && existing.records.length)
+          return fail('unmarked-journal');
+        if (marker.raw !== null &&
+            (marker.value.sourceRaw !== snap.raw ||
+             marker.value.count !== snap.ops.length))
+          return fail('source-changed');
+        for (const item of existing.records) {
+          if (!expected.has(item.key)) return fail('journal-not-empty');
+          if (expected.get(item.key) !== item.raw)
+            return fail('staged-record-mismatch');
+        }
+        if (marker.raw === null) {
+          const raw = JSON.stringify({ v: 1, uid, session,
+            sourceKey: pre.sourceKey, sourceRaw: snap.raw,
+            chunkSize, count: snap.ops.length, chunks: expected.size });
+          try { storage.setItem(markerKey, raw); }
+          catch (_) { return fail('marker-write'); }
+          const check = readMarker();
+          if (!check.ok || check.raw !== raw)
+            return fail('marker-uncertain');
+        }
+        const already = new Set(existing.records.map(item => item.key));
+        for (const [key, raw] of expected) {
+          if (already.has(key)) continue;
+          if (!isCurrent()) return fail('stale-session');
+          const fresh = source();
+          if (!fresh.ok) return fresh;
+          if (fresh.raw !== snap.raw) return fail('source-changed');
+          let before;
+          try { before = storage.getItem(key); }
+          catch (_) { return fail('journal-unreadable'); }
+          if (before !== null) return fail('journal-collision');
+          try { storage.setItem(key, raw); }
+          catch (_) { return fail('journal-write'); }
+          let after;
+          try { after = storage.getItem(key); }
+          catch (_) { return fail('journal-uncertain'); }
+          if (after !== raw) return fail('journal-uncertain');
+        }
+        const finalList = list();
+        if (!finalList.ok) return finalList;
+        if (finalList.records.length !== expected.size)
+          return fail('journal-verify');
+        for (const item of finalList.records) {
+          if (expected.get(item.key) !== item.raw)
+            return fail('journal-verify');
+        }
+        const finalSource = source();
+        if (!finalSource.ok) return finalSource;
+        if (finalSource.raw !== snap.raw) return fail('source-changed');
+        if (!isCurrent()) return fail('stale-session');
+        return { ok: true, staged: true, recovered: already.size > 0,
+          count: snap.ops.length, chunks: expected.size,
+          sourceKey: pre.sourceKey, markerKey };
+      });
+    } catch (_) { return fail('lock'); }
+  }
+  return { markerKey, lockName, stage };
+}
+
 if (typeof module !== 'undefined' && module.exports)
-  module.exports = { qaJournalLegacyPreflight, qaJournalStageLegacy };
+  module.exports = { qaJournalLegacyPreflight, qaJournalStageLegacy, qaJournalStageLegacyChunks };
