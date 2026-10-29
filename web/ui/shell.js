@@ -8,6 +8,8 @@ VIEWS.insights = VIEWS.insights || (()=>VIEWS.stats());
 VIEWS.subjects = VIEWS.subjects || (()=>kEmpty('Coming soon'));
 function vSyncLine() {
   const status = syncState(), count = S.pending.length;
+  if (S.uid && S.pendingConflictError === S.uid)
+    return '<div class="r0-sync error" role="alert">'+icon('warn')+'Offline edits changed in another tab · close other tabs and reload</div>';
   if (S.uid && S.pendingStorageError === S.uid)
     return '<div class="r0-sync error" role="alert">'+icon('warn')+'Storage unavailable · change not saved</div>';
   if (S.uid && S.pendingAckStorageError === S.uid)

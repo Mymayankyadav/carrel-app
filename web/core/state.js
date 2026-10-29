@@ -287,7 +287,7 @@ function commit(msg, w, opt) {
   if (!writes.length) return false;
   const inv = writes.map(x => inverseOf(x, readPath(V, x.path))).reverse();
   if (!enqueueBatch(writes)) {
-    toast('Device storage is unavailable. Change not saved. Free space and retry.');
+    toast(S.pendingConflictError === S.uid ? 'Offline edits changed in another Carrel tab. Close other tabs and reload; change not saved.' : 'Device storage is unavailable. Change not saved. Free space and retry.');
     render();
     return false;
   }
@@ -303,7 +303,7 @@ function undo() {
   if (!canWrite()) return;
   if (!enqueueBatch(u.inv)) {
     UNDO.push(u);
-    toast('Device storage is unavailable. Undo not saved. Free space and retry.');
+    toast(S.pendingConflictError === S.uid ? 'Offline edits changed in another Carrel tab. Close other tabs and reload; undo not saved.' : 'Device storage is unavailable. Undo not saved. Free space and retry.');
     render();
     return;
   }

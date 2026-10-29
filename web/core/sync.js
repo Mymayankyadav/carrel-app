@@ -41,6 +41,13 @@ const retryT = {};
 // outbox is persisted. Keep acknowledged operations in memory (but never
 // resend them) while device storage is unavailable, and retry cleanup.
 let qaSyncAckCleanup = null;
+// localStorage is shared by every Carrel tab. A tab must never overwrite a
+// different outbox snapshot it did not load. This is an optimistic fence, not
+// a cross-tab transaction: simultaneous writes still require stronger locking.
+let qaSyncPendingDisk = { key: null, raw: 'null' };
+function qaSyncPendingRaw(value) {
+  return JSON.stringify(value == null ? null : value);
+}
 function qaSyncScheduleAckCleanup() {
   if (!S.uid || !S.db) return;
   if (qaSyncAckCleanup) {
@@ -98,14 +105,27 @@ function savePending() {
     if (mock) S.pending = S.pending.filter(o => !o.acked);
     return mock;
   }
+  // A second tab may have changed this same session's queue after we loaded
+  // it. Refuse to overwrite those edits, including during remote-ack cleanup.
+  // If no restore occurred, an existing outbox is not ours to replace.
+  if (qaSyncPendingDisk.key !== key) qaSyncPendingDisk = { key, raw: 'null' };
+  const diskNow = qaSyncPendingRaw(store.get(key));
+  if (diskNow !== qaSyncPendingDisk.raw ||
+      (typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(key))) {
+    S.pendingConflictError = S.uid;
+    return false;
+  }
   // The real store returns false for quota, security and read-back failures.
   // Older test adapters return undefined on success; only explicit failure
   // rejects the queue.
   const remaining = S.pending.filter(o => !o.acked);
-  const saved = store.set(key, remaining.length ? remaining.map(o => ({
+  const next = remaining.length ? remaining.map(o => ({
     path: o.path, kind: o.kind, data: o.data, ensure: o.ensure, cond: o.cond
-  })) : null) !== false;
+  })) : null;
+  const saved = store.set(key, next) !== false;
   if (saved) {
+    qaSyncPendingDisk.raw = qaSyncPendingRaw(next);
+    S.pendingConflictError = null;
     // Only release acknowledged operations after their durable outbox
     // removal succeeds. An interrupted cleanup must not resend them in this
     // session or claim the local queue is clean.
@@ -120,9 +140,11 @@ function savePending() {
 }
 function restorePending() {
   const key = pendingStoreKey();
-  if (!key || S.pending.length ||
-      (typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(key))) return;
+  if (!key) return;
   const arr = store.get(key);
+  qaSyncPendingDisk = { key, raw: qaSyncPendingRaw(arr) };
+  if (S.pending.length ||
+      (typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(key))) return;
   if (!Array.isArray(arr)) return;
   for (const o of arr) if (o && typeof o.path === 'string' && o.path.includes('/') &&
     ['set','update','delete'].includes(o.kind)) {
