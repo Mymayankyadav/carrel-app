@@ -40,7 +40,7 @@ with sync_playwright() as p:
             'qa_stage_fence','s1',async()=>{window.qaSent++},()=>true);
           const outcome=await coordinator.drain();
           return {outcome,sent:window.qaSent,remaining:journal.list().records.length,
-            stagedAck:journal.acknowledge(journal.list().records[1])};
+            stagedAck:journal.acknowledge(journal.list().records.find(\n              item=>item.record.id==='legacy_chunk_v1_000000'))};
         }""")
         assert result == {
             "outcome": {"ok": False, "error": "migration-staged",
