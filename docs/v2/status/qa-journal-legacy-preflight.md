@@ -16,5 +16,8 @@ Date: 2026-10-29 · Owner: QA/ORC · Branch: `v2/qa-journal-legacy-preflight`.
 - The Web Locks fallback remains fail-closed; client delivery remains at-least-once. Issue #90 stays open, and L6 physical-device acceptance #52 / native QA #49 are unaffected.
 
 ## Evidence
-- Local isolated test fixture: `QA JOURNAL LEGACY PREFLIGHT TESTS PASSED` (fixture journal used only to validate helper behavior). GitHub CI results to be recorded after the PR runs.
-- No UI surface or screenshot changes; production `web/files.json` remains unchanged.
+- [PR #107](https://github.com/Mymayankyadav/carrel-app/pull/107) squash-merged at [`ad3bcea`](https://github.com/Mymayankyadav/carrel-app/commit/ad3bcea11ee812d27394cf8374fa1b144be0b719).
+- Final-head [web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40929323807) **passed**; the job log explicitly includes `QA JOURNAL LEGACY PREFLIGHT TESTS PASSED`. A second [final-head CI run](https://github.com/Mymayankyadav/carrel-app/actions/runs/40929310141) also passed.
+- [Redesign browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40929323767) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40929323766) **passed**.
+- An earlier intermediate-head [CI failure](https://github.com/Mymayankyadav/carrel-app/actions/runs/40929302709) exposed a test-fixture mistake (a nonempty journal masked the source-race assertion). The fixture was isolated in the final head; the failure was not ignored.
+- No UI surface or screenshot changes; production `web/files.json` remains unchanged. No physical-device testing claimed.
