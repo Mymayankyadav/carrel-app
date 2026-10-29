@@ -8,7 +8,7 @@ Supabase auth events are received synchronously but processed with independent z
 
 ## Fix
 
-- `web/auth.js`: buffer events and drain them once per deferred batch in receipt order, outside the Supabase callback. Ignore superseded sign-ins and metadata, and ignore bootstrap snapshots after explicit authentication. Always execute each `SIGNED_OUT` in order to preserve cache deletion and native credential clearing.
+- `web/auth.js`: buffer events and drain them once per deferred batch in receipt order, outside the Supabase callback. Ignore superseded sign-ins and metadata, and ignore bootstrap snapshots after explicit authentication. Always execute each `SIGNED_OUT` in order. When the signed-out UID was coalesced before opening, preserve the previously active account's pending queue and clear only the signed-out UID's offline queue and IndexedDB cache through a disk-only adapter. Never open or pump that coalesced account.
 - `web/test/auth_event_isolation_test.js`: verify same-tick multiple sign-ins, stale refreshes, sign-out followed by sign-in, sign-in followed by sign-out, stale initial snapshot preceding a newer sign-in, and no transient adapter or queue replay.
 - No new server, production document, migration, permission, native API, or v1 removal. The previous account's explicit sign-out semantics remain unchanged.
 
