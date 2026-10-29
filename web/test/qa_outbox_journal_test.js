@@ -86,4 +86,7 @@ assert.equal(recovered.list().records.length, 0);
 assert.equal(d.disk.size, 0);
 assert.throws(() => qaOutboxJournal(d.storage, '', 'session_1', () => 'valid_op00001'));
 assert.equal(a.append({path: 'days/x', kind: 'nonsense', data: {}}).ok, false);
+assert.equal(a.append({path: 'days/x', kind: 'set', data: undefined}).ok, false,
+  'JSON cannot silently drop the operation payload');
+assert.equal(d.disk.size, 0);
 console.log('QA OUTBOX JOURNAL FOUNDATION TESTS PASSED');
