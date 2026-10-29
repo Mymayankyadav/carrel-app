@@ -19,3 +19,10 @@ The migration staging modules correctly leave copies unsequenced and non-authori
 
 ## Next
 Design a lock-aware legacy producer handoff and crash-safe promotion protocol. Keep migration copies non-deliverable until every old writer is fenced and explicit sign-out/legacy recovery semantics are verified.
+
+## Final-head merge evidence
+- [PR #113](https://github.com/Mymayankyadav/carrel-app/pull/113) squash-merged as [`2a167ae`](https://github.com/Mymayankyadav/carrel-app/commit/2a167ae2be106a13f364382bd454f2bf00e09e00).
+- [Web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40955421543) — **success**. Logs explicitly show both the new Node suite and two-tab staged-delivery smoke passing.
+- [Redesign/browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40955421513) — **success**.
+- [V2 navigation reachability](https://github.com/Mymayankyadav/carrel-app/actions/runs/40955421528) — **success**.
+- No UI or Android changes; no new screenshots or physical-device acceptance claimed.
