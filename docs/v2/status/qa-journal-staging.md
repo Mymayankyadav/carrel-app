@@ -13,7 +13,8 @@ Date: 2026-10-30 · Owner: QA/ORC · Branch: \`v2/qa-journal-crash-safe-staging\
 ## Tests
 - \`web/test/qa_journal_legacy_staging_test.js\`: source retention, crash after marker, repeated restart, changed source, quota/read/corrupt marker, identity fencing, unrelated journal, no-lock/busy and >256 queue.
 - Existing read-only preflight tests remain unchanged.
-- CI evidence: pending; do not merge without green final-head checks.
+- Hardened `tools/v2_qa_journal_batch_smoke.py` to wait for real cross-tab localStorage visibility instead of assuming instantaneous propagation; the original assertion remains strict.
+- Initial CI run 40938702523: build and all Node tests passed, including new staging tests, but an existing two-tab batch smoke asserted before storage propagation; fixed with bounded visibility waits. Final-head CI pending; do not merge without green required checks.
 
 ## Gates
 - #90 remains open: lock legacy producers, safe atomic authority switch, multi-batch migration, sign-out coordination, two-tab end-to-end acceptance.
