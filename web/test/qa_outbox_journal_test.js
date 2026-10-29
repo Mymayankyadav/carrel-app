@@ -70,8 +70,10 @@ d.blockDelete(false);
 const malformed = recovered.prefix + 'corrupt_op00006';
 d.disk.set(malformed, '{not-json');
 assert.equal(recovered.list().ok, false);
-assert.equal(recovered.acknowledge({ key: malformed, raw: '{not-json' }), true,
-  'cleanup of known bad bytes requires a separately authorized action');
+assert.equal(recovered.acknowledge({ key: malformed, raw: '{not-json' }), false,
+  'acknowledgement cannot silently delete corrupted user data');
+assert.equal(recovered.list().ok, false);
+d.disk.delete(malformed); // explicit fixture cleanup; production never auto-discards
 assert.equal(recovered.list().records.length, 1);
 
 // No collision overwrite, no cross-account acknowledgement.
