@@ -93,6 +93,15 @@ malformed.ctx.restorePending();
 assert.equal(malformed.ctx.enqueue(edit('2026-11-02')),false);
 assert.deepEqual(JSON.parse(disk.get(rawKey)),{not:'an outbox'});
 
+// One malformed operation must not be silently dropped from a valid array.
+disk.set(rawKey,JSON.stringify([edit('2026-11-02'),null]));
+const partial = tab();
+partial.ctx.restorePending();
+assert.equal(partial.S.pending.length,0);
+assert.equal(partial.ctx.enqueue(edit('2026-11-04')),false);
+assert.equal(JSON.parse(disk.get(rawKey)).length,2,
+  'the entire mixed-validity queue remains available for recovery');
+
 // A permissions failure at startup must not authorize a later empty-queue write.
 disk.delete(rawKey);
 denyRead = true;
