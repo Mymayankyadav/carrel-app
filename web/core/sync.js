@@ -136,11 +136,14 @@ function importLegacyPending() {
   // Pre-session-key account queues are retained for explicit recovery, not
   // silently replayed after a sign-out or app upgrade.
   const oldScoped = S.uid && 'pending:' + S.uid;
-  const source = oldScoped && Array.isArray(store.get(oldScoped)) &&
-    store.get(oldScoped).length ? oldScoped : 'pending';
-  if (typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(source)) return -1;
+  const olderSessions = S.uid && typeof store.keys === 'function' ?
+    store.keys('pending:' + S.uid + ':').filter(k => k !== key) : [];
+  const candidates = [oldScoped, ...olderSessions, 'pending'];
+  const source = candidates.find(k => k && k !== key &&
+    !(typeof a1PendingClearFailed !== 'undefined' && a1PendingClearFailed.has(k)) &&
+    Array.isArray(store.get(k)) && store.get(k).length);
+  if (!key || !source) return 0;
   const arr = store.get(source);
-  if (!key || source === key || !Array.isArray(arr) || !arr.length) return 0;
   const valid = o => {
     if (!o || typeof o.path !== 'string') return false;
     const parts = o.path.split('/');
