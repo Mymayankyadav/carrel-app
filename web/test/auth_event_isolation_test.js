@@ -95,6 +95,26 @@ function flush() {
   assert.equal(pumps.at(-1),'bob');
   assert.equal(pumps.filter(uid => uid === 'alice').length,2);
 
+  // INITIAL_SESSION is a bootstrap snapshot, not an account-switch event.
+  // Supabase may deliver a delayed snapshot after a newer explicit sign-in.
+  const beforeInitialPumps = pumps.length;
+  const beforeInitialTokens = nativeTokens.length;
+  emit('INITIAL_SESSION','alice');
+  emit('INITIAL_SESSION'); // stale empty bootstrap must not hide Bob's session
+  flush();
+  assert.equal(S.uid,'bob','late initial session cannot resurrect Alice');
+  assert.equal(S.conn,'live','late empty initial session cannot sign out Bob');
+  assert.equal(pumps.length,beforeInitialPumps,'stale bootstrap cannot replay writes');
+  assert.equal(nativeTokens.length,beforeInitialTokens,'stale bootstrap cannot replace native credentials');
+
+  // Even if explicit sign-in and a stale bootstrap arrive before the timer
+  // queue is drained, the explicit event must win.
+  emit('SIGNED_IN','bob');
+  emit('INITIAL_SESSION','alice');
+  flush();
+  assert.equal(S.uid,'bob');
+  assert.equal(S.conn,'live');
+
   emit('SIGNED_OUT');
   emit('TOKEN_REFRESHED','bob'); // stale event after logout
   flush();
@@ -107,9 +127,25 @@ function flush() {
 
   emit('SIGNED_IN',null); flush();
   assert.equal(S.uid,null,'malformed identity event ignored');
+  emit('INITIAL_SESSION','bob'); flush();
+  assert.equal(S.uid,null,'bootstrap cannot restore a signed-out account');
+  assert.equal(S.db,null);
   emit('SIGNED_IN','alice'); flush();
   assert.equal(S.uid,'alice','explicit new sign-in still works');
   assert.equal(S.conn,'live');
   assert.equal(changes,1,'only matching refresh of readonly session calls changed');
+
+  // A real sign-out followed immediately by a new sign-in still tears down
+  // the old account first and opens only the new account.
+  const oldAdapter = S.db;
+  emit('SIGNED_OUT');
+  emit('SIGNED_IN','charlie');
+  flush();
+  assert.equal(oldAdapter.closed,true,'sign-out closes the outgoing adapter');
+  assert.equal(S.uid,'charlie');
+  assert.equal(S.conn,'live');
+  assert.equal(pumps.at(-1),'charlie');
+  emit('INITIAL_SESSION','alice'); flush();
+  assert.equal(S.uid,'charlie','stale bootstrap cannot undo rapid sign-in');
   console.log('AUTH EVENT ACCOUNT ISOLATION TESTS PASSED');
 })().catch(e => { console.error(e); process.exitCode=1; });
