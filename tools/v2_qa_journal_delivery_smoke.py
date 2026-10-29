@@ -4,6 +4,7 @@ The isolated journal/delivery modules are loaded explicitly; production sync
 and Supabase are NOT touched. Remote send is a local in-page test callback.
 """
 import os
+import time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
 
@@ -77,9 +78,15 @@ with sync_playwright() as p:
     }""")
     a.wait_for_function('window.started === true')
     a.close()
-    recovered = b.evaluate("""async () => qaJournalDelivery(journal,navigator.locks,
-      'qa_delivery','s1',async op=>delivered.push(op.data.note),
-      ()=>true).drain()""")
+    # Browser lock release after closing a tab is asynchronous. A busy
+    # result means retry later, not a lost edit or failed recovery.
+    for attempt in range(30):
+        recovered = b.evaluate("""async () => qaJournalDelivery(journal,navigator.locks,
+          'qa_delivery','s1',async op=>delivered.push(op.data.note),
+          ()=>true).drain()""")
+        if recovered.get('error') != 'busy':
+            break
+        time.sleep(0.1)
     assert recovered == {'ok': True, 'sent': 1, 'acknowledged': 1}, recovered
     assert b.evaluate('journal.list().records.length') == 0
     assert b.evaluate('delivered') == ['C1']
