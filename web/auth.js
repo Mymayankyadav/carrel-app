@@ -295,7 +295,7 @@ Object.assign(ACT, {
     if (!uid || !S.db || S.conn === 'readonly' || !Array.isArray(old) || !old.length) return;
     const ok = await confirmDialog({
       title: 'Older offline edits',
-      text: old.length + ' older unsent edits are on this device. Restore only if they belong to this session; a previous sign-out may have discarded them.',
+      text: old.length + ' older unsent edits have no account label or may belong to a prior session. Restore only if they belong to this signed-in account; a previous sign-out may have discarded them.',
       ok: 'Restore here', danger: true
     });
     if (!ok || S.uid !== uid || !S.db || S.conn === 'readonly') return;
