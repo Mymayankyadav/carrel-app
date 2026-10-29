@@ -42,6 +42,10 @@ with sync_playwright() as p:
     second = tab_b.evaluate(action_b)
     assert first['ok'] and second['ok'], (first, second)
     for tab in (tab_a, tab_b):
+        # localStorage cross-page visibility can lag the originating write.
+        # Wait for the actual two-record condition rather than assuming an
+        # immediate storage-event round trip (never relax the assertion).
+        tab.wait_for_function('() => journal.list().ok && journal.list().records.length === 2', timeout=10000)
         records = tab.evaluate('journal.list()')
         assert records['ok'] and len(records['records']) == 2, records
         batches = [r['record']['ops'] for r in records['records']]
@@ -52,6 +56,7 @@ with sync_playwright() as p:
     tab_a.add_script_tag(path=script)
     assert tab_a.evaluate(init) == 2
     assert tab_a.evaluate("""(item) => journal.acknowledge(item)""", first)
+    tab_b.wait_for_function('() => journal.list().ok && journal.list().records.length === 1', timeout=10000)
     records = tab_b.evaluate('journal.list()')
     assert records['ok'] and len(records['records']) == 1
     assert records['records'][0]['key'] == second['key']
