@@ -133,9 +133,16 @@ async function startSession() {
   if (typeof supabase === 'undefined' || !supabase.createClient) { showSignedOut(); return; }
   await adoptNativeSession();
   sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, { auth: { flowType: 'pkce', persistSession: true, autoRefreshToken: true, detectSessionInUrl: !NATIVE } });
+  // INITIAL_SESSION is only a bootstrap snapshot. A late snapshot must
+  // never replace a newer explicit sign-in or resurrect a signed-out user.
+  // Mark transitions at event receipt, not in the deferred callback.
+  let explicitAuthSeen = false;
   sb.auth.onAuthStateChange((ev, session) => {
+    const staleInitial = ev === 'INITIAL_SESSION' && explicitAuthSeen;
+    if (ev === 'SIGNED_IN' || ev === 'SIGNED_OUT') explicitAuthSeen = true;
     // Never call auth methods synchronously inside this callback.
     setTimeout(() => {
+      if (staleInitial || (ev === 'INITIAL_SESSION' && S.db)) return;
       if (ev === 'SIGNED_OUT') {
         teardownDb(true); nativeClear(); showSignedOut();
         return;
