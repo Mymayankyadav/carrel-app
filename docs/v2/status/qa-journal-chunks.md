@@ -16,3 +16,10 @@ Date: 2026-10-30 · Owner: QA/ORC · Branch: `v2/qa-journal-chunked-staging`
 ## Remaining gates
 - Issue #90 remains open: legacy producer locking, atomic authority switch, ordered promotion, cross-tab sign-out and real production sync acceptance.
 - L6 PR #44 remains draft pending physical-device privacy issue #52 and native QA #49.
+
+## Final-head merge evidence
+- [PR #111](https://github.com/Mymayankyadav/carrel-app/pull/111) squash-merged to main as [`ce262d0`](https://github.com/Mymayankyadav/carrel-app/commit/ce262d05a56a21e483ca781573d29f6fe7084528).
+- [Web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40947071570) — success.
+- [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40947071602) — success.
+- [Navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40947071613) — success.
+- No UI surface introduced, so no new screenshots. Physical-device acceptance was not performed.
