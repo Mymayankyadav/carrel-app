@@ -1,6 +1,6 @@
 # QA — cross-account subscription and historical fetch callback fencing
 
-Owner: QA/ORC (frozen `web/core/sync.js`). Branch: `v2/qa-sync-callback-account-fence`. Status: in review; no merge or device acceptance claimed.
+Owner: QA/ORC (frozen `web/core/sync.js`). Branch: `v2/qa-sync-callback-account-fence`. Status: merged via [PR #74](https://github.com/Mymayankyadav/carrel-app/pull/74), squash commit `df1d0f98452785d9587cf80d1490cad49d412e80`; no physical-device acceptance claimed.
 
 ## Failure mode
 
@@ -15,9 +15,9 @@ Closing an adapter and clearing `S.base` on account switch does not cancel alrea
 
 ## Evidence and acceptance
 
-- [ ] Full web build, Node tests and v2 smoke CI on final head.
-- [ ] Browser acceptance and two-tap navigation CI on final head.
-- [ ] Light/dark phone and desktop screenshots reviewed (no visual change expected).
-- [ ] ORC squash merge after all checks; board and handoff updated.
+- [x] [Full web build, Node tests and v2 smoke CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/40811065808) passed on final head `94796aa` (including `SYNC ACCOUNT CALLBACK ISOLATION TESTS PASSED`).
+- [x] [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40811065370) and [two-tap navigation](https://github.com/Mymayankyadav/carrel-app/actions/runs/40811065338) passed.
+- [x] Reviewed `v2-f1-shots` Today screenshots at 390px and 1280px in light and dark; no new visual regression.
+- [x] ORC squash merged `df1d0f9` after final-head checks and screenshot review; board and handoff updated.
 
 L6 [PR #44](https://github.com/Mymayankyadav/carrel-app/pull/44) remains draft pending physical Android Usage Access and privacy checks [#52](https://github.com/Mymayankyadav/carrel-app/issues/52); device QA [#49](https://github.com/Mymayankyadav/carrel-app/issues/49) is still open.
