@@ -104,7 +104,8 @@ function teardownDb(clearData) {
   const oldUid = S.uid, oldDb = S.db;
   let cacheClearResult = Promise.resolve(true);
   if (oldUid) {
-    if (clearData) a1DiscardPending(oldUid, pendingStoreKey());
+    if (clearData) a1DiscardPending(oldUid, S.pendingSession ?
+      'pending:' + oldUid + ':' + S.pendingSession : 'pending:' + oldUid);
     else savePending();
   }
   clearTimeout(recoverT); recoverT = 0;
@@ -286,7 +287,8 @@ Object.assign(ACT, {
     const uid = S.uid, scopedKey = uid && 'pending:' + uid;
     const candidates = [scopedKey,
       ...(uid && typeof store.keys === 'function' ?
-        store.keys(scopedKey + ':').filter(k => k !== pendingStoreKey()) : []), 'pending'];
+        store.keys(scopedKey + ':').filter(k => k !==
+          scopedKey + (S.pendingSession ? ':' + S.pendingSession : '')) : []), 'pending'];
     const source = candidates.find(k => k && !a1PendingClearFailed.has(k) &&
       Array.isArray(store.get(k)) && store.get(k).length);
     const old = source && store.get(source);
