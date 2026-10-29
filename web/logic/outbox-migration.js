@@ -72,6 +72,12 @@ function qaJournalLegacyPreflight(storage, journal, uid, session) {
     if (!current.ok) return current;
     if (current.sourceRaw !== plan.sourceRaw)
       return { ok: false, error: 'source-changed' };
+    // A caller must not be able to mutate the inspected operation array and
+    // then reuse a valid source token to authorize a different write set.
+    try {
+      if (JSON.stringify(current.ops) !== JSON.stringify(plan.ops))
+        return { ok: false, error: 'plan-changed' };
+    } catch (_) { return { ok: false, error: 'plan-changed' }; }
     return { ok: true, count: current.count };
   }
   return { sourceKey, inspect, verify };
