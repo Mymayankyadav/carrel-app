@@ -87,7 +87,13 @@ function savePending() {
   const key = pendingStoreKey();
   // The in-memory browser fixture has no authenticated UID and never sends
   // real network writes. Production must have an account-scoped durable key.
-  if (!key) return typeof MOCK !== 'undefined' && MOCK;
+  if (!key) {
+    const mock = typeof MOCK !== 'undefined' && MOCK;
+    // The browser fixture has no durable account key, but completed writes
+    // must still leave its in-memory queue as they did before this change.
+    if (mock) S.pending = S.pending.filter(o => !o.acked);
+    return mock;
+  }
   // The real store returns false for quota, security and read-back failures.
   // Older test adapters return undefined on success; only explicit failure
   // rejects the queue.
