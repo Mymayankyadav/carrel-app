@@ -33,6 +33,16 @@ const PROMPTS = [
 
 const store = {
   get(k) { try { const v = localStorage.getItem('carrel.' + k); return v == null ? null : JSON.parse(v); } catch (e) { return null; } },
+  keys(prefix) {
+    try {
+      const out = [], p = 'carrel.' + prefix;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(p)) out.push(k.slice(7));
+      }
+      return out;
+    } catch (e) { return []; } // storage disabled
+  },
   set(k, v) {
     try {
       const key = 'carrel.' + k;
