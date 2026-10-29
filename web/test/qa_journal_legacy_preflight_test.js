@@ -48,6 +48,7 @@ assert.equal(pre.inspect().error, 'source-unreadable');
 d.block(false);
 assert.equal(journal.appendBatch([op('journal')]).ok, true);
 assert.equal(pre.inspect().error, 'journal-not-empty', 'never combine two authoritative queues');
+d.disk.delete(journal.prefix + 'new_action'); // fixture cleanup only; production never does this
 assert.equal(d.disk.get(key), JSON.stringify(original));
 // A concurrent tab can change the source during preflight enumeration.
 const savedRead = d.storage.getItem;
