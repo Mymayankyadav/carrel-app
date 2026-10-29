@@ -37,12 +37,26 @@ function computeView() {
 
 let opSeq = 0;
 const retryT = {};
-function enqueue(w) {
-  const op = { oid: ++opSeq, path: w.path, kind: w.kind, data: w.data, ensure: w.ensure || null, cond: w.cond || null, tries: 0 };
-  S.pending.push(op);
-  savePending();
-  pump(op.path);
+// Persist an entire user action before any of its writes can reach Supabase.
+// If localStorage rejects the new queue, leave the old durable queue intact
+// and refuse the new action instead of claiming an offline-safe save.
+function enqueueBatch(writes) {
+  if (!writes.length) return true;
+  const ops = writes.map(w => ({
+    oid: ++opSeq, path: w.path, kind: w.kind, data: w.data,
+    ensure: w.ensure || null, cond: w.cond || null, tries: 0
+  }));
+  S.pending.push(...ops);
+  if (!savePending()) {
+    S.pending.splice(S.pending.length - ops.length, ops.length);
+    S.pendingStorageError = S.uid;
+    return false;
+  }
+  S.pendingStorageError = null;
+  ops.forEach(op => pump(op.path));
+  return true;
 }
+function enqueue(w) { return enqueueBatch([w]); }
 // Offline writes belong to one authenticated account. Never replay the old
 // unscoped "pending" key: it has no owner and may be from another account.
 // Keep that legacy key untouched for manual recovery instead of guessing.
@@ -51,8 +65,15 @@ function pendingStoreKey() {
 }
 function savePending() {
   const key = pendingStoreKey();
-  if (!key) return;
-  store.set(key, S.pending.length ? S.pending.map(o => ({ path: o.path, kind: o.kind, data: o.data, ensure: o.ensure, cond: o.cond })) : null);
+  // The in-memory browser fixture has no authenticated UID and never sends
+  // real network writes. Production must have an account-scoped durable key.
+  if (!key) return typeof MOCK !== 'undefined' && MOCK;
+  // The real store returns false for quota, security and read-back failures.
+  // Older test adapters return undefined on success; only explicit failure
+  // rejects the queue.
+  return store.set(key, S.pending.length ? S.pending.map(o => ({
+    path: o.path, kind: o.kind, data: o.data, ensure: o.ensure, cond: o.cond
+  })) : null) !== false;
 }
 function restorePending() {
   const key = pendingStoreKey();
