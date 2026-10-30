@@ -1,4 +1,4 @@
-"""QA #90: two real browser tabs serialize prototype legacy queue appends.
+"""QA #90: two real browser tabs serialize prototype legacy queue appends and acknowledgements.
 
 No production sync wiring, Supabase, sign-out or user documents are touched.
 """
@@ -55,6 +55,47 @@ with sync_playwright() as p:
           return w.snapshot().ops.map(x=>x.data.note).sort();
         }""")
         assert notes == ["first", "second"], notes
+
+    # Remote-ack simulation: a locked FIFO acknowledgement removes only the
+    # confirmed prefix. A second tab's subsequent append invalidates stale
+    # acknowledgement snapshots without losing its pending edit.
+    ack = a.evaluate("""async () => {
+      const w=qaLegacyLockedWriter(localStorage,'qa_legacy_writer','s1',
+        navigator.locks,()=>true);
+      const s=w.snapshot();
+      window.qaOldAck={raw:s.raw,op:s.ops[0]};
+      return w.acknowledgePrefix(s.raw,[s.ops[0]]);
+    }""")
+    assert ack == {"ok": True, "acknowledged": 1, "remaining": 1}, ack
+    for _ in range(80):
+        remaining = b.evaluate("""() => qaLegacyLockedWriter(localStorage,
+          'qa_legacy_writer','s1',navigator.locks,()=>true).snapshot().ops.length""")
+        if remaining == 1:
+            break
+        b.wait_for_timeout(100)
+    assert remaining == 1, remaining
+    appended = b.evaluate("""async () => qaLegacyLockedWriter(localStorage,
+      'qa_legacy_writer','s1',navigator.locks,()=>true).appendBatch([{
+        path:'days/2026-10-30',kind:'update',data:{note:'third'}
+      }])""")
+    assert appended["ok"], appended
+    stale = a.evaluate("""async () => qaLegacyLockedWriter(localStorage,
+      'qa_legacy_writer','s1',navigator.locks,()=>true).acknowledgePrefix(
+        window.qaOldAck.raw,[window.qaOldAck.op])""")
+    assert stale == {"ok": False, "error": "source-changed"}, stale
+    for _ in range(80):
+        final = [page.evaluate("""() => {
+          const w=qaLegacyLockedWriter(localStorage,'qa_legacy_writer','s1',
+            navigator.locks,()=>true);
+          const s=w.snapshot();
+          return s.ok ? s.ops.map(x=>x.data.note).sort() : s.error;
+        }""") for page in (a,b)]
+        if final in ([["first","third"],["first","third"]],
+                     [["second","third"],["second","third"]]):
+            break
+        a.wait_for_timeout(100)
+    assert final in ([["first","third"],["first","third"]],
+                     [["second","third"],["second","third"]]), final
 
     # Staging marker prevents even a cooperating writer from modifying source.
     a.evaluate("""() => localStorage.setItem(
