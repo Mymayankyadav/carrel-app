@@ -17,6 +17,20 @@ assert.equal(l7Accuracy([{planned:60,actual:60}]),100);
 assert.equal(l7Accuracy([{planned:60,actual:90},{planned:60,actual:60}]),75);
 assert.equal(l7Accuracy([{planned:10,actual:100}]),0);
 assert.equal(l7Accuracy([]),null);
+assert.equal(l7Accuracy([{planned:60,actual:null},{planned:60,actual:60}]),100,
+  'unknown actual is excluded, not coerced to zero minutes');
+assert.equal(l7Accuracy([{planned:60,actual:undefined},{planned:60,actual:''}]),null,
+  'only incomplete histories show no accuracy rather than a misleading zero');
+assert.equal(l7Accuracy([{planned:60,actual:'   '},{planned:60,actual:false}]),null,
+  'blank and boolean legacy actuals cannot masquerade as completed sessions');
+assert.equal(l7Accuracy([{planned:60,actual:0}]),0,
+  'an explicit zero-minute completion remains meaningful');
+assert.equal(l7Accuracy([{planned:'60',actual:'60'}]),100,
+  'numeric string durations from older documents remain supported');
+assert.equal(l7Accuracy([{planned:null,actual:60},{planned:true,actual:60}]),null,
+  'missing and boolean planned durations are not evidence');
+assert.equal(l7Accuracy({planned:60,actual:60}),null,
+  'malformed non-array history fails closed');
 assert.equal(l7WeekOf('2026-10-28',1),'2026-10-26');
 assert.equal(l7WeekOf('2026-11-01',0),'2026-10-26');
 // Sunday display-week preferences cannot grant a second freeze in the same ISO week.
