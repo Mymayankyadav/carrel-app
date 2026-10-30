@@ -24,6 +24,22 @@ assert.equal(p.blocks[0].at,'08:00');
 assert.equal(p.blocks[0].minutes,60);
 p=autoPlan({items:[task('a','math',50,1,true)],free,now:at(7),windows:[10],gapMin:5});
 assert.equal(p.blocks[0].at,'10:00','hard subjects favour peak hours');
+p=autoPlan({items:[task('peak','math',50,1,true),task('base','physics',140)],
+  free,now:at(7),windows:[10],gapMin:10});
+assert.deepEqual(p.blocks.map(b=>b.at),['08:00','10:00','11:00'],
+  'preserve the free time before a preferred peak slot and sort the preview chronologically');
+assert.deepEqual(p.blocks.map(b=>b.minutes),[110,50,30],
+  'use the pre-peak window rather than silently leaving ordinary work unplanned');
+assert.deepEqual(p.unplaced,[],'all feasible work is scheduled');
+assert(p.blocks.every((b,i,arr)=>!i ||
+  (+arr[i-1].at.slice(0,2)*60 + +arr[i-1].at.slice(3) + arr[i-1].minutes + 10 <=
+   +b.at.slice(0,2)*60 + +b.at.slice(3))),
+  'all scheduled blocks retain the requested ten-minute gap');
+assert(p.blocks.reduce((n,b)=>n+b.minutes,0)<=216,'peak scheduling keeps the 10% capacity buffer');
+p=autoPlan({items:[task('peak','math',25,1,true),task('base','physics',30)],
+  free:[[at(9,40),at(11)]],now:at(7),windows:[10],gapMin:10});
+assert(p.blocks.every(b=>b.at!=='09:40'),
+  'do not offer a sub-25-minute pre-peak fragment after reserving the gap');
 p=autoPlan({items:[task('a','math',50)],free,now:at(7),factor:()=>1.3});
 assert.equal(p.blocks[0].minutes,65,'estimate multiplier rounds upward to 5');
 p=autoPlan({items:[task('a','math',120)],free:[[at(8),at(9)],[at(10),at(11)]],now:at(7)});
