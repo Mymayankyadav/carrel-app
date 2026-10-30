@@ -65,12 +65,15 @@ function autoPlan(opts) {
   for(let i=slots.length-1;i>=0;i--)
     if(slots[i].e-slots[i].s<25*L3_MIN)slots.splice(i,1);
   const totalFree=slots.reduce((n,x)=>n+(x.e-x.s)/L3_MIN,0);
-  const gap=Math.max(0,+opts.gapMin||0);
+  const requestedGap=+opts.gapMin;
+  const gap=Number.isFinite(requestedGap)?Math.max(0,requestedGap):0;
   let budget=Math.floor(totalFree*0.90);
   const factor=typeof opts.factor==='function'?opts.factor:()=>1;
   const highHours=(opts.windows||[]).slice(0,3);
-  const blocks=[],unplaced=[];
-  for(const item of l3Interleave((opts.items||[]).filter(x => x && x.id && x.activity && +x.minutes > 0))){
+  const items=Array.isArray(opts.items)?opts.items:[];
+  // Corrupt durations must not consume real availability or disappear silently.
+  const blocks=[],unplaced=items.filter(x=>x&&x.id&&x.activity&&!Number.isFinite(+x.minutes)).map(x=>x.id);
+  for(const item of l3Interleave(items.filter(x=>x&&x.id&&x.activity&&Number.isFinite(+x.minutes)&&+x.minutes>0))){
     const mult=Number.isFinite(+factor(item.activity)) ? Math.max(0.8,Math.min(2,+factor(item.activity))) : 1;
     let remaining=Math.max(25,l3Ceil5((+item.minutes||0)*mult));
     let safety=0;

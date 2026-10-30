@@ -106,4 +106,20 @@ assert.equal(b.length,l3LongDays,'ten-year horizon remains supported');
 assert(b.every(x=>x.minutes===1440),'long plans preserve the daily hard cap');
 assert.equal(b.reduce((sum,x)=>sum+x.minutes,0),l3LongDays*1440,
   'large valid study plans retain every scheduled minute');
+// QA: a corrupt duration cannot occupy the schedule ahead of valid backlog.
+p=autoPlan({items:[task('invalid','math',Infinity,1),task('valid','physics',30)],
+  free:[[at(8),at(9)]],now:at(7)});
+assert.deepEqual(p.blocks.map(x=>x.itemId),['valid'],'non-finite task cannot consume availability');
+assert.deepEqual(p.unplaced,['invalid'],'invalid task remains visibly unplaced');
+p=autoPlan({items:[task('nan','math',NaN),task('valid','physics',30)],
+  free:[[at(8),at(9)]],now:at(7)});
+assert.deepEqual(p.blocks.map(x=>x.itemId),['valid']);
+assert.deepEqual(p.unplaced,['nan'],'NaN duration is not silently dropped');
+p=autoPlan({items:[task('zero','math',0),task('valid','physics',30)],
+  free:[[at(8),at(9)]],now:at(7)});
+assert.deepEqual(p.unplaced,[],'zero-minute legacy items stay ignored');
+p=autoPlan({items:[task('a','math',30),task('b','physics',30)],
+  free:[[at(8),at(10)]],now:at(7),gapMin:Infinity});
+assert.deepEqual(p.blocks.map(x=>x.itemId),['a','b'],
+  'invalid gap must not silently discard remaining backlog');
 console.log('SCHED TESTS PASSED');
