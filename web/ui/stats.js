@@ -7,6 +7,16 @@ function s1Period() {
   const we=addDaysKey(ws,weeks*7-1);
   return {tk,ws,we,weeks,month,offset};
 }
+// Ignore malformed/overflowing history and settings rather than rendering NaN or Infinity.
+function l7SafeMeasure(value){
+  if(typeof value!=='number'&&(typeof value!=='string'||!value.trim()))return 0;
+  const n=Number(value);
+  return Number.isFinite(n)&&n>=0?n:0;
+}
+function l7SafeAdd(a,b){
+  const prev=l7SafeMeasure(a),next=prev+l7SafeMeasure(b);
+  return Number.isFinite(next)?next:prev;
+}
 function s1Buckets(p,agg) {
   const groups=[];
   for(let i=0;i<(p.month?4:7);i++){
@@ -16,14 +26,14 @@ function s1Buckets(p,agg) {
     for(let j=0;j<count;j++){
       const k=addDaysKey(start,j),day=agg[k];days.push(k);
       if(!day)continue;
-      for(const id in day.acts)if(isStudyId(id))acts[id]=(acts[id]||0)+day.acts[id];
+      for(const id in day.acts)if(isStudyId(id))acts[id]=l7SafeAdd(acts[id],day.acts[id]);
     }
-    groups.push({start,days,acts,total:Object.values(acts).reduce((sum,v)=>sum+v,0)});
+    groups.push({start,days,acts,total:Object.values(acts).reduce(l7SafeAdd,0)});
   }
   return groups;
 }
 function s1Bars(p,buckets){
-  const goal=(+CFG.dailyGoal||0)*MIN*(p.month?7:1);
+  const goal=l7SafeMeasure(l7SafeMeasure(CFG.dailyGoal)*MIN*(p.month?7:1));
   const highest=Math.max(goal,...buckets.map(b=>b.total),MIN);
   const max=Math.max(highest*1.05,MIN);
   const cols=buckets.map(b=>{
@@ -45,12 +55,12 @@ function s1Bars(p,buckets){
 function s1SubjectRows(agg) {
   const totals={};
   for(const day of Object.values(agg))
-    for(const id in day.acts)if(isStudyId(id))totals[id]=(totals[id]||0)+day.acts[id];
+    for(const id in day.acts)if(isStudyId(id))totals[id]=l7SafeAdd(totals[id],day.acts[id]);
   const ids=new Set(Object.keys(totals));
   ACTS.forEach(a=>{if(a.kind==='study'&&!a.archived&&a.goal)ids.add(a.id);});
   return [...ids].sort((a,b)=>(totals[b]||0)-(totals[a]||0))
     .map(id=>{
-      const a=act(id),total=totals[id]||0,goal=(a.goal||0)*MIN;
+      const a=act(id),total=totals[id]||0,goal=l7SafeMeasure(l7SafeMeasure(a.goal)*MIN);
       const pct=goal?Math.min(100,Math.round(total/goal*100)):0;
       return '<button type="button" class="s1-subject" data-act="s1-subject" data-id="'+esc(id)+'">'+
         '<span class="s1-subject-top"><span class="s1-subject-name"><i class="s1-dot" style="--c:'+kSafeColour(a.color)+'"></i>'+
@@ -64,18 +74,20 @@ function s1SubjectRows(agg) {
 function l7WeekData(p,agg){
   const weeks=p.weeks,totalBySubject={};
   for(const day of Object.values(agg))for(const id in day.acts)
-    if(isStudyId(id))totalBySubject[id]=(totalBySubject[id]||0)+day.acts[id];
+    if(isStudyId(id))totalBySubject[id]=l7SafeAdd(totalBySubject[id],day.acts[id]);
   const subjects=ACTS.filter(a=>a.kind==='study'&&!a.archived).map(a=>({
-    id:a.id,name:a.name,studiedMin:(totalBySubject[a.id]||0)/MIN,
-    goalMin:(+a.goal||0)*weeks,factor:typeof l3Factor==='function'?l3Factor(a.id):1
+    id:a.id,name:a.name,studiedMin:l7SafeMeasure((totalBySubject[a.id]||0)/MIN),
+    goalMin:l7SafeMeasure(l7SafeMeasure(a.goal)*weeks),factor:typeof l3Factor==='function'?l3Factor(a.id):1
   }));
-  const configured=subjects.reduce((sum,a)=>sum+a.goalMin,0);
-  const goal=configured>0?configured*MIN:(+CFG.dailyGoal||0)*7*weeks*MIN;
-  return {subjects,goal,total:Object.values(totalBySubject).reduce((x,y)=>x+y,0)};
+  const configured=subjects.reduce((sum,a)=>l7SafeAdd(sum,a.goalMin),0);
+  const weekly=l7SafeMeasure(configured*MIN);
+  const fallback=l7SafeMeasure(l7SafeMeasure(CFG.dailyGoal)*7*weeks*MIN);
+  const goal=weekly>0?weekly:fallback;
+  return {subjects,goal,total:Object.values(totalBySubject).reduce(l7SafeAdd,0)};
 }
 function l7Days(){
   const tk=todayKey(),start=addDaysKey(tk,-60),agg=aggregate(ENTRIES,Date.now(),start,tk),days={};
-  for(let k=start;k<=tk;k=addDaysKey(k,1))days[k]=(agg[k]&&agg[k].study||0)/MIN;
+  for(let k=start;k<=tk;k=addDaysKey(k,1))days[k]=l7SafeMeasure((agg[k]&&agg[k].study||0)/MIN);
   return days;
 }
 function l7Drift(from,to){
@@ -83,7 +95,7 @@ function l7Drift(from,to){
   for(const [k,d] of Object.entries(V.distractions||{})){
     if(k<from||k>to)continue;
     for(const x of Object.values(d&&d.items||{}))if(x&&x.type==='drift'&&!x.dismissed)
-      sum+=Math.max(0,+x.driftMin||0);
+      sum=l7SafeAdd(sum,x.driftMin);
   }
   return sum;
 }
@@ -102,6 +114,7 @@ function l7Context(p,agg){
     dismissed:store.get('advice:'+wk)||[]};
 }
 function l7GoalRing(total,goal){
+  goal=l7SafeMeasure(goal);total=l7SafeMeasure(total);
   const pct=goal>0?clamp(total/goal,0,1):0,c=2*Math.PI*39;
   return '<div class="l7-goal"><svg viewBox="0 0 100 100" width="86" height="86" aria-hidden="true">'+
     '<circle cx="50" cy="50" r="39" class="l7-ring-track"></circle>'+
@@ -164,7 +177,7 @@ function vStats(){
 /* L7 fresh-start card and one-action weekly subject goal. */
 function l7TopSubject(){
   return ACTS.filter(a=>a.kind==='study'&&!a.archived)
-    .sort((a,b)=>(+b.goal||0)-(+a.goal||0))[0]||null;
+    .sort((a,b)=>l7SafeMeasure(b.goal)-l7SafeMeasure(a.goal))[0]||null;
 }
 function l7GoalSheet(sh){
   const a=ACTMAP[sh.subject];
@@ -180,7 +193,7 @@ SHEETS.l7goal=l7GoalSheet;
 Object.assign(ACT,{
   'l7-goal-open'(){
     const a=l7TopSubject();if(!a)return;
-    openSheet({type:'l7goal',subject:a.id,hours:Math.max(1,Math.round((+a.goal||60)/60))});
+    openSheet({type:'l7goal',subject:a.id,hours:Math.min(80,Math.max(1,Math.round((l7SafeMeasure(a.goal)||60)/60)))});
   },
   'l7-goal-save'(){
     const sh=UI.sheet,subject=sh&&ACTMAP[sh.subject],h=+sh.hours;
