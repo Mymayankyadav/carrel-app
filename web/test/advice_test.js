@@ -86,4 +86,29 @@ assert.equal(streak({'2026-10-30':30,'2026-10-31':30,'2026-11-01':0},'2026-11-01
   'an unfinished Sunday does not consume the current ISO-week freeze');
 assert.equal(streak({'2026-11-01':30,'2026-11-02':0},'2026-11-02').count,1,
   'the new ISO week cannot pre-freeze an unfinished Monday');
+// QA: malformed or non-finite telemetry must not manufacture study progress.
+assert.equal(streak({'2026-10-26':30,'2026-10-27':Infinity},'2026-10-27').count,1,
+  'infinite minutes cannot complete an unfinished day');
+assert.equal(streak({'2026-10-26':30,'2026-10-27':'Infinity'},'2026-10-27').count,1,
+  'non-finite legacy string minutes cannot complete a day');
+assert.equal(streak({'2026-10-26':30,'2026-10-27':-30},'2026-10-27').count,1,
+  'negative minutes cannot complete a day');
+assert.equal(flexibleStreak({'2026-10-26':60},Infinity,1,'2026-10-26').count,1,
+  'non-finite minimum-day settings fall back to 25 minutes');
+assert.equal(flexibleStreak({'2026-10-26':125},999,1,'2026-10-26').count,1,
+  'minimum-day threshold respects the 120-minute settings limit');
+assert.equal(advise({subjects:[{id:'math',name:'Maths',goalMin:600,studiedMin:Infinity}],daysLeft:4}).length,0,
+  'invalid studied minutes cannot generate an impossible goal percentage');
+assert.equal(advise({subjects:[{id:'math',name:'Maths',goalMin:600,studiedMin:null}],daysLeft:4}).length,0,
+  'unknown study progress cannot be reported as zero percent');
+assert.deepEqual(advise({subjects:[null]}),[],
+  'corrupt subject rows cannot crash Insights');
+assert.deepEqual(advise({subjects:{math:{goalMin:600}}}),[],
+  'malformed subject collections cannot crash Insights');
+assert.deepEqual(advise({overdue:Infinity,driftThis:Infinity,driftLast:0,
+  todayMin:0,minDay:25,streak:Infinity,nearPlanEnd:true}),[],
+  'non-finite counters cannot generate Infinity advice');
+assert.deepEqual(advise({overdue:'6',driftThis:'60',driftLast:'10',
+  todayMin:'0',minDay:'25',streak:'2',nearPlanEnd:true}).map(x=>x.id),
+  ['reviews','drift','streak'],'legacy numeric strings still produce useful advice');
 console.log('L7 ADVICE & STREAK TESTS PASSED');
