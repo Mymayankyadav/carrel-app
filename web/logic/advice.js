@@ -37,6 +37,9 @@ function flexibleStreak(days,minDay,weekStart,todayKey){
     const week=l7WeekOf(k),w=byWeek[week]||(byWeek[week]={met:0,used:false});
     const time=+days[k]||0;
     if(time>=min){status[k]='met';w.met++;}
+    // Today is unfinished: do not spend the weekly freeze or extend the
+    // streak before the minimum has actually been reached.
+    else if(current&&k===current)status[k]='miss';
     else if(w.met>0&&!w.used){status[k]='freeze';w.used=true;}
     else status[k]='miss';
   }
