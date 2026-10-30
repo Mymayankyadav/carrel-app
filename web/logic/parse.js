@@ -66,9 +66,17 @@ function l9Parse(text, opts) {
     if(i===3||i===4||i===5){
       const d=i===5?+match[2]:+match[1];
       const mon=i===3?+match[2]:months.indexOf((i===5?match[1]:match[2]).slice(0,3).toLowerCase())+1;
-      target=valid(now.getFullYear(),mon,d);
-      if(target && (dayKey(target)<dayKey(now) || (dayKey(target)===dayKey(now) && time && time<=pad(now.getHours())+':'+pad(now.getMinutes()))))
-        target=valid(now.getFullYear()+1,mon,d);
+      // A yearless date means its next calendar occurrence. Leap days can
+      // require skipping several years, including non-leap century years.
+      const today=dayKey(now),nowClock=pad(now.getHours())+':'+pad(now.getMinutes());
+      for(let year=now.getFullYear();year<=now.getFullYear()+8;year++){
+        const candidate=valid(year,mon,d);
+        if(!candidate)continue;
+        const key=dayKey(candidate);
+        if(key<today || (key===today && time && time<=nowClock))continue;
+        target=candidate;
+        break;
+      }
     }
     if(target){date=dayKey(target);remove(match.index,match.index+match[0].length);}
   }
