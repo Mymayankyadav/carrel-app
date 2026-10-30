@@ -70,4 +70,20 @@ assert.equal(streak({'2026-10-28':0},'2026-10-28').count,0,
   'an unfinished current day does not manufacture a streak');
 assert.deepEqual(Object.keys(streak({'2026-02-31':25},'2026-03-01').status),[],
   'invalid calendar dates are excluded from status');
+// The current day is not a completed missed day: its freeze must remain
+// available until midnight, and today's zero minutes must not inflate streaks.
+const incomplete={'2026-10-26':40,'2026-10-27':0};
+assert.equal(streak(incomplete,'2026-10-27').count,1,'unfinished today cannot count as a frozen day');
+assert.equal(streak(incomplete,'2026-10-27').status['2026-10-27'],'miss',
+  'unfinished today does not spend the weekly freeze');
+assert.equal(streak({...incomplete,'2026-10-28':40},'2026-10-28').count,3,
+  'the same missed day becomes eligible for a freeze after midnight');
+assert.equal(streak({...incomplete,'2026-10-28':0},'2026-10-28').count,2,
+  'an incomplete current day cannot consume a second freeze');
+assert.equal(streak({'2026-10-26':40,'2026-10-27':25},'2026-10-27').count,2,
+  'today joins the streak immediately upon reaching the minimum');
+assert.equal(streak({'2026-10-30':30,'2026-10-31':30,'2026-11-01':0},'2026-11-01').count,2,
+  'an unfinished Sunday does not consume the current ISO-week freeze');
+assert.equal(streak({'2026-11-01':30,'2026-11-02':0},'2026-11-02').count,1,
+  'the new ISO week cannot pre-freeze an unfinished Monday');
 console.log('L7 ADVICE & STREAK TESTS PASSED');
