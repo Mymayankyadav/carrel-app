@@ -122,4 +122,18 @@ p=autoPlan({items:[task('a','math',30),task('b','physics',30)],
   free:[[at(8),at(10)]],now:at(7),gapMin:Infinity});
 assert.deepEqual(p.blocks.map(x=>x.itemId),['a','b'],
   'invalid gap must not silently discard remaining backlog');
+// QA: a short busy interval cannot substitute for the configured study gap.
+p=autoPlan({items:[task('a','math',60),task('b','physics',30)],
+  free:[[at(8),at(9)],[at(9,5),at(10,5)]],now:at(7),gapMin:10});
+assert.deepEqual(p.blocks.map(x=>x.at),['08:00','09:10'],
+  'a five-minute commitment gap cannot bypass the ten-minute study break');
+assert.deepEqual(p.unplaced,[],'both tasks still fit after the gap correction');
+// Peak-first allocation must reserve the preceding gap across another slot.
+p=autoPlan({items:[task('peak','math',25,1,true),task('base','physics',55)],
+  free:[[at(9),at(9,55)],[at(10),at(11)]],now:at(8),windows:[10],gapMin:10});
+assert.deepEqual(p.blocks.map(x=>x.at),['09:00','10:00']);
+assert.equal(p.blocks[0].minutes,50,
+  'a base session must finish ten minutes before the reserved peak');
+assert.deepEqual(p.unplaced,['base'],
+  'unscheduled minutes remain visible rather than silently overbooking');
 console.log('SCHED TESTS PASSED');
