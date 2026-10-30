@@ -1,6 +1,13 @@
 /* L7: pure study suggestions, estimate accuracy and flexible streak. */
 'use strict';
 function l7Clamp(x,a,b){return Math.max(a,Math.min(b,x));}
+// Corrupt, absent and non-finite telemetry must never count as study time.
+// Keep numeric-string compatibility with legacy documents.
+function l7Nonnegative(v){
+  if(v==null||typeof v==='boolean'||(typeof v==='string'&&!v.trim()))return null;
+  const n=Number(v);
+  return Number.isFinite(n)&&n>=0?n:null;
+}
 function l7Accuracy(history){
   // Missing legacy actuals are not zero-minute completed sessions. Numeric
   // strings remain compatible, but null, blanks and booleans are not evidence.
@@ -32,10 +39,11 @@ function flexibleStreak(days,minDay,weekStart,todayKey){
   // older missed day. Omitted todayKey preserves the original call contract.
   const current=l7ValidDay(todayKey)?todayKey:null;
   const keys=Object.keys(days||{}).filter(k=>l7ValidDay(k)&&(!current||k<=current)).sort();
-  const min=Math.max(5,+minDay||25),byWeek={},status={};
+  const threshold=l7Nonnegative(minDay);
+  const min=l7Clamp(threshold==null||threshold===0?25:threshold,5,120),byWeek={},status={};
   for(const k of keys){
     const week=l7WeekOf(k),w=byWeek[week]||(byWeek[week]={met:0,used:false});
-    const time=+days[k]||0;
+    const time=l7Nonnegative(days[k])??0;
     if(time>=min){status[k]='met';w.met++;}
     // Today is unfinished: do not spend the weekly freeze or extend the
     // streak before the minimum has actually been reached.
@@ -68,9 +76,11 @@ function advise(ctx){
   ctx=ctx||{};
   const out=[];
   const emit=(id,text,label,act,args)=>out.push({id,text,action:{label,act,args:args||{}}});
-  const subjects=ctx.subjects||[];
-  const low=subjects.find(s=>+s.goalMin>0&&+s.studiedMin/+s.goalMin<.5);
-  if(low&&ctx.daysLeft>=3){
+  const subjects=Array.isArray(ctx.subjects)?ctx.subjects:[];
+  const low=subjects.find(s=>s&&l7Nonnegative(s.goalMin)>0&&
+    l7Nonnegative(s.studiedMin)!=null&&
+    l7Nonnegative(s.studiedMin)/l7Nonnegative(s.goalMin)<.5);
+  if(low&&l7Nonnegative(ctx.daysLeft)>=3){
     const pct=Math.round(100*(+low.studiedMin||0)/+low.goalMin);
     emit('behind',low.name+' is at '+pct+'% of goal. Plan 2 sessions?','Plan it','l7-plan',{subject:low.id});
   }
@@ -80,16 +90,21 @@ function advise(ctx){
     emit('peak','You focus best at '+(h%12||12)+(h>=12?' pm':' am')+'. Start there tomorrow?',
       'Set','l7-peak',{hour:h});
   }
-  const underestimated=subjects.find(s=>Number.isFinite(+s.factor)&&+s.factor>=1.3);
+  const underestimated=subjects.find(s=>s&&Number.isFinite(+s.factor)&&+s.factor>=1.3);
   if(underestimated)emit('estimate',underestimated.name+' takes '+(+underestimated.factor).toFixed(1)+
     '× your estimate. Plans now adjust.','OK','l7-dismiss',{id:'estimate'});
-  if(+ctx.overdue>=5)emit('reviews',ctx.overdue+' reviews overdue. Add a 30m review block?',
+  const overdue=l7Nonnegative(ctx.overdue);
+  if(overdue!=null&&overdue>=5)emit('reviews',overdue+' reviews overdue. Add a 30m review block?',
     'Add','l7-review',{});
-  if(+ctx.driftThis>30&&+ctx.driftThis>1.5*(+ctx.driftLast||0))
-    emit('drift','Drift is up to '+Math.round(ctx.driftThis)+'m. Try urge-surf?',
+  const driftThis=l7Nonnegative(ctx.driftThis),driftLast=l7Nonnegative(ctx.driftLast);
+  if(driftThis!=null&&driftThis>30&&driftThis>1.5*(driftLast??0))
+    emit('drift','Drift is up to '+Math.round(driftThis)+'m. Try urge-surf?',
       'Turn on','l7-drift',{});
-  if(+ctx.todayMin<Math.max(5,+ctx.minDay||25)&&ctx.nearPlanEnd&&+ctx.streak>=1)
-    emit('streak',Math.max(5,+ctx.minDay||25)+' min keeps your '+ctx.streak+
+  const todayMin=l7Nonnegative(ctx.todayMin),minDay=l7Nonnegative(ctx.minDay);
+  const minimum=l7Clamp(minDay==null||minDay===0?25:minDay,5,120);
+  const streak=l7Nonnegative(ctx.streak);
+  if(todayMin!=null&&todayMin<minimum&&ctx.nearPlanEnd&&streak>=1)
+    emit('streak',minimum+' min keeps your '+streak+
       '-day streak.','Start','l7-start',{});
   const dismissed=new Set(ctx.dismissed||[]);
   return out.filter(x=>!dismissed.has(x.id)).slice(0,3);
