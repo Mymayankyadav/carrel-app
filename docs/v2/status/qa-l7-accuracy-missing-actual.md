@@ -10,7 +10,11 @@ Fresh `main` was `33a68c6105e9113dcedde2622647f6cf8b0e9200`. Read active PLAN-v2
 
 ## Verification and gates
 - `web/test/advice_test.js` adds regression assertions for missing, blank, boolean, explicit zero, numeric-string and non-array histories.
-- CI: pending on this PR. Do not claim a pass until the final-head checks complete.
+- Isolated Node execution of the exact patched `l7Accuracy` body: 10 representative cases passed (not the complete repository suite).
+- [Final-head web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41069257638): **success**.
+- [Final-head browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41069257647): **success**.
+- [Final-head navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41069257573): **success**.
+- [PR #145](https://github.com/Mymayankyadav/carrel-app/pull/145) squash-merged as [`090d81d`](https://github.com/Mymayankyadav/carrel-app/commit/090d81da4896baae14c580e2018c7f93ecff085a) after the required checks passed and the three-file diff was inspected.
 - Pure-logic change only; no UI surface, screenshots or Android changes.
 - No production synchronization migration, user data mutation, Supabase change, permissions or new recipients.
 - Issue #90 cross-tab lost updates remain open; L6 #44 must not merge without physical-device privacy/Usage Access acceptance under #52/#49.
