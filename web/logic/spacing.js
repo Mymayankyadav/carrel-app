@@ -14,22 +14,27 @@ function l4PlusDays(k,n) {
   if(!l4KeyValid(k)||!Number.isFinite(n))return null;
   const [y,m,d]=k.split('-').map(Number);
   const dt=new Date(Date.UTC(y,m-1,d+Math.trunc(n)));
-  return dt.getUTCFullYear()+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');
+  const year=dt.getUTCFullYear();
+  if(!Number.isFinite(year)||year<100||year>9999)return null;
+  return year+'-'+String(dt.getUTCMonth()+1).padStart(2,'0')+'-'+String(dt.getUTCDate()).padStart(2,'0');
 }
 function nextReview(topic,rating,todayKey,examKey) {
   if(!l4KeyValid(todayKey))return null;
   if(![1,2,3].includes(rating))return null;
   const old=Number(topic&&topic.interval);
-  const base=Number.isFinite(old)&&old>=1?Math.round(old):1;
+  const base=Number.isFinite(old)&&old>=1&&old<=3650?Math.round(old):1;
   const mult={1:0.5,2:1.8,3:2.5}[rating];
-  const interval=rating===1?1:Math.max(1,Math.round(base*mult));
+  const interval=rating===1?1:Math.min(3650,Math.max(1,Math.round(base*mult)));
   let due=l4PlusDays(todayKey,interval);
+  if(!due)return null;
   if(l4KeyValid(examKey)&&l4DayNumber(examKey)>l4DayNumber(todayKey)&&due>=examKey){
     const days=l4DayNumber(examKey)-l4DayNumber(todayKey);
     const pre=l4PlusDays(examKey,-Math.max(1,Math.round(days*0.15)));
     due=pre<l4PlusDays(todayKey,1)?l4PlusDays(todayKey,1):pre;
   }
-  return {interval,due,reps:Math.max(0,Math.round(+((topic&&topic.reps)||0)))+1,last:todayKey};
+  const previous=Number(topic&&topic.reps);
+  const reps=Number.isSafeInteger(previous)&&previous>=0&&previous<Number.MAX_SAFE_INTEGER?previous:0;
+  return {interval,due,reps:reps+1,last:todayKey};
 }
 function dueTopics(topics,dayKey) {
   if(!l4KeyValid(dayKey))return [];
