@@ -103,7 +103,10 @@ function l9CaptureSave(){
       title:String(sh.text).trim().slice(0,200),body:'',status:'new'});
     message='Saved for Claude.';
   }
-  closeSheet(true);commit(message,w,{undo:true});
+  // Keep the only editable copy until the offline queue is durably saved.
+  // commit() returns false on storage/quota and cross-tab conflict failures.
+  if(commit(message,w,{undo:true}))closeSheet(true);
+  else{sh.err='Not saved. Check device storage and retry.';renderSheet();}
 }
 SHEETS.capture=l9CaptureSheet;
 Object.assign(ACT,{
