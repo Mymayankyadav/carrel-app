@@ -16,3 +16,11 @@ Date: 2026-10-30 · Owner: QA/ORC · Branch: `v2/qa-legacy-writer-lock-prototype
 - No UI or native changes; no new screenshots are applicable.
 - Remaining #90: integrate all production producers and acknowledgements under one safe authority, handle old-tab compatibility and sign-out, design crash-safe promotion, and run real two-context end-to-end acceptance.
 - L6 PR #44 remains draft pending physical Android #52/#49; no device acceptance claimed.
+
+## Final-head merge evidence
+- [PR #119](https://github.com/Mymayankyadav/carrel-app/pull/119) squash-merged as [`042ebb8`](https://github.com/Mymayankyadav/carrel-app/commit/042ebb83e3e6816221aa550e9330f6df02bbbd0d).
+- [Web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40978631128) — success, including `QA LEGACY WRITER TWO-TAB SMOKE PASSED`.
+- [Second final-head web CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/40978626011) — success.
+- [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40978631370) — success.
+- [Navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40978631469) — success.
+- An intermediate run [40978286561](https://github.com/Mymayankyadav/carrel-app/actions/runs/40978286561) failed on two-tab storage visibility; host-side polling was added, then the final-head runs passed. No physical-device test performed.
