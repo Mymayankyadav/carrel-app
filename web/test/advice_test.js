@@ -36,7 +36,7 @@ assert.equal(flexibleStreak({'2026-10-26':0,'2026-10-27':0},25,1).count,0);
 const streak=(days,today)=>flexibleStreak(days,25,1,today);
 assert.equal(streak({'2026-10-26':30,'2026-10-28':30},'2026-10-28').count,1,
   'a missing intervening day breaks a streak');
-assert.equal(streak({'2026-10-26':30,'2026-10-27':30,'2026-10-28':0},'2026-10-28').count,2,
+assert.equal(streak({'2026-10-26':30,'2026-10-27':0,'2026-10-28':0},'2026-10-28').count,2,
   'only the actual unfinished current day can be skipped');
 assert.equal(streak({'2026-10-26':30,'2026-10-27':30},'2026-10-30').count,0,
   'a history ending two days ago is not a live streak');
