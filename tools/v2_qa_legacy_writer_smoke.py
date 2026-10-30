@@ -59,8 +59,14 @@ with sync_playwright() as p:
     # Staging marker prevents even a cooperating writer from modifying source.
     a.evaluate("""() => localStorage.setItem(
       'carrel.pending-migration-chunks.v1:qa_legacy_writer:s1','{}')""")
-    b.wait_for_function("""() => localStorage.getItem(
-      'carrel.pending-migration-chunks.v1:qa_legacy_writer:s1')==='{}'""")
+    marker_seen = False
+    for _ in range(80):
+        marker_seen = b.evaluate("""() => localStorage.getItem(
+          'carrel.pending-migration-chunks.v1:qa_legacy_writer:s1')==='{}'""")
+        if marker_seen:
+            break
+        b.wait_for_timeout(100)
+    assert marker_seen, "staging marker was not visible in second tab"
     blocked = b.evaluate("""async () => qaLegacyLockedWriter(localStorage,
       'qa_legacy_writer','s1',navigator.locks,()=>true).appendBatch([{
         path:'days/2026-10-30',kind:'delete'
