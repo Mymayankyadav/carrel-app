@@ -11,7 +11,8 @@ Owner: QA/ORC, independent L7 correctness slice. Branch: `v2/qa-focus-hour-split
 - `web/test/stats_pages_test.js` covers two rated overnight sessions, minute-weighted scores, subject totals and malformed timestamps.
 - No change to frozen files, BOARD.md or DECISIONS.md while PR #123 owns their active #90 integration updates. ORC should reconcile a board/decision row when that work lands.
 - L6 PR #44 remains draft until physical-device privacy acceptance in #52 and native QA #49.
-- Run web build, Node suite, v2 smoke, browser acceptance and navigation CI before merge. No new visual surface; screenshots are not claimed.
+- Implementation-head CI passed: [web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41018426440), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41018426378), [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41018426354), and [push web CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/41018409288). All four concluded success on commit `99b88dc`.
+- Downloaded the `v2-f1-shots` artifact from web CI and visually reviewed all four L7 Focus screenshots (390/1280, dark/light). No new screen or layout changes; the existing focus bars and subject rows render in each configuration. Screenshots are not attached to this status file.
 
 ## Next
 Continue cross-tab journal receipt investigation in #90 separately. Do not enable production migration until lossless write and acknowledgement semantics are proven.
