@@ -15,7 +15,10 @@ Quick Capture's yearless numeric matcher could extract `11-12` from `2026-11-12`
 ## Verification
 - Local V8 execution of the changed parser: 11 ISO/yearless calendar cases passed.
 - Local V8 execution of the changed capture save path: five invalid/valid/manual-override/Ask cases passed.
-- Full repository build, Node tests, v2 smoke, browser acceptance, navigation audit: pending GitHub CI; do not claim success before actual run.
+- [Web build, full Node suite and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41031541934): **success** on PR #135 final head `470d5a8`.
+- [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41031542007): **success**.
+- [Navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41031541927): **success**.
+- [Implementation PR #135](https://github.com/Mymayankyadav/carrel-app/pull/135) squash-merged as [`9845ebd`](https://github.com/Mymayankyadav/carrel-app/commit/9845ebd06387f1096a3a9f41565a5fea785ac6fd).
 - No new visual surface; existing inline `role="alert"` date error reused. No screenshot review claimed.
 
 ## Coordination
