@@ -1,6 +1,6 @@
 'use strict';
 const assert=require('node:assert/strict');
-const {estimateFactor,energyWindows,autoPlan,backwardPlan}=require('../logic/sched.js');
+const {estimateFactor,energyWindows,l3HourStatsFromEntries,autoPlan,backwardPlan}=require('../logic/sched.js');
 const history=(ratio,n=6)=>Array.from({length:n},()=>({planned:60,actual:60*ratio}));
 assert.equal(estimateFactor([]),1);
 assert.equal(estimateFactor(history(2,4)),1,'five valid blocks required');
@@ -13,6 +13,37 @@ assert.equal(estimateFactor([{planned:60,actual:20},{planned:60,actual:50},...hi
 assert.deepEqual(energyWindows({}),[]);
 assert.deepEqual(energyWindows({9:{min:10,focus:3},10:{min:120,focus:1},11:{min:60,focus:3}}),[11,10],'minimum observations and score');
 assert.deepEqual(energyWindows({9:{min:30,focus:null}}),[9],'missing focus neutral');
+// Energy-window evidence must be apportioned by actual local-hour overlap.
+const hourAt=(day,h,m=0)=>new Date(2026,9,day,h,m).getTime();
+const hourStats=l3HourStatsFromEntries([
+  {s:hourAt(29,9,30),e:hourAt(29,11,30),focus:3},
+  {s:hourAt(29,10,30),e:hourAt(29,11,30),focus:1}
+]);
+assert.deepEqual(hourStats,{
+  9:{min:30,focus:3},
+  10:{min:90,focus:(60*3+30)/90},
+  11:{min:60,focus:2}
+},'multi-hour sessions are split and focus is weighted by overlap');
+assert.deepEqual(energyWindows(hourStats),[10,9,11],
+  'peak-hour ranking uses actual minutes, not the starting hour of long sessions');
+assert.deepEqual(l3HourStatsFromEntries([
+  {s:hourAt(29,23,30),e:hourAt(30,0,30),focus:2}
+]),{23:{min:30,focus:2},0:{min:30,focus:2}},
+  'cross-midnight sessions contribute to both local hours');
+assert.deepEqual(l3HourStatsFromEntries([
+  {s:hourAt(29,9),e:hourAt(29,10),focus:null},
+  {s:hourAt(29,9),e:hourAt(29,10),focus:99}
+]),{9:{min:120,focus:2}},
+  'missing and malformed focus ratings are neutral');
+assert.deepEqual(l3HourStatsFromEntries([
+  {s:hourAt(29,9),e:hourAt(31,10),focus:3},
+  {s:hourAt(29,10),e:hourAt(29,9),focus:3},
+  {s:NaN,e:hourAt(29,10),focus:3}
+]),{},'corrupt and implausibly long sessions cannot dominate hour rankings');
+assert.deepEqual(energyWindows({9:{min:Infinity,focus:3},10:{min:60,focus:3}}),[10],
+  'non-finite telemetry must not rank as the strongest focus hour');
+assert.deepEqual(energyWindows({9:{min:60,focus:Infinity},10:{min:60,focus:3}}),[10,9],
+  'invalid focus ratings fall back to neutral rather than outranking real evidence');
 const at=(h,m=0)=>new Date(2026,9,29,h,m).getTime();
 const free=[[at(8),at(12)]];
 const task=(id,activity,minutes=50,prio=2,hard=false)=>({id,activity,title:id,minutes,prio,hard});
