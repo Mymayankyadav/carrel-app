@@ -2,7 +2,12 @@
 'use strict';
 function l7Clamp(x,a,b){return Math.max(a,Math.min(b,x));}
 function l7Accuracy(history){
-  const valid=(history||[]).filter(x=>x&&Number.isFinite(+x.planned)&&+x.planned>0&&Number.isFinite(+x.actual)&&+x.actual>=0);
+  // Missing legacy actuals are not zero-minute completed sessions. Numeric
+  // strings remain compatible, but null, blanks and booleans are not evidence.
+  const present=v=>(typeof v==='number'||(typeof v==='string'&&v.trim()!==''))
+    &&Number.isFinite(Number(v));
+  const valid=(Array.isArray(history)?history:[]).filter(x=>x&&
+    present(x.planned)&&+x.planned>0&&present(x.actual)&&+x.actual>=0);
   if(!valid.length)return null;
   const err=valid.reduce((sum,x)=>sum+Math.abs(x.actual-x.planned)/x.planned,0)/valid.length;
   return Math.round(100*l7Clamp(1-err,0,1));
