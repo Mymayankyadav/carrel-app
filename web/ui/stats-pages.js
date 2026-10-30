@@ -80,12 +80,22 @@ function s2Insights() {
 function l7FocusStats(){
   const hours={},subjects={};
   for(const e of ENTRIES){
-    if(!e||e.e==null||e.e<=e.s||![1,2,3].includes(+e.focus)||!isStudyId(e.a))continue;
-    const minutes=(e.e-e.s)/MIN;
-    const h=new Date(e.s).getHours();
-    for(const [map,key] of [[hours,h],[subjects,e.a]]){
-      const rec=map[key]||(map[key]={sum:0,min:0,n:0});
-      rec.sum+=+e.focus*minutes;rec.min+=minutes;rec.n++;
+    if(!e||!Number.isFinite(e.s)||!Number.isFinite(e.e)||e.e<=e.s||
+       ![1,2,3].includes(+e.focus)||!isStudyId(e.a))continue;
+    const minutes=(e.e-e.s)/MIN,focus=+e.focus;
+    const subject=subjects[e.a]||(subjects[e.a]={sum:0,min:0,n:0});
+    subject.sum+=focus*minutes;subject.min+=minutes;subject.n++;
+    // Attribute each portion to the hour in which it was actually studied.
+    // A session crossing midnight must not inflate its starting hour.
+    // Epoch-based boundaries also advance correctly through clock changes.
+    for(let cursor=e.s;cursor<e.e;){
+      const date=new Date(cursor),hour=date.getHours();
+      const elapsed=date.getMinutes()*MIN+date.getSeconds()*1000+date.getMilliseconds();
+      const next=Math.min(e.e,cursor+60*MIN-elapsed);
+      const part=(next-cursor)/MIN;
+      const rec=hours[hour]||(hours[hour]={sum:0,min:0,n:0});
+      rec.sum+=focus*part;rec.min+=part;rec.n++;
+      cursor=next;
     }
   }
   return {hours,subjects};
