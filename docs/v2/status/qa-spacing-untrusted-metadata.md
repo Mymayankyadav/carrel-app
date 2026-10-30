@@ -16,8 +16,9 @@ Owner: independent QA/ORC L4 regression; branch: `v2/qa-spacing-untrusted-metada
 ## Evidence
 - Added `web/test/qa_spacing_untrusted_metadata_test.js` for large offsets, year overflow, malformed and unsafe counters, interval cap, and unchanged normal review behaviour.
 - Locally executed the isolated new Node regression suite: passed.
-- GitHub CI (web build, all Node tests, v2 smoke, browser acceptance, navigation audit) must pass before merge. No screenshot review is claimed; this is a pure-logic change without a UI surface.
+- GitHub PR #129 head `1723ec8` passed [web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41007247598), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41007247693), and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41007247539) — all **success**. Squash-merged to `main` as [`0c89f1f`](https://github.com/Mymayankyadav/carrel-app/commit/0c89f1f074957819a18a84f0f452e8de0b40aac7) on 2026-10-30.
+- No screenshot review is claimed; this is a pure-logic change without a UI surface.
 
 ## Next
-- Review CI and merge when the required gates are demonstrably green.
+- Preserve the passing QA evidence; the implementation is merged.
 - Continue #90's immutable authoritative outbox and safe sign-out handoff independently.
