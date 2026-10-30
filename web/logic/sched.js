@@ -106,7 +106,10 @@ function autoPlan(opts) {
     }
     if(remaining>0)unplaced.push(item.id);
   }
-  // The preview and persisted Plan order must follow clock time, not the\n  // priority order in which candidate tasks were allocated.\n  blocks.sort((a,b)=>a.at.localeCompare(b.at));\n  return {blocks,unplaced};
+  // The preview and persisted Plan order must follow clock time, not the
+  // priority order in which candidate tasks were allocated.
+  blocks.sort((a,b)=>a.at.localeCompare(b.at));
+  return {blocks,unplaced};
 }
 function backwardPlan(opts) {
   opts=opts||{};
