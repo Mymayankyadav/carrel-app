@@ -1,0 +1,13 @@
+'use strict';
+const assert=require('node:assert/strict');
+const {nextReview,l4PlusDays}=require('../logic/spacing.js');
+assert.equal(l4PlusDays('2026-10-30',1e9),null,'unrepresentable offset must not make NaN date');
+assert.equal(l4PlusDays('9999-12-31',1),null,'out-of-range year must not persist');
+assert.equal(nextReview({interval:1e9},3,'2026-10-30').due,'2026-11-02','corrupt interval defaults to first review');
+assert.equal(nextReview({interval:3650},3,'2026-10-30').interval,3650,'valid long interval is capped');
+assert.equal(nextReview({reps:'oops'},3,'2026-10-30').reps,1,'invalid reps are reset');
+assert.equal(nextReview({reps:Infinity},3,'2026-10-30').reps,1,'infinite reps are reset');
+assert.equal(nextReview({reps:Number.MAX_SAFE_INTEGER},3,'2026-10-30').reps,1,'unsafe increment is rejected');
+assert.equal(nextReview({},3,'9999-12-31'),null,'unrepresentable due date fails closed');
+assert.equal(nextReview({interval:4,reps:3},3,'2026-10-28').due,'2026-11-07','normal review unaffected');
+console.log('QA SPACING UNTRUSTED METADATA TESTS PASSED');
