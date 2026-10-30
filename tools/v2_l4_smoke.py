@@ -28,6 +28,18 @@ with sync_playwright() as p:
             page.locator('[data-act="l4-topic-save"]').click()
             page.wait_for_function("""() => Object.values(V.topics||{})
               .some(t=>t&&t.title==='Orbital motion'&&t.subject==='physics'&&t.interval===1)""")
+            # Simulate a durable queue failure: keep the typed topic visible and retryable.
+            page.evaluate("l4NewTopic('physics')")
+            page.locator('[data-bind="sheet.d.title"]').fill('Retry after storage failure')
+            page.evaluate("window.__qaEnqueue = enqueueBatch; enqueueBatch = () => false")
+            page.locator('[data-act="l4-topic-save"]').click()
+            expect(page.locator('.l4-error')).to_contain_text('not saved')
+            expect(page.locator('[data-bind="sheet.d.title"]')).to_have_value('Retry after storage failure')
+            page.screenshot(path=str(out/f'{width}-{theme}-failed-topic-save.png'),full_page=True)
+            page.evaluate("enqueueBatch = window.__qaEnqueue; delete window.__qaEnqueue")
+            page.locator('[data-act="l4-topic-save"]').click()
+            page.wait_for_function("""() => Object.values(V.topics||{})
+              .some(t=>t&&t.title==='Retry after storage failure')""")
             page.evaluate("""() => {
                 const w=W();w.set('topics/qa_due',{
                   v:1,subject:'physics',title:'Recall circular motion',order:100,
