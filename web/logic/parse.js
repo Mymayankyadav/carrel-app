@@ -42,7 +42,7 @@ function l9Parse(text, opts) {
   const months=['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
   const namedMonths=months.map(x=>x+'(?:uary|ruary|ch|il|e|y|ust|tember|ober|ember)?').join('|');
   const datePatterns=[
-    /\b(?:in)\s+(\d{1,3})\s+(days?|weeks?)\b/i,
+    /\b(?:in)\s+(\d+)\s+(days?|weeks?)\b/i,
     /\b(tomorrow|tmrw|tmr|today|tod)\b/i,
     /\b(mon(?:day)?|tue(?:sday)?|wed(?:nesday)?|thu(?:rsday)?|fri(?:day)?|sat(?:urday)?|sun(?:day)?)\b/i,
     /\b([0-3]?\d)\s*(?:\/|-)\s*([01]?\d)\b/i,
@@ -64,7 +64,11 @@ function l9Parse(text, opts) {
   if(!isoMatch)for (let i=0;i<datePatterns.length && !date;i++) {
     match=datePatterns[i].exec(s);
     if(!match)continue;
-    if(i===0){const n=+match[1];if(n<=3650)target=add(now,n*(match[2].toLowerCase().startsWith('week')?7:1));}
+    if(i===0){
+      const days=+match[1]*(match[2].toLowerCase().startsWith('week')?7:1);
+      if(Number.isSafeInteger(days)&&days<=3650)target=add(now,days);
+      else invalidDate=true; // Never save an out-of-range relative date as an undated task.
+    }
     if(i===1)target=add(now,/^tom|^tmr/i.test(match[1])?1:0);
     if(i===2){
       const ix=['sun','mon','tue','wed','thu','fri','sat'].indexOf(match[1].slice(0,3).toLowerCase());

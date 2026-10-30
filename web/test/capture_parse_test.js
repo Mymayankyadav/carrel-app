@@ -31,6 +31,15 @@ check('tmrw',{date:'2026-10-29'});
 check('tod',{date:'2026-10-28'});
 check('in 2 weeks',{date:'2026-11-11'});
 check('in 1 day',{date:'2026-10-29'});
+// Relative horizons are bounded in DAYS, not the raw number of weeks.
+// Explicitly requested but unrepresentable dates must fail before any write.
+check('in 3650 days',{date:'2036-10-25',invalidDate:false});
+check('in 3651 days',{date:null,invalidDate:true});
+check('in 521 weeks',{date:'2036-10-22',invalidDate:false});
+check('in 522 weeks',{date:null,invalidDate:true});
+check('in 4000 days',{date:null,invalidDate:true});
+check('in 999999999999999999999 days',{date:null,invalidDate:true});
+check('in 0 days',{date:'2026-10-28',invalidDate:false});
 check('fri',{date:'2026-10-30'});
 check('wednesday 8am',{date:'2026-11-04',time:'08:00'});
 check('wednesday 10am',{date:'2026-10-28',time:'10:00'});
