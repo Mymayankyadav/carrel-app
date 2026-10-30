@@ -14,7 +14,9 @@ In `web/logic/advice.js`, an unfinished current day remains `miss` for the curre
 
 - Added seven regression assertions in `web/test/advice_test.js` for unfinished Tuesday, midnight rollover, second missed day, completed today, and ISO-week Sunday/Monday boundaries.
 - Verified the actual branch source and complete L7 test file in an isolated JavaScript V8 harness: **46 assertions passed**. This is **not** a local Node, full build, Playwright or physical-device run.
-- GitHub CI and final-head integration evidence: pending at PR creation. No UI markup or CSS changes; no new screenshots claimed.
+- [PR #150](https://github.com/Mymayankyadav/carrel-app/pull/150) squash-merged as [`e9283ef`](https://github.com/Mymayankyadav/carrel-app/commit/e9283efd4ea86d31af52dafb8e6edb40d5005e91). Final PR-head [web build, Node suite and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41097277322), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41097277495), and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41097277360) all passed.
+- An earlier push [CI run 41097247347](https://github.com/Mymayankyadav/carrel-app/actions/runs/41097247347) passed build and JavaScript tests but reproduced the separate issue #90 legacy-writer cross-tab race (`[1,1]` vs `[2,2]`). This was reported to active [PR #123](https://github.com/Mymayankyadav/carrel-app/pull/123); the failing assertion was not weakened. PR-triggered checks subsequently passed.
+- Post-merge [GitHub Pages deployment](https://github.com/Mymayankyadav/carrel-app/actions/runs/41097688876), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41097688710) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41097689033) succeeded. No UI markup or CSS changes; no new screenshots claimed.
 
 ## Coordination and safety
 
