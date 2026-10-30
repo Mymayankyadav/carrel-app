@@ -45,7 +45,7 @@ assert.equal(streak({'2026-10-29':30},'2026-10-30').count,1,
 assert.equal(streak({'2026-10-29':0},'2026-10-30').count,0,
   'an older missed day cannot be skipped as if it were today');
 assert.equal(streak({'2026-10-29':30,'2026-10-31':30},'2026-10-30').count,1,
-  'future data cannot count toward today's streak');
+  "future data cannot count toward today's streak");
 assert.equal(streak({'2026-02-30':30,'2026-03-01':30},'2026-03-01').count,1,
   'impossible date keys are ignored');
 assert.equal(streak({'2024-02-28':30,'2024-02-29':30,'2024-03-01':30},'2024-03-01').count,3,
