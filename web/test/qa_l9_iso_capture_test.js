@@ -29,6 +29,10 @@ function attempt(text,type,override,shouldWrite){
 attempt('essay due 2026-02-31','deadline',null,false);
 attempt('essay due 2025-02-29','task',null,false);
 attempt('essay due 2026-13-10','deadline',null,false);
+attempt('revise 31 feb','task',null,false);
+attempt('revise 31/02','task',null,false);
+attempt('revise 31 apr','task',null,false);
+attempt('revise 31 feb','deadline',{date:'2026-03-01'},true);
 attempt('essay due 2026-02-31','deadline',{date:'2026-03-01'},true);
 assert.equal(writes.at(-1)[2].items['test-id'].date,'2026-03-01');
 attempt('essay due 2026-11-12','deadline',null,true);
