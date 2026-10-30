@@ -93,7 +93,7 @@ function autoPlan(opts) {
         // A narrow tail must not block other, potentially shorter, sessions.
         slot.s=slot.e;continue;
       }
-      blocks.push({itemId:item.id,activity:item.activity,title:item.title||'',at:l3LocalHm(target.t),minutes:m});
+      blocks.push({itemId:item.id,activity:item.activity,title:item.title||'',at:l3LocalHm(target.t),minutes:m,_startMs:target.t});
       remaining-=m;budget-=m;
       // A peak-hour choice may begin well after the start of a free window.
       // Keep the earlier time available for other subjects, reserving the
@@ -108,7 +108,10 @@ function autoPlan(opts) {
   }
   // The preview and persisted Plan order must follow clock time, not the
   // priority order in which candidate tasks were allocated.
-  blocks.sort((a,b)=>a.at.localeCompare(b.at));
+  // HH:MM is not a chronological key when a study day crosses midnight.
+  // Sort by the actual placement instant, then keep the public block shape unchanged.
+  blocks.sort((a,b)=>a._startMs-b._startMs);
+  for(const block of blocks)delete block._startMs;
   return {blocks,unplaced};
 }
 function backwardPlan(opts) {
