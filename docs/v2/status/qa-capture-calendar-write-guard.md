@@ -14,6 +14,10 @@ Owner: QA/ORC, independent L9 regression. Branch: `v2/qa-capture-calendar-write-
 - L6 PR #44 remains a separate draft physical-device privacy gate; #52 and #49 are not satisfied by this work.
 
 ## Verification
-- [ ] Node regression and full web test suite in GitHub CI
-- [ ] v2 smoke, browser acceptance, navigation audit in GitHub CI
-- [ ] Review CI results before merging; no screenshots claimed (existing error message only, no new UI surface)
+- [x] Node regression and full web test suite in GitHub CI — [run 40990615124](https://github.com/Mymayankyadav/carrel-app/actions/runs/40990615124) and [run 40990593455](https://github.com/Mymayankyadav/carrel-app/actions/runs/40990593455), both success
+- [x] v2 smoke in web CI, [browser acceptance 40990615156](https://github.com/Mymayankyadav/carrel-app/actions/runs/40990615156) and [navigation audit 40990615154](https://github.com/Mymayankyadav/carrel-app/actions/runs/40990615154), all success
+- [x] Reviewed PR diff and CI before [squash-merge #124](https://github.com/Mymayankyadav/carrel-app/pull/124) at [`7ab2d5e`](https://github.com/Mymayankyadav/carrel-app/commit/7ab2d5eb23f930ca8079b7808b967747de15ec8e); no screenshots claimed (existing error message only, no new UI surface)
+
+## Remaining
+- Issue #90's production offline-queue atomicity remains unresolved. PR #123 owns immutable receipt diagnostics and was still open at this handoff; no overlapping edits to its receipt files.
+- L6 PR #44 must remain draft pending real-device privacy acceptance #52 and native QA #49.
