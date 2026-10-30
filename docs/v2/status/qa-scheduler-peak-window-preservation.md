@@ -18,4 +18,7 @@ PR #123 owns #90 immutable receipt diagnostics and edits BOARD.md/DECISIONS.md; 
 Pure deterministic scheduling logic and tests only. No new collections, production document rewrites, migration, secrets, permissions, Android changes or changes to the v1 timer. All plan writes still require explicit user acceptance.
 
 ## Verification
-Pending GitHub PR CI: web build, all Node tests, all v2 smoke (including L3 screenshots), browser acceptance and navigation audit. No CI pass or screenshot review is claimed before the runs complete.
+- Implementation head `51801aba`: [web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41001454614), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41001454604) and [navigation reachability](https://github.com/Mymayankyadav/carrel-app/actions/runs/41001454612) all completed **success**.
+- Downloaded the CI `v2-f1-shots` artifact and visually reviewed all eight L3 screenshots (390/1280, light/dark, preview/accepted). Preview remains legible, the primary Accept action is visible and the accepted state closes the sheet. This is mock-browser evidence, not physical Android testing.
+- A prior branch commit contained escaped newline characters in a comment and was corrected before the successful implementation-head checks; no failing intermediate run is represented as passing.
+- This status-document update itself requires its final-head checks before merge.
