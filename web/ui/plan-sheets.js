@@ -251,14 +251,7 @@ function l3EstimateNote(activity) {
   return f===1?'':'<div class="p2-muted">Usually takes ×'+f.toFixed(1)+' from your history</div>';
 }
 function l3HourStats() {
-  const h={};
-  for(const e of ENTRIES||[]){
-    if(!e||e.e==null||e.e<=e.s)continue;
-    const hour=new Date(e.s).getHours(),mins=(e.e-e.s)/MIN;
-    if(!h[hour])h[hour]={min:0,sum:0};
-    h[hour].min+=mins;h[hour].sum+=mins*(+e.focus||2);
-  }
-  return Object.fromEntries(Object.entries(h).map(([hour,v])=>[hour,{min:v.min,focus:v.sum/v.min}]));
+  return l3HourStatsFromEntries(ENTRIES);
 }
 /* Subtract commitments, calendar busy time and existing projected plan blocks. */
 function l3FreeIntervals(k){
