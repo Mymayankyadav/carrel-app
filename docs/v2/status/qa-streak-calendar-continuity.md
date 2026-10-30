@@ -15,9 +15,9 @@ Owner: QA/ORC, independent L7 regression. Branch: `v2/qa-streak-calendar-continu
 
 ## Tests and evidence
 - `web/test/advice_test.js` covers missing days, current-day grace, stale histories, future/invalid dates, leap years, and week boundaries.
-- GitHub CI web/Node/v2 smoke, browser acceptance and navigation audit: pending PR verification.
+- Verified on implementation head `650b44a`: [web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40996497336), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40996497350), [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40996497337) — all **success**. Push web CI [40996492312](https://github.com/Mymayankyadav/carrel-app/actions/runs/40996492312) also passed. Earlier test-only failures (unescaped apostrophe, incorrect weekly-freeze expectation) were corrected before these final implementation-head runs.
 - No new UI surface or visual changes; screenshots are not claimed.
 
 ## Next
-- Once CI passes, review the final diff and merge if ownership and required checks remain satisfied.
+- Review the final diff and merge only after the documentation-head checks remain green and ownership is still clear.
 - Continue issue #90 separately, without enabling the experimental journal or weakening physical-device release gates.
