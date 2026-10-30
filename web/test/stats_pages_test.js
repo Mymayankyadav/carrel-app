@@ -47,4 +47,22 @@ assert(PAGES['stats.streak'].render().includes('3'),'flexible streak page');
 ACT['s2-weeks']({getAttribute:()=> '12'});assert.equal(UI.s2Weeks,12);
 ACT['s2-edit']({getAttribute:()=> 'math'});assert.equal(calls.at(-1)[1],'settings.activity');
 assert(!/#[0-9a-fA-F]{3,8}\b|font-family|box-shadow/.test(css),'token-only CSS');
+// QA: an overnight focus session contributes to each actual local clock hour,
+// rather than attributing its full duration to the starting hour.
+const beforeMidnight=new Date(2026,9,29,23,45).getTime();
+const afterMidnight=new Date(2026,9,30,0,15).getTime();
+entries.splice(0,entries.length,
+  {a:'math',s:beforeMidnight,e:afterMidnight,focus:3},
+  {a:'math',s:afterMidnight,e:afterMidnight+30*MIN,focus:1},
+  {a:'math',s:NaN,e:afterMidnight,focus:3});
+const split=vm.runInContext('l7FocusStats()',env);
+assert.equal(split.hours[23].min,15,'starting hour receives only its own minutes');
+assert.equal(split.hours[0].min,45,'post-midnight minutes belong to hour zero');
+assert.equal(split.hours[23].sum,45);
+assert.equal(split.hours[0].sum,75,'focus ratings are weighted by minutes within each hour');
+assert.equal(split.subjects.math.min,60,'subject totals still include full sessions');
+assert.equal(split.subjects.math.sum,120,'subject focus remains duration weighted');
+assert.equal(split.subjects.math.n,2,'malformed sessions are ignored');
+assert(PAGES['stats.focus'].render().includes('1.7'),
+  'hourly focus view renders the corrected weighted post-midnight average');
 console.log('STATS PAGES TESTS PASSED');
