@@ -2,6 +2,13 @@
 function l9OpenCapture(text, type) {
   openSheet({type:'capture',text:String(text||'').slice(0,500),manualType:['task','deadline','block','ask'].includes(type)?type:null,edit:'',override:{},err:''});
 }
+/* A syntactically plausible but impossible date must never become a hidden
+ * plans/<date> document or an unrenderable backlog/deadline due date. */
+function l9ValidCalendarDate(key) {
+  if(typeof key!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(key))return false;
+  const d=new Date(key+'T12:00:00Z');
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===key;
+}
 function l9CaptureResult(sh) {
   const base=l9Parse(sh.text,{now:Date.now(),acts:ACTS.filter(a=>!a.archived&&a.kind==='study'),weekStart:CFG.weekStart,type:sh.manualType});
   const fields=sh.override||{};
@@ -53,10 +60,19 @@ function l9CaptureSave(){
   sh.err='';
   const title=String(p.title||'').trim().slice(0,80);
   if(!String(sh.text||'').trim()||!title){sh.err='Enter a title.';renderSheet();return;}
+  if(!['task','deadline','block','ask'].includes(p.type)){
+    sh.err='Choose what to add.';renderSheet();return;
+  }
   const date=p.date;
-  if(date&&!/^\d{4}-\d{2}-\d{2}$/.test(date)){sh.err='Choose a valid date.';renderSheet();return;}
+  if(date&&!l9ValidCalendarDate(date)){sh.err='Choose a valid date.';renderSheet();return;}
   if(p.type==='deadline'&&!date){sh.err='Choose a date.';renderSheet();return;}
-  if(p.type==='block'&&(!date||!/^([01]\d|2[0-3]):[0-5]\d$/.test(p.time||''))){sh.err='Choose a date and time.';renderSheet();return;}
+  const validTime=/^([01]\d|2[0-3]):[0-5]\d$/.test(p.time||'');
+  if(p.type==='deadline'&&p.time&&!validTime){
+    sh.err='Choose a valid time.';renderSheet();return;
+  }
+  if(p.type==='block'&&(!date||!validTime)){
+    sh.err='Choose a date and time.';renderSheet();return;
+  }
   const minutes=p.minutes==null?60:Math.round(+p.minutes);
   if((p.type==='task'||p.type==='block')&&(!Number.isFinite(minutes)||minutes<5||minutes>720)){sh.err='Use 5 to 720 minutes.';renderSheet();return;}
   const activity=p.activity&&ACTMAP[p.activity]&&!ACTMAP[p.activity].archived?p.activity:(p.type==='deadline'?null:firstStudyId());
