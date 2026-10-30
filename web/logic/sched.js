@@ -95,13 +95,18 @@ function autoPlan(opts) {
       }
       blocks.push({itemId:item.id,activity:item.activity,title:item.title||'',at:l3LocalHm(target.t),minutes:m});
       remaining-=m;budget-=m;
-      slot.s=target.t+(m+gap)*L3_MIN;
-      if(slot.s>slot.e)slot.s=slot.e;
+      // A peak-hour choice may begin well after the start of a free window.
+      // Keep the earlier time available for other subjects, reserving the
+      // configured gap immediately before the peak session.
+      const prefixEnd=target.t-gap*L3_MIN;
+      if(prefixEnd-slot.s>=25*L3_MIN)
+        slots.splice(target.i,0,{s:slot.s,e:prefixEnd});
+      slot.s=Math.min(slot.e,target.t+(m+gap)*L3_MIN);
       budget=Math.max(0,budget-gap);
     }
     if(remaining>0)unplaced.push(item.id);
   }
-  return {blocks,unplaced};
+  // The preview and persisted Plan order must follow clock time, not the\n  // priority order in which candidate tasks were allocated.\n  blocks.sort((a,b)=>a.at.localeCompare(b.at));\n  return {blocks,unplaced};
 }
 function backwardPlan(opts) {
   opts=opts||{};
