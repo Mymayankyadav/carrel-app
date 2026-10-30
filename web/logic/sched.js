@@ -128,6 +128,10 @@ function backwardPlan(opts) {
   if(![needed,done,perDay].every(Number.isFinite)||perDay<=0)return [];
   const toUTC=k=>new Date(k+'T00:00:00Z').getTime();
   const fromUTC=t=>new Date(t).toISOString().slice(0,10);
+  // A malformed or implausibly distant exam must not allocate millions of
+  // calendar rows or lock the UI. Ten years comfortably covers real study plans.
+  const span=(toUTC(opts.deadline)-toUTC(opts.today))/86400000;
+  if(span>3660)return [];
   const days=[];
   for(let t=toUTC(opts.today),end=toUTC(opts.deadline);t<end;t+=86400000)days.push(fromUTC(t));
   if(!days.length)return [];
@@ -142,17 +146,47 @@ function backwardPlan(opts) {
   const count=Math.min(days.length,Math.floor(target/25));
   const chosenDays=weights.map((w,i)=>({i,w})).sort((a,b)=>b.w-a.w||a.i-b.i)
     .slice(0,count).map(x=>x.i);
-  for(const i of chosenDays)allocation[i]=25;
-  let left=target-25*count;
-  while(left>=5){
-    let chosen=-1,score=-Infinity;
-    for(const i of chosenDays){
-      if(allocation[i]+5>cap)continue;
-      const priority=weights[i]/(allocation[i]+5);
-      if(priority>score){chosen=i;score=priority;}
+  // Preserve the original weighted 5-minute greedy allocation, but use a
+  // priority heap instead of rescanning every day for every increment.
+  // The rank breaks exact-score ties in the same order as chosenDays.
+  const heap=[];
+  const better=(a,b)=>a.score>b.score||(a.score===b.score&&a.rank<b.rank);
+  const push=x=>{
+    let n=heap.length;
+    heap.push(x);
+    while(n>0){
+      const p=(n-1)>>1;
+      if(!better(x,heap[p]))break;
+      heap[n]=heap[p];n=p;
     }
-    if(chosen<0)break;
-    allocation[chosen]+=5;left-=5;
+    heap[n]=x;
+  };
+  const pop=()=>{
+    const first=heap[0],last=heap.pop();
+    if(heap.length){
+      let n=0;
+      while(true){
+        let child=n*2+1;
+        if(child>=heap.length)break;
+        if(child+1<heap.length&&better(heap[child+1],heap[child]))child++;
+        if(!better(heap[child],last))break;
+        heap[n]=heap[child];n=child;
+      }
+      heap[n]=last;
+    }
+    return first;
+  };
+  for(let rank=0;rank<chosenDays.length;rank++){
+    const i=chosenDays[rank];
+    allocation[i]=25;
+    if(cap>=30)push({i,rank,score:weights[i]/30});
+  }
+  let left=target-25*count;
+  while(left>=5&&heap.length){
+    const next=pop();
+    allocation[next.i]+=5;left-=5;
+    if(allocation[next.i]+5<=cap)
+      push({...next,score:weights[next.i]/(allocation[next.i]+5)});
   }
   return days.map((date,i)=>({date,minutes:allocation[i]})).filter(x=>x.minutes>=25);
 }
