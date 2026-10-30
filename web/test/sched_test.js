@@ -91,4 +91,19 @@ assert.deepEqual(p.blocks.map(x=>x.at),['23:00','00:10'],
 assert.deepEqual(p.blocks.map(x=>x.itemId),['late','after']);
 assert(p.blocks.every(x=>!Object.hasOwn(x,'_startMs')),
   'internal timestamps must not leak into persisted Plan blocks');
+// Weighted backward allocation remains byte-for-byte compatible for ordinary exams.
+b=backwardPlan({today:'2026-10-30',deadline:'2026-11-04',hoursNeeded:6,maxPerDay:2});
+assert.deepEqual(b.map(x=>x.minutes),[65,75,85,95,40],
+  'priority-heap allocation preserves the original five-minute greedy schedule');
+// An accidental far-future deadline must not allocate millions of calendar rows.
+assert.deepEqual(backwardPlan({today:'2026-10-30',deadline:'9999-12-31',
+  hoursNeeded:100,maxPerDay:24}),[],'bound implausibly distant exam horizons');
+// Worst-case supported horizon exercises the formerly quadratic allocation loop.
+b=backwardPlan({today:'2026-10-30',deadline:'2036-10-30',
+  hoursNeeded:100000,maxPerDay:24});
+const l3LongDays=(Date.UTC(2036,9,30)-Date.UTC(2026,9,30))/86400000;
+assert.equal(b.length,l3LongDays,'ten-year horizon remains supported');
+assert(b.every(x=>x.minutes===1440),'long plans preserve the daily hard cap');
+assert.equal(b.reduce((sum,x)=>sum+x.minutes,0),l3LongDays*1440,
+  'large valid study plans retain every scheduled minute');
 console.log('SCHED TESTS PASSED');
