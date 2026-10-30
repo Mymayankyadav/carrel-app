@@ -121,7 +121,7 @@ function l7EstimatePage(){
     '</div>';
 }
 function l7StreakPage(){
-  const min=+CFG.minDay||25,st=flexibleStreak(l7Days(),min,+CFG.weekStart||0);
+  const min=+CFG.minDay||25,st=flexibleStreak(l7Days(),min,+CFG.weekStart||0,todayKey());
   const tk=todayKey(),keys=Object.keys(st.status).filter(k=>k<=tk).sort().slice(-14);
   const label={met:'Study',freeze:'Freeze',miss:'Rest'};
   return '<div class="s2-page l7-detail"><div class="l7-metric">'+st.count+
