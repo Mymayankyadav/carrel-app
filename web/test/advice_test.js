@@ -32,4 +32,28 @@ assert.equal(st.status['2026-10-31'],'miss');
 const w=flexibleStreak({'2026-10-26':40,'2026-10-27':0,'2026-10-28':45},25,1);
 assert.equal(w.count,3);
 assert.equal(flexibleStreak({'2026-10-26':0,'2026-10-27':0},25,1).count,0);
+// QA: missing or impossible calendar days cannot inflate a streak.
+const streak=(days,today)=>flexibleStreak(days,25,1,today);
+assert.equal(streak({'2026-10-26':30,'2026-10-28':30},'2026-10-28').count,1,
+  'a missing intervening day breaks a streak');
+assert.equal(streak({'2026-10-26':30,'2026-10-27':0,'2026-10-28':0},'2026-10-28').count,2,
+  'only the actual unfinished current day can be skipped');
+assert.equal(streak({'2026-10-26':30,'2026-10-27':30},'2026-10-30').count,0,
+  'a history ending two days ago is not a live streak');
+assert.equal(streak({'2026-10-29':30},'2026-10-30').count,1,
+  'yesterday still counts before studying today');
+assert.equal(streak({'2026-10-29':0},'2026-10-30').count,0,
+  'an older missed day cannot be skipped as if it were today');
+assert.equal(streak({'2026-10-29':30,'2026-10-31':30},'2026-10-30').count,1,
+  "future data cannot count toward today's streak");
+assert.equal(streak({'2026-02-30':30,'2026-03-01':30},'2026-03-01').count,1,
+  'impossible date keys are ignored');
+assert.equal(streak({'2024-02-28':30,'2024-02-29':30,'2024-03-01':30},'2024-03-01').count,3,
+  'leap day is a real consecutive day');
+assert.equal(streak({'2026-11-01':30,'2026-11-02':30},'2026-11-02').count,2,
+  'ISO-week boundaries must not break a streak');
+assert.equal(streak({'2026-10-28':0},'2026-10-28').count,0,
+  'an unfinished current day does not manufacture a streak');
+assert.deepEqual(Object.keys(streak({'2026-02-31':25},'2026-03-01').status),[],
+  'invalid calendar dates are excluded from status');
 console.log('L7 ADVICE & STREAK TESTS PASSED');

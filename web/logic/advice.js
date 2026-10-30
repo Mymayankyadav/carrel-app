@@ -14,8 +14,19 @@ function l7WeekOf(k){
   d.setUTCDate(d.getUTCDate()-(wd+6)%7);
   return d.toISOString().slice(0,10);
 }
-function flexibleStreak(days,minDay,weekStart){
-  const keys=Object.keys(days||{}).filter(k=>/^\d{4}-\d{2}-\d{2}$/.test(k)).sort();
+// A valid calendar day is essential: ISO-looking keys such as 2026-02-31
+// otherwise create phantom streak days when offline history is sparse.
+function l7ValidDay(k){
+  if(typeof k!=='string'||!/^[0-9]{4}-[0-9]{2}-[0-9]{2}$/.test(k))return false;
+  const d=new Date(k+'T12:00:00Z');
+  return Number.isFinite(d.getTime())&&d.toISOString().slice(0,10)===k;
+}
+function l7DayNumber(k){return Math.floor(Date.parse(k+'T12:00:00Z')/86400000);}
+function flexibleStreak(days,minDay,weekStart,todayKey){
+  // The optional todayKey distinguishes an unfinished current day from an
+  // older missed day. Omitted todayKey preserves the original call contract.
+  const current=l7ValidDay(todayKey)?todayKey:null;
+  const keys=Object.keys(days||{}).filter(k=>l7ValidDay(k)&&(!current||k<=current)).sort();
   const min=Math.max(5,+minDay||25),byWeek={},status={};
   for(const k of keys){
     const week=l7WeekOf(k),w=byWeek[week]||(byWeek[week]={met:0,used:false});
@@ -24,12 +35,24 @@ function flexibleStreak(days,minDay,weekStart){
     else if(w.met>0&&!w.used){status[k]='freeze';w.used=true;}
     else status[k]='miss';
   }
-  let streak=0;
+  if(!keys.length)return {count:0,status};
+  // With an explicit current date, a stale history must not claim an active
+  // streak. Yesterday's completed study is still eligible.
+  if(current&&l7DayNumber(current)-l7DayNumber(keys[keys.length-1])>1)
+    return {count:0,status};
+  let streak=0,previous=null;
   for(let i=keys.length-1;i>=0;i--){
-    // A not-yet-completed current day does not terminate yesterday's streak.
-    if(i===keys.length-1&&status[keys[i]]==='miss')continue;
+    const day=l7DayNumber(keys[i]);
+    // Missing days are real breaks, not invisible days that can be skipped.
+    if(previous!=null&&previous-day!==1)break;
+    const unfinished=(!current||keys[i]===current);
+    if(i===keys.length-1&&status[keys[i]]==='miss'&&unfinished){
+      previous=day;
+      continue;
+    }
     if(status[keys[i]]==='miss')break;
     streak++;
+    previous=day;
   }
   return {count:streak,status};
 }
