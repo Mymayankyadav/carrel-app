@@ -51,6 +51,16 @@ check('essay due 2024-02-29',{date:'2024-02-29',invalidDate:false});
 check('essay due 2025-02-29',{date:null,invalidDate:true});
 check('essay due 2026-02-31',{date:null,invalidDate:true});
 check('essay due 2026-13-10',{date:null,invalidDate:true});
+// A single-digit ISO-style component must not become a yearless DD-MM date.
+check('essay due 2026-11-2',{type:'deadline',title:'Essay',date:'2026-11-02',invalidDate:false});
+check('essay due 2026-1-12',{title:'Essay',date:'2026-01-12',invalidDate:false});
+check('essay due 2026-12-1',{title:'Essay',date:'2026-12-01',invalidDate:false});
+check('essay due 2024-2-29',{date:'2024-02-29',invalidDate:false});
+check('essay due 2025-2-29',{date:null,invalidDate:true});
+check('essay due 2026-2-31',{date:null,invalidDate:true});
+check('essay due 2026-13-2',{date:null,invalidDate:true});
+check('essay due 2026-11-123',{date:null,invalidDate:true});
+check('essay due 11-12',{date:'2026-12-11',invalidDate:false});
 check('essay due 31/02',{date:null,invalidDate:true});
 
 // Yearless leap-day dates resolve to the next *valid* occurrence.

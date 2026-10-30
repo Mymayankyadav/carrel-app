@@ -51,7 +51,10 @@ function l9Parse(text, opts) {
   ];
   // Explicit ISO dates must not be mistaken for a yearless MM-DD tail.
   // Invalid ISO dates remain visible in the title and fail save validation.
-  const isoMatch=/\b(\d{4})-(\d{2})-(\d{2})\b/.exec(s);
+  // Accept single-digit month/day fields without letting an explicit year
+  // fall through to the yearless DD-MM matcher. Three-digit fields are
+  // recognized only so malformed dates fail validation instead of saving.
+  const isoMatch=/\b(\d{4})-(\d{1,3})-(\d{1,3})\b/.exec(s);
   let invalidDate=false;
   if(isoMatch){
     const candidate=valid(+isoMatch[1],+isoMatch[2],+isoMatch[3]);
