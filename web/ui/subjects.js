@@ -14,8 +14,8 @@ function l4ReviewTopic(id,rating){
   const today=todayKey(),exam=l4ExamFor(t.subject,today);
   const update=nextReview(t,n,today,exam&&exam.date);
   if(!update)return false;
-  commit('Review scheduled for '+shortDay(update.due)+'.',W().update('topics/'+id,update),{undo:true});
-  return true;
+  return commit('Review scheduled for '+shortDay(update.due)+'.',
+    W().update('topics/'+id,update),{undo:true})===true;
 }
 function l4SubjectStats(id,agg){
   return Object.values(agg).reduce((m,d)=>m+(d.acts&&d.acts[id]||0),0);
@@ -131,8 +131,11 @@ Object.assign(ACT,{
   'l4-topic-save'(){
     const sh=UI.sheet;if(!sh||sh.type!=='topic')return;
     const title=String(sh.d.title||'').trim().slice(0,120),a=sh.d.subject;
-    if(!title||!a||!ACTMAP[a]||ACTMAP[a].kind!=='study'){sh.err='Enter a topic and study subject.';renderSheet();return;}
+    if(!title||!a||!ACTMAP[a]||ACTMAP[a].kind!=='study'||ACTMAP[a].archived){sh.err='Enter a topic and active study subject.';renderSheet();return;}
     const t=sh.id&&V.topics[sh.id],key=todayKey(),exam=l4ExamFor(a,key);
+    if(sh.id&&(!t||t.archived)){
+      sh.err='This topic is no longer available. Close and reopen it.';renderSheet();return;
+    }
     const review=sh.d.rating?nextReview(t||{},+sh.d.rating,key,exam&&exam.date):null;
     const w=W();
     if(t)w.update('topics/'+sh.id,Object.assign({title,subject:a},review||{}));
@@ -142,12 +145,14 @@ Object.assign(ACT,{
         v:1,subject:a,title,order,due:addDaysKey(key,1),interval:1,ease:2.5,reps:0,last:null,archived:false
       },review||{}));
     }
-    closeSheet(true);commit('Topic saved.',w,{undo:true});
+    if(commit('Topic saved.',w,{undo:true}))closeSheet(true);
+    else{sh.err='Topic not saved. Check device storage and retry.';renderSheet();}
   },
   'l4-delete-topic'(){
     const sh=UI.sheet;if(!sh||sh.type!=='topic'||!sh.id)return;
-    const id=sh.id;closeSheet(true);
-    commit('Topic archived.',W().update('topics/'+id,{archived:true}),{undo:true});
+    const id=sh.id;
+    if(commit('Topic archived.',W().update('topics/'+id,{archived:true}),{undo:true}))closeSheet(true);
+    else{sh.err='Topic not archived. Check device storage and retry.';renderSheet();}
   },
   'l4-open-reviews'(){openSheet({type:'reviews'});},
   'l4-review-rate'(el){if(l4ReviewTopic(el.getAttribute('data-id'),el.getAttribute('data-v')))renderSheet();}
