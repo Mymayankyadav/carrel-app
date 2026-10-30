@@ -98,13 +98,21 @@ function autoPlan(opts) {
       }
       blocks.push({itemId:item.id,activity:item.activity,title:item.title||'',at:l3LocalHm(target.t),minutes:m,_startMs:target.t});
       remaining-=m;budget-=m;
-      // A peak-hour choice may begin well after the start of a free window.
-      // Keep the earlier time available for other subjects, reserving the
-      // configured gap immediately before the peak session.
-      const prefixEnd=target.t-gap*L3_MIN;
-      if(prefixEnd-slot.s>=25*L3_MIN)
-        slots.splice(target.i,0,{s:slot.s,e:prefixEnd});
-      slot.s=Math.min(slot.e,target.t+(m+gap)*L3_MIN);
+      // Reserve the gap on BOTH sides of this block across every free
+      // interval. A busy interval shorter than gap must not let another
+      // block start too soon, and peak slots need the same protection.
+      const reservedStart=target.t-gap*L3_MIN;
+      const reservedEnd=target.t+(m+gap)*L3_MIN;
+      for(let i=slots.length-1;i>=0;i--){
+        const {s,e}=slots[i];
+        if(e<=reservedStart||s>=reservedEnd)continue;
+        const pieces=[];
+        if(reservedStart-s>=25*L3_MIN)
+          pieces.push({s,e:Math.min(e,reservedStart)});
+        if(e-reservedEnd>=25*L3_MIN)
+          pieces.push({s:Math.max(s,reservedEnd),e});
+        slots.splice(i,1,...pieces);
+      }
       budget=Math.max(0,budget-gap);
     }
     if(remaining>0)unplaced.push(item.id);
