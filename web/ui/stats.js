@@ -92,7 +92,7 @@ function l7Context(p,agg){
   const hours=typeof l3HourStats==='function'?l3HourStats():{},keys=Object.keys(hours);
   const best=typeof energyWindows==='function'?energyWindows(hours)[0]:null;
   const most=keys.sort((a,b)=>(hours[b].min||0)-(hours[a].min||0))[0];
-  const streak=flexibleStreak(l7Days(),CFG.minDay||25,+CFG.weekStart||0).count;
+  const streak=flexibleStreak(l7Days(),CFG.minDay||25,+CFG.weekStart||0,tk).count;
   const fromPrev=addDaysKey(wk,-7),toPrev=addDaysKey(wk,-1);
   return {subjects:data.subjects,daysLeft:Math.max(0,Math.round((dateOfKey(weekEnd)-dateOfKey(tk))/DAY)),
     bestHour:Number.isInteger(best)?best:null,mostHour:most==null?null:+most,
