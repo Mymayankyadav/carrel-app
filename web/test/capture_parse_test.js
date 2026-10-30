@@ -41,6 +41,17 @@ check('1/1',{date:'2027-01-01'});
 check('31 feb',{date:null});
 check('31/02',{date:null});
 check('due by monday',{date:'2026-11-02',kind:'due',type:'deadline'});
+
+// Yearless leap-day dates resolve to the next *valid* occurrence.
+check('29 feb',{date:'2028-02-29'});
+check('feb 29 9am',{date:'2028-02-29',time:'09:00'});
+check('29/02',{date:'2028-02-29'});
+check('29 feb',{date:'2028-02-29'},{now:new Date(2024,2,1,10,0)});
+check('29 feb',{date:'2024-02-29'},{now:new Date(2024,1,29,10,0)});
+check('29 feb 11am',{date:'2024-02-29',time:'11:00'},{now:new Date(2024,1,29,10,0)});
+check('29 feb 9am',{date:'2028-02-29',time:'09:00'},{now:new Date(2024,1,29,10,0)});
+check('29 feb',{date:'2104-02-29'},{now:new Date(2097,0,1,10,0)});
+check('31 apr',{date:null});
 // Time normalization.
 check('meeting today 12am',{time:'00:00'});
 check('meeting today 12pm',{time:'12:00'});
