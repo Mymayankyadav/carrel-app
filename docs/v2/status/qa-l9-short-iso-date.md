@@ -15,7 +15,12 @@ Quick Capture interpreted `essay due 2026-11-2` as **2027-02-11** and kept `2026
 ## Verification
 - Before patch, isolated V8 reproduced the wrong dates above.
 - After patch, isolated V8 passed ten targeted cases, including valid short dates, invalid short dates, three-digit invalid fields and legacy yearless dates.
-- Full Node suite, web build, v2 smoke, browser acceptance and navigation audit: **pending GitHub CI** at PR creation. Do not claim pass until results are verified.
+- Full Node suite, web build and v2 smoke: [PR #143 CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/41061753052) **success**.
+- Browser acceptance: [run 41061753141](https://github.com/Mymayankyadav/carrel-app/actions/runs/41061753141) **success**.
+- Two-tap navigation audit: [run 41061753139](https://github.com/Mymayankyadav/carrel-app/actions/runs/41061753139) **success**.
+- Push-branch full CI: [run 41061727660](https://github.com/Mymayankyadav/carrel-app/actions/runs/41061727660) **success**.
+- Entire parser test source executed in isolated V8: **161 assertions passed**; capture save path additionally checked four invalid/valid short-date cases.
+- [Implementation PR #143](https://github.com/Mymayankyadav/carrel-app/pull/143) squash-merged into main as [`a5937df`](https://github.com/Mymayankyadav/carrel-app/commit/a5937df7ce4220acc16824e37b178ccc93a985d4).
 - No new UI surface; existing `role="alert"` date warning is reused. No screenshot review claimed.
 
 ## Coordination
