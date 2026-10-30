@@ -13,12 +13,47 @@ function estimateFactor(history) {
   const median = ratios.length % 2 ? ratios[m] : (ratios[m-1]+ratios[m])/2;
   return Math.max(0.8, Math.min(2, Math.round(median * 10) / 10));
 }
+// Attribute completed sessions to the local clock hours they actually span.
+// A two-hour session starting at 09:30 must not count as two hours at 09:00.
+// Ignore implausibly long/corrupt sessions rather than hanging the planner.
+function l3HourStatsFromEntries(entries) {
+  const byHour = {};
+  for (const entry of Array.isArray(entries) ? entries : []) {
+    if (!entry || entry.s == null || entry.e == null) continue;
+    const start = Number(entry.s), end = Number(entry.e);
+    if (!Number.isFinite(start) || !Number.isFinite(end) ||
+        end <= start || end - start > 24 * 60 * L3_MIN) continue;
+    const rawFocus = Number(entry.focus);
+    const focus = entry.focus != null && Number.isFinite(rawFocus) &&
+      rawFocus >= 1 && rawFocus <= 3 ? rawFocus : 2;
+    let at = start;
+    while (at < end) {
+      const date = new Date(at), hour = date.getHours();
+      const next = new Date(at);
+      next.setMinutes(0, 0, 0);
+      next.setHours(hour + 1);
+      // A fall-back DST hour can repeat; never advance more than 60 real minutes.
+      const stop = Math.min(end, at + 60 * L3_MIN, next.getTime());
+      if (!Number.isInteger(hour) || !(stop > at)) break;
+      const minutes = (stop - at) / L3_MIN;
+      const bucket = byHour[hour] || (byHour[hour] = {min:0, sum:0});
+      bucket.min += minutes;
+      bucket.sum += minutes * focus;
+      at = stop;
+    }
+  }
+  return Object.fromEntries(Object.entries(byHour).map(([hour, bucket]) =>
+    [hour, {min:bucket.min, focus:bucket.sum / bucket.min}]));
+}
 function energyWindows(stats) {
   return Object.entries(stats || {}).map(([h,s]) => ({
-    hour:+h, minutes:+(s && (s.min ?? s.minutes)) || 0,
-    focus:s && s.focus == null ? 2 : +(s && s.focus) || 2
-  })).filter(x => Number.isInteger(x.hour) && x.hour>=0 && x.hour<24 && x.minutes>=30)
-    .map(x => ({hour:x.hour, score:x.focus * Math.sqrt(x.minutes)}))
+    hour:+h, minutes:Number(s && (s.min ?? s.minutes)),
+    focus:s && s.focus == null ? 2 : Number(s && s.focus)
+  })).filter(x => Number.isInteger(x.hour) && x.hour>=0 && x.hour<24 &&
+    Number.isFinite(x.minutes) && x.minutes>=30)
+    .map(x => ({hour:x.hour, score:
+      (Number.isFinite(x.focus) && x.focus>=1 && x.focus<=3 ? x.focus : 2) *
+      Math.sqrt(x.minutes)}))
     .sort((a,b) => b.score-a.score || a.hour-b.hour).map(x => x.hour);
 }
 function l3Interleave(items) {
@@ -202,4 +237,4 @@ function backwardPlan(opts) {
   return days.map((date,i)=>({date,minutes:allocation[i]})).filter(x=>x.minutes>=25);
 }
 if(typeof module!=='undefined' && module.exports)
-  module.exports={estimateFactor,energyWindows,autoPlan,backwardPlan};
+  module.exports={estimateFactor,energyWindows,l3HourStatsFromEntries,autoPlan,backwardPlan};
