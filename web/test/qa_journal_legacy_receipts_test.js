@@ -19,13 +19,13 @@ function fixture(stale) {
   const disk = new Map(), lock = locks();
   const key = 'carrel.pending:alice:s1';
   let quotaSource = false;
-  function tab() {
+  function tab(freshView = false) {
     let cache = null;
     const storage = {
       get length() { return disk.size; },
       key(i) { return [...disk.keys()][i] ?? null; },
       getItem(k) {
-        if (k === key && stale) return cache;
+        if (k === key && stale && !freshView) return cache;
         return disk.get(k) ?? null;
       },
       setItem(k,v) {
@@ -57,7 +57,7 @@ const op = n => ({path:'days/2026-10-30',kind:'update',data:{n}});
   assert.equal(f.disk.has(x.receiptKey),true);
   assert.equal(f.disk.has(y.receiptKey),true);
   // Audit using a fresh view of the actual durable source.
-  const fresh=f.tab();
+  const fresh=f.tab(true);
   const audit=qaLegacyReceiptAudit(fresh.storage,fresh.writer,'alice','s1',()=> 'fresh');
   assert.deepEqual(audit.audit(),{ok:false,error:'receipt-missing',
     missing:['receipt_a'],receiptCount:2,pendingCount:1});
