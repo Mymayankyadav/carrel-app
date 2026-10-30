@@ -88,6 +88,7 @@ function l9Parse(text, opts) {
       }
     }
     if(target){date=dayKey(target);remove(match.index,match.index+match[0].length);}
+    else if(i>=3)invalidDate=true; // Recognized but impossible calendar date: never silently save an undated task.
   }
   if(by)s=s.replace(/\bby\b/i,' ');
 
