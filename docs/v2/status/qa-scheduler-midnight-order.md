@@ -13,7 +13,9 @@ Owner: QA/ORC, independent L3 regression. Branch: `v2/qa-scheduler-midnight-orde
 - L6 PR #44 remains draft pending physical Android acceptance in issues #52 and #49. No device verification is claimed.
 
 ## Evidence
-- GitHub CI and browser acceptance: pending on the PR head. No new UI surface; existing screenshots suffice and no new visual review is claimed.
+- [PR #131](https://github.com/Mymayankyadav/carrel-app/pull/131) merged as [`54dd0aa`](https://github.com/Mymayankyadav/carrel-app/commit/54dd0aa1b76ce79cef50295a720b4f52e0a25235) after diff review and green final-head checks.
+- [Web build, full Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41012732324), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41012732455), [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41012732435), and [push web run](https://github.com/Mymayankyadav/carrel-app/actions/runs/41012716771) all succeeded on `6bd7cd2`.
+- No new UI surface; no screenshot review or physical-device test is claimed.
 
 ## Next
 - Review and merge only with required green CI; separately continue #90's lossless cross-tab outbox and L6 physical-device acceptance.
