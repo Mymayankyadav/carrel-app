@@ -9,6 +9,7 @@ const activity={math:{id:'math',name:'Mathematics',kind:'study',archived:false,c
 const proposal={date:'2026-10-29',blocks:[{activity:'math',title:'Read chapter',minutes:60,at:'10:00'}]};
 const msg={v:1,at:'2026-10-28T10:00:00+05:30',kind:'plan',from:'claude',
   title:'<img src=x onerror=alert(1)>',body:'Review <script>bad()</script>',status:'new',proposal};
+let commitAllowed=true;
 const calls=[],ctx={
   console,Date,Math,Object,Set,
   module:{exports:{}},
@@ -34,7 +35,7 @@ const calls=[],ctx={
     plan(date,data){calls.push({type:'plan',date,data});return this;},
     update(path,data){calls.push({type:'update',path,data});return this;}
   }),
-  commit:(text,w)=>{calls.push({type:'commit',text});return true;}
+  commit:(text,w)=>{calls.push({type:'commit',text});return commitAllowed;}
 };
 vm.createContext(ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname,'../ui/coach.js'),'utf8'),ctx);
@@ -78,6 +79,30 @@ const old=calls.length;ctx.ACT['l10-accept']();assert.equal(calls.length,old);
 ctx.ACT['l10-dismiss']();
 assert.equal(calls[old].path,'coach/bad');
 assert.equal(calls[old].data.status,'dismissed');
+// A failed offline enqueue must not dismiss the coach sheet: the user needs
+// to see the original suggestion and retry without losing the proposal.
+ctx.ACT['l10-open']({getAttribute:()=> 'coach1'});
+const acceptSheet=ctx.UI.sheet;
+commitAllowed=false;
+const failedAcceptCalls=calls.length;
+ctx.ACT['l10-accept']();
+assert.equal(ctx.UI.sheet,acceptSheet,'failed plan acceptance keeps the sheet open');
+assert.equal(calls.length,failedAcceptCalls+3,'failed acceptance attempted one atomic write set');
+assert.equal(calls.at(-1).type,'commit');
+commitAllowed=true;
+ctx.ACT['l10-accept']();
+assert.equal(ctx.UI.sheet,null,'successful acceptance closes after commit');
+ctx.ACT['l10-open']({getAttribute:()=> 'bad'});
+const dismissSheet=ctx.UI.sheet;
+commitAllowed=false;
+const failedDismissCalls=calls.length;
+ctx.ACT['l10-dismiss']();
+assert.equal(ctx.UI.sheet,dismissSheet,'failed dismissal keeps the sheet open');
+assert.equal(calls.length,failedDismissCalls+2);
+assert.equal(calls.at(-1).type,'commit');
+commitAllowed=true;
+ctx.ACT['l10-dismiss']();
+assert.equal(ctx.UI.sheet,null,'successful dismissal closes after commit');
 ctx.V.coach.malformed={v:1,title:'Oops',kind:'plan',from:'unknown',body:null,status:'new'};
 assert.equal(ctx.l10CoachItems().some(x=>x.id==='malformed'),false);
 assert.equal(ctx.l10CoachItems().length,2);

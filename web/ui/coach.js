@@ -100,8 +100,9 @@ Object.assign(ACT,{
   'l10-dismiss'(){
     const sh=UI.sheet,item=sh&&l10CoachItems().find(x=>x.id===sh.id);
     if(!item||!canWrite())return;
+    // Keep the message available if the offline write could not be retained.
+    if(!commit('Dismissed Claude suggestion.',W().update('coach/'+item.id,{status:'dismissed'}),{undo:true}))return;
     closeSheet(true);
-    commit('Dismissed Claude suggestion.',W().update('coach/'+item.id,{status:'dismissed'}),{undo:true});
   },
   'l10-accept'(){
     const sh=UI.sheet,item=sh&&l10CoachItems().find(x=>x.id===sh.id);
@@ -116,8 +117,10 @@ Object.assign(ACT,{
     }
     w.plan(date,{blocks});
     w.update('coach/'+item.id,{status:'accepted'});
+    // The plan and acknowledgement are one durable action. Do not dismiss
+    // the sheet until the complete write set has entered the offline queue.
+    if(!commit('Accepted study plan.',w,{undo:true}))return;
     closeSheet(true);
-    commit('Accepted study plan.',w,{undo:true});
   }
 });
 if(typeof module!=='undefined'&&module.exports)
