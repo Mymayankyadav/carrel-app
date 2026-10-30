@@ -12,7 +12,12 @@ Mark a recognized, impossible yearless day/month as `invalidDate:true`. The exis
 ## Evidence and gates
 - Parser regressions: invalid day/month in both numeric and named forms.
 - VM capture write-path regressions: reject invalid yearless tasks before constructing any write; accept an explicit valid date override.
-- Full web build/Node/v2 smoke, browser acceptance and navigation audit: **pending GitHub CI**.
+- [PR #139](https://github.com/Mymayankyadav/carrel-app/pull/139) merged as [`658f17b`](https://github.com/Mymayankyadav/carrel-app/commit/658f17b5bc3d9b2462d879004c4c6a1410174fa1).
+- [Web build, Node suite and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41046121534): **success**.
+- [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41046121532): **success**.
+- [Navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41046121980): **success**.
+- Isolated V8 execution: **139 parser field assertions passed** (not a substitute for Node/CI).
+- Earlier CI attempts failed on stale expected `invalidDate:false` and an invalid task-write fixture; both test mistakes were corrected before the final green head.
 - No UI surface changed; the pre-existing `role="alert"` date warning is reused, so no new screenshots claimed.
 - PR #123 owns issue #90 and the shared BOARD/DECISIONS files. This PR does not modify them.
 - L6 PR #44 stays draft until physical-device acceptance issues #52 and #49 are completed. No physical-device QA claimed.
