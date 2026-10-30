@@ -12,10 +12,11 @@ After: positive fractional day/week offsets round **up** to the next whole calen
 
 - Unit tests: `web/test/capture_parse_test.js` now covers fractional days/weeks, leading-dot fractions, scientific notation, explicit plus/minus, zero and 3650-day boundary rounding.
 - The existing `web/ui/capture.js` save path rejects `invalidDate` before creating a write set; no production data or permissions were modified.
-- CI: pending PR checks. No local full Node/build/Playwright run or screenshot review is claimed; the GitHub connector environment does not expose a local repository checkout.
+- Verified the full parser test source in an isolated V8 harness: **197 assertions passed**. This was not a local Node/build/Playwright run.
+- PR [#148](https://github.com/Mymayankyadav/carrel-app/pull/148) merged as [`90d58dd`](https://github.com/Mymayankyadav/carrel-app/commit/90d58dddd54418b85a5ad3ac51640b2b16cec3c5) after all current-head GitHub checks passed: [web build, Node suite and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41087236877), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41087236602), [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41087236758). No new screenshot review is claimed.
 - No UI surface changes; screenshots not required for this pure parser change.
 - L6 PR #44 remains draft until physical-device Usage Access/privacy acceptance under issues #52/#49. Issue #90 offline lost-update and production journal cutover remain separate and unresolved.
 
 ## Integration
 
-Squash-merge only after the current-head web build, Node suite, v2 smoke, browser acceptance and navigation checks actually pass. Shared `docs/v2/BOARD.md` and `docs/v2/DECISIONS.md` are intentionally untouched while active PR #123 owns them. Record the date-only rounding decision in the integration handoff if ORC later consolidates shared decisions.
+Integration completed after the current-head web build, Node suite, v2 smoke, browser acceptance and navigation checks passed. Shared `docs/v2/BOARD.md` and `docs/v2/DECISIONS.md` are intentionally untouched while active PR #123 owns them. Record the date-only rounding decision in the integration handoff if ORC later consolidates shared decisions.
