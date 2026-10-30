@@ -33,11 +33,21 @@ with sync_playwright() as p:
         result = page.evaluate("async () => await window.qaWrite")
         assert result["ok"], result
 
-    b.wait_for_function("""() => {
-      const w=qaLegacyLockedWriter(localStorage,'qa_legacy_writer','s1',
-        navigator.locks,()=>true);
-      return w.snapshot().ok && w.snapshot().ops.length===2;
-    }""")
+    # A browser may propagate localStorage updates to a second tab after
+    # both append promises settle. Re-evaluate from the Playwright host
+    # rather than relying on a renderer's cached wait_for_function snapshot.
+    counts = []
+    for _ in range(80):
+        counts = [page.evaluate("""() => {
+          const w=qaLegacyLockedWriter(localStorage,'qa_legacy_writer','s1',
+            navigator.locks,()=>true);
+          const s=w.snapshot();
+          return s.ok ? s.ops.length : s.error;
+        }""") for page in (a, b)]
+        if counts == [2, 2]:
+            break
+        a.wait_for_timeout(100)
+    assert counts == [2, 2], counts
     for page in (a, b):
         notes = page.evaluate("""() => {
           const w=qaLegacyLockedWriter(localStorage,'qa_legacy_writer','s1',
