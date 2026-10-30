@@ -40,6 +40,21 @@ check('in 522 weeks',{date:null,invalidDate:true});
 check('in 4000 days',{date:null,invalidDate:true});
 check('in 999999999999999999999 days',{date:null,invalidDate:true});
 check('in 0 days',{date:'2026-10-28',invalidDate:false});
+
+// Date-only relative capture rounds positive fractions up to the next day.
+// Previously these expressions were silently saved as undated tasks.
+check('in 1.5 days',{date:'2026-10-30',invalidDate:false});
+check('in .5 days',{date:'2026-10-29',invalidDate:false});
+check('in 0.5 weeks',{date:'2026-11-01',invalidDate:false});
+check('in 1.5 weeks',{date:'2026-11-08',invalidDate:false});
+check('in 1e3 days',{date:'2029-07-24',invalidDate:false});
+check('in +2 days',{date:'2026-10-30',invalidDate:false});
+check('in -2 days',{date:null,invalidDate:true});
+check('in -0.5 weeks',{date:null,invalidDate:true});
+check('in 1e309 days',{date:null,invalidDate:true});
+check('in 521.4 weeks',{date:'2036-10-25',invalidDate:false});
+check('in 521.5 weeks',{date:null,invalidDate:true});
+
 check('fri',{date:'2026-10-30'});
 check('wednesday 8am',{date:'2026-11-04',time:'08:00'});
 check('wednesday 10am',{date:'2026-10-28',time:'10:00'});
