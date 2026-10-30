@@ -14,7 +14,11 @@ Date: 2026-10-30 · Owner: QA/ORC · Branch: `v2/qa-legacy-immutable-receipt-aud
 - This is evidence that Web Locks plus a shared localStorage array are insufficient if a tab observes a stale storage view. Production migration remains blocked until immutable records are the authority and ordered delivery/sign-out/legacy-tab semantics are proven.
 
 ## Verification
-- GitHub PR CI is required for Node tests, web build, v2 smoke, browser acceptance and navigation. No physical-device testing or production migration is claimed.
+- [x] [Web build, full Node suite and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/40989940209) passed on PR #123 head `6e1835d`.
+- [x] [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/40989940224) passed on the same head.
+- [x] [Navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/40989940226) passed on the same head.
+- [x] ORC reviewed the isolated diff and squash-merged [PR #123](https://github.com/Mymayankyadav/carrel-app/pull/123) as [`0824df4`](https://github.com/Mymayankyadav/carrel-app/commit/0824df453524f067c0fc6cd2c171f623a0b5af4a).
+- No physical-device testing or production migration is claimed. These checks do **not** establish #90 production atomicity.
 
 ## Remaining
 - Issue #90: design an authoritative immutable outbox and explicit receipt retirement, source migration, legacy-tab compatibility, sign-out and reconnect acceptance.
