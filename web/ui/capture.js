@@ -66,7 +66,7 @@ function l9CaptureSave(){
   const date=p.date;
   if(date&&!l9ValidCalendarDate(date)){sh.err='Choose a valid date.';renderSheet();return;}
   if(p.type==='deadline'&&!date){sh.err='Choose a date.';renderSheet();return;}
-  const validTime=/^([01]\\d|2[0-3]):[0-5]\\d$/.test(p.time||'');
+  const validTime=/^([01]\d|2[0-3]):[0-5]\d$/.test(p.time||'');
   if(p.type==='deadline'&&p.time&&!validTime){
     sh.err='Choose a valid time.';renderSheet();return;
   }
