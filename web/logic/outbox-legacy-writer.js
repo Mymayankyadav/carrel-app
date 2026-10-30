@@ -1,4 +1,4 @@
-/* QA #90: opt-in legacy producer coordination prototype.
+/* QA #90: opt-in legacy producer/acknowledgement coordination prototype.
  * NOT registered in web/files.json and NOT used by production sync.js.
  * Cooperating tabs serialize whole legacy queue writes under the SAME Web Lock
  * as journal staging/delivery. Existing (nonparticipating) v1 tabs are NOT
@@ -94,7 +94,58 @@ function qaLegacyLockedWriter(storage, uid, session, locks, isCurrent) {
       });
     } catch (_) { return fail('lock'); }
   }
-  return { sourceKey, lockName, appendBatch, snapshot };
+  // Prototype acknowledgement path: the caller must supply the exact durable
+  // snapshot AND the exact remotely acknowledged FIFO prefix. A stale tab may
+  // not delete a different tab's appended edits. Never call before server ack.
+  // Old v1 tabs do not hold this lock; production use remains prohibited.
+  async function acknowledgePrefix(expectedRaw, acknowledgedOps) {
+    if (typeof expectedRaw !== 'string' || !Array.isArray(acknowledgedOps) ||
+        !acknowledgedOps.length || !acknowledgedOps.every(validOp))
+      return fail('invalid-ack');
+    let acknowledged;
+    try {
+      acknowledged = JSON.stringify(acknowledgedOps);
+      if (!Array.isArray(JSON.parse(acknowledged)))
+        return fail('invalid-ack');
+    } catch (_) { return fail('invalid-ack'); }
+    if (!locks || typeof locks.request !== 'function') return fail('locks-unavailable');
+    if (!isCurrent()) return fail('stale-session');
+    try {
+      return await locks.request(lockName, { mode: 'exclusive' }, async lock => {
+        if (!lock) return fail('lock');
+        if (!isCurrent()) return fail('stale-session');
+        const marker = checkMarkers();
+        if (!marker.ok) return marker;
+        const before = snapshot();
+        if (!before.ok) return before;
+        const again = snapshot();
+        if (!again.ok) return again;
+        if (before.raw !== again.raw || before.raw !== expectedRaw)
+          return fail('source-changed');
+        if (acknowledgedOps.length > before.ops.length ||
+            JSON.stringify(before.ops.slice(0, acknowledgedOps.length)) !== acknowledged)
+          return fail('ack-prefix-mismatch');
+        let next;
+        try { next = JSON.stringify(before.ops.slice(acknowledgedOps.length)); }
+        catch (_) { return fail('serialize'); }
+        const latest = read(sourceKey);
+        if (!latest.ok) return latest;
+        if (latest.raw !== expectedRaw) return fail('source-changed');
+        const markerAgain = checkMarkers();
+        if (!markerAgain.ok) return markerAgain;
+        if (!isCurrent()) return fail('stale-session');
+        // Preserve an empty JSON queue instead of deleting the storage key:
+        // a failed removal must never masquerade as an empty successful ack.
+        try { storage.setItem(sourceKey, next); }
+        catch (_) { return fail('storage-write', true); }
+        const after = read(sourceKey);
+        if (!after.ok || after.raw !== next) return fail('storage-verify', true);
+        return { ok: true, acknowledged: acknowledgedOps.length,
+          remaining: before.ops.length - acknowledgedOps.length };
+      });
+    } catch (_) { return fail('lock'); }
+  }
+  return { sourceKey, lockName, appendBatch, acknowledgePrefix, snapshot };
 }
 
 if (typeof module !== 'undefined' && module.exports)
