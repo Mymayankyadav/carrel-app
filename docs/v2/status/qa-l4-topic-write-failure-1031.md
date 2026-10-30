@@ -12,9 +12,11 @@ L4 topic Save and Archive dismissed the sheet before `commit()` had durably queu
 - Add VM regression coverage and extend the existing four-viewport L4 smoke with a forced offline-queue failure, draft retention, screenshot, and successful retry.
 
 ## Safety / coordination
-No data migration, new recipient, Supabase or native permission change. All writes still use `W()` and `commit()`, preserving Undo and v1 compatibility. No frozen file, BOARD or DECISIONS edit: #90 PR #123 owns those shared docs. L7 PR #155 and L6 draft PR #44 own separate files. Physical-device gates #52/#49 remain open.
+No data migration, new recipient, Supabase or native permission change. All writes still use `W()` and `commit()`, preserving Undo and v1 compatibility. No frozen file, BOARD or DECISIONS edit: #90 PR #123 owns those shared docs. L7 PR #155 is independently merged; L6 draft PR #44 still owns its native files. Physical-device gates #52/#49 remain open.
 
-## Verification
+## Verification and merge
 - [x] Preflight JavaScript evaluation of patched L4 source and failed-save preservation.
-- [ ] Full Node tests and build, v2 smoke, browser acceptance and navigation CI after PR push.
-- [ ] Four 390/1280 light/dark failure-state screenshots and ORC review before merge.
+- [x] Exact-head PR #156 [web build, all Node tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41130493125), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41130493319), and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41130493300) all succeeded.
+- [x] Downloaded browser artifact 13012803103 and visually reviewed four failed-save screenshots (390/1280 light/dark). The typed draft and Save action remain visible, error alert is readable, and browser smoke successfully retries the save.
+- [x] ORC reviewed the code and test patches; [PR #156](https://github.com/Mymayankyadav/carrel-app/pull/156) squash-merged as [`3159c3b`](https://github.com/Mymayankyadav/carrel-app/commit/3159c3be20db1ad920de50b2403dbf0c13e356ee).
+- [ ] Post-merge GitHub Pages/browser/navigation checks were still running at this status update; no success is claimed.
