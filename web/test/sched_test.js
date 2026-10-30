@@ -83,4 +83,12 @@ assert.deepEqual(backwardPlan({today:'2026-10-29',deadline:'2026-11-02',hoursNee
 assert.deepEqual(backwardPlan({today:'2026-10-29',deadline:'2026-11-02',hoursNeeded:Infinity}),[]);
 assert.deepEqual(backwardPlan({today:'2026-10-29',deadline:'2026-11-02',hoursNeeded:10,maxPerDay:0}),[]);
 assert(backwardPlan({today:'2026-10-29',deadline:'2026-10-30',hoursNeeded:30,maxPerDay:100})[0].minutes<=1440,'daily capacity never exceeds 24h');
+// Study days can extend beyond midnight; lexicographic HH:MM sorting is wrong.
+p=autoPlan({items:[task('late','math',60),task('after','physics',60)],
+  free:[[at(23),new Date(2026,9,30,2).getTime()]],now:at(22),gapMin:10});
+assert.deepEqual(p.blocks.map(x=>x.at),['23:00','00:10'],
+  'chronological order must survive the midnight HH:MM wrap');
+assert.deepEqual(p.blocks.map(x=>x.itemId),['late','after']);
+assert(p.blocks.every(x=>!Object.hasOwn(x,'_startMs')),
+  'internal timestamps must not leak into persisted Plan blocks');
 console.log('SCHED TESTS PASSED');
