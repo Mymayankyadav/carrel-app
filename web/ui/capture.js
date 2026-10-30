@@ -64,6 +64,9 @@ function l9CaptureSave(){
     sh.err='Choose what to add.';renderSheet();return;
   }
   const date=p.date;
+  if(p.type!=='ask'&&p.invalidDate&&!(sh.override&&Object.prototype.hasOwnProperty.call(sh.override,'date'))){
+    sh.err='Choose a valid date.';renderSheet();return;
+  }
   if(date&&!l9ValidCalendarDate(date)){sh.err='Choose a valid date.';renderSheet();return;}
   if(p.type==='deadline'&&!date){sh.err='Choose a date.';renderSheet();return;}
   const validTime=/^([01]\d|2[0-3]):[0-5]\d$/.test(p.time||'');
