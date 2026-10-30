@@ -42,6 +42,16 @@ check('31 feb',{date:null});
 check('31/02',{date:null});
 check('due by monday',{date:'2026-11-02',kind:'due',type:'deadline'});
 
+// Explicit ISO dates must not be misread as a yearless MM-DD suffix.
+check('essay due 2026-11-12',{type:'deadline',title:'Essay',date:'2026-11-12',invalidDate:false});
+check('essay due 2026-01-02',{date:'2026-01-02',invalidDate:false});
+check('read 2026-10-30 9am',{date:'2026-10-30',time:'09:00',title:'Read'});
+check('essay due 2024-02-29',{date:'2024-02-29',invalidDate:false});
+check('essay due 2025-02-29',{date:null,invalidDate:true});
+check('essay due 2026-02-31',{date:null,invalidDate:true});
+check('essay due 2026-13-10',{date:null,invalidDate:true});
+check('essay due 31/02',{date:null,invalidDate:false});
+
 // Yearless leap-day dates resolve to the next *valid* occurrence.
 check('29 feb',{date:'2028-02-29'});
 check('feb 29 9am',{date:'2028-02-29',time:'09:00'});

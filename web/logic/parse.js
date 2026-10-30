@@ -49,7 +49,16 @@ function l9Parse(text, opts) {
     /\b([0-3]?\d)\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\b/i,
     /\b(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|jun(?:e)?|jul(?:y)?|aug(?:ust)?|sep(?:tember)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)\s+([0-3]?\d)\b/i
   ];
-  for (let i=0;i<datePatterns.length && !date;i++) {
+  // Explicit ISO dates must not be mistaken for a yearless MM-DD tail.
+  // Invalid ISO dates remain visible in the title and fail save validation.
+  const isoMatch=/\b(\d{4})-(\d{2})-(\d{2})\b/.exec(s);
+  let invalidDate=false;
+  if(isoMatch){
+    const candidate=valid(+isoMatch[1],+isoMatch[2],+isoMatch[3]);
+    if(candidate){date=dayKey(candidate);remove(isoMatch.index,isoMatch.index+isoMatch[0].length);}
+    else invalidDate=true;
+  }
+  if(!isoMatch)for (let i=0;i<datePatterns.length && !date;i++) {
     match=datePatterns[i].exec(s);
     if(!match)continue;
     if(i===0){const n=+match[1];if(n<=3650)target=add(now,n*(match[2].toLowerCase().startsWith('week')?7:1));}
@@ -122,6 +131,6 @@ function l9Parse(text, opts) {
   if(!title)title=subjectName||'';
   if(title)title=title[0].toLocaleUpperCase()+title.slice(1);
   const type=selectedType||(kind?'deadline':time&&date&&minutes!=null?'block':'task');
-  return {type,title,activity,minutes,date,time,prio,kind,by,raw:original};
+  return {type,title,activity,minutes,date,time,prio,kind,by,raw:original,invalidDate};
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={parse:l9Parse};
