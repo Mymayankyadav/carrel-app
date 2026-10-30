@@ -51,7 +51,7 @@ check('essay due 2024-02-29',{date:'2024-02-29',invalidDate:false});
 check('essay due 2025-02-29',{date:null,invalidDate:true});
 check('essay due 2026-02-31',{date:null,invalidDate:true});
 check('essay due 2026-13-10',{date:null,invalidDate:true});
-check('essay due 31/02',{date:null,invalidDate:false});
+check('essay due 31/02',{date:null,invalidDate:true});
 
 // Yearless leap-day dates resolve to the next *valid* occurrence.
 check('29 feb',{date:'2028-02-29'});
