@@ -4,7 +4,7 @@ function l7Clamp(x,a,b){return Math.max(a,Math.min(b,x));}
 // Corrupt, absent and non-finite telemetry must never count as study time.
 // Keep numeric-string compatibility with legacy documents.
 function l7Nonnegative(v){
-  if(v==null||typeof v==='boolean'||(typeof v==='string'&&!v.trim()))return null;
+  if((typeof v!=='number'&&typeof v!=='string')||(typeof v==='string'&&!v.trim()))return null;
   const n=Number(v);
   return Number.isFinite(n)&&n>=0?n:null;
 }
@@ -77,7 +77,7 @@ function advise(ctx){
   const out=[];
   const emit=(id,text,label,act,args)=>out.push({id,text,action:{label,act,args:args||{}}});
   const subjects=Array.isArray(ctx.subjects)?ctx.subjects:[];
-  const low=subjects.find(s=>s&&l7Nonnegative(s.goalMin)>0&&
+  const low=subjects.find(s=>s&&typeof s.name==='string'&&l7Nonnegative(s.goalMin)>0&&
     l7Nonnegative(s.studiedMin)!=null&&
     l7Nonnegative(s.studiedMin)/l7Nonnegative(s.goalMin)<.5);
   if(low&&l7Nonnegative(ctx.daysLeft)>=3){
@@ -90,8 +90,8 @@ function advise(ctx){
     emit('peak','You focus best at '+(h%12||12)+(h>=12?' pm':' am')+'. Start there tomorrow?',
       'Set','l7-peak',{hour:h});
   }
-  const underestimated=subjects.find(s=>s&&Number.isFinite(+s.factor)&&+s.factor>=1.3);
-  if(underestimated)emit('estimate',underestimated.name+' takes '+(+underestimated.factor).toFixed(1)+
+  const underestimated=subjects.find(s=>s&&typeof s.name==='string'&&l7Nonnegative(s.factor)>=1.3);
+  if(underestimated)emit('estimate',underestimated.name+' takes '+l7Nonnegative(underestimated.factor).toFixed(1)+
     '× your estimate. Plans now adjust.','OK','l7-dismiss',{id:'estimate'});
   const overdue=l7Nonnegative(ctx.overdue);
   if(overdue!=null&&overdue>=5)emit('reviews',overdue+' reviews overdue. Add a 30m review block?',
@@ -106,7 +106,7 @@ function advise(ctx){
   if(todayMin!=null&&todayMin<minimum&&ctx.nearPlanEnd&&streak>=1)
     emit('streak',minimum+' min keeps your '+streak+
       '-day streak.','Start','l7-start',{});
-  const dismissed=new Set(ctx.dismissed||[]);
+  const dismissed=new Set(Array.isArray(ctx.dismissed)?ctx.dismissed:[]);
   return out.filter(x=>!dismissed.has(x.id)).slice(0,3);
 }
 if(typeof module!=='undefined'&&module.exports)module.exports={advise,l7Accuracy,flexibleStreak,l7WeekOf};
