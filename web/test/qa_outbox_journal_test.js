@@ -141,4 +141,89 @@ assert.equal(reloaded.list().ok, false);
 batchedDevice.disk.delete(corruptBatch);
 assert.equal(reloaded.list().ok, true);
 
+// A concurrent tab can insert a new immutable action after enumeration but
+// before the first read completes. Never claim the truncated snapshot is safe
+// to deliver, even though each individual record is valid.
+const changing = device();
+const writer = qaOutboxJournal(changing.storage, 'alice', 'session_1', () => 'first_action');
+const saved = writer.appendBatch([edit('first')]);
+assert.equal(saved.ok, true);
+const injectedKey = writer.prefix + 'second_action';
+let inserted = false;
+const lateInsertStorage = {
+  get length() { return changing.storage.length; },
+  key(i) { return changing.storage.key(i); },
+  getItem(k) {
+    const raw = changing.storage.getItem(k);
+    if (k === saved.key && !inserted) {
+      inserted = true;
+      changing.disk.set(injectedKey, JSON.stringify({
+        v:1, uid:'alice', session:'session_1', id:'second_action',
+        ops:[edit('second')]
+      }));
+    }
+    return raw;
+  },
+  setItem(k,v) { changing.storage.setItem(k,v); },
+  removeItem(k) { changing.storage.removeItem(k); }
+};
+const lateReader = qaOutboxJournal(lateInsertStorage, 'alice', 'session_1');
+assert.equal(lateReader.list().error, 'changed',
+  'a late immutable record must invalidate the partial enumeration');
+assert.equal(lateReader.list().records.length, 2,
+  'a later stable read recovers both independent actions');
+
+// Replacing a record between its first and second read must not produce a
+// snapshot that can acknowledge bytes no longer present on disk.
+const changedRaw = device();
+const rawWriter = qaOutboxJournal(changedRaw.storage, 'alice', 'session_1',
+  () => 'original_action');
+const original = rawWriter.appendBatch([edit('old')]);
+assert.equal(original.ok, true);
+let replaced = false;
+const replacingStorage = {
+  get length() { return changedRaw.storage.length; },
+  key(i) { return changedRaw.storage.key(i); },
+  getItem(k) {
+    const raw = changedRaw.storage.getItem(k);
+    if (k === original.key && !replaced) {
+      replaced = true;
+      changedRaw.disk.set(k, JSON.stringify({
+        ...JSON.parse(raw), ops:[edit('new')]
+      }));
+    }
+    return raw;
+  },
+  setItem(k,v) { changedRaw.storage.setItem(k,v); },
+  removeItem(k) { changedRaw.storage.removeItem(k); }
+};
+assert.equal(qaOutboxJournal(replacingStorage,'alice','session_1').list().error,
+  'changed', 'a replaced immutable record must fail closed');
+
+// Duplicate key(i) results must not masquerade as two distinct actions.
+// Different enumeration orders, however, are harmless when the key set and
+// record bytes really are stable.
+const duplicateStorage = {
+  get length() { return changing.storage.length; },
+  key() { return saved.key; },
+  getItem(k) { return changing.storage.getItem(k); },
+  setItem(k,v) { changing.storage.setItem(k,v); },
+  removeItem(k) { changing.storage.removeItem(k); }
+};
+assert.equal(qaOutboxJournal(duplicateStorage,'alice','session_1').list().error,
+  'enumerate', 'duplicate storage keys must not pass enumeration');
+let keyCalls = 0;
+const reorderedStorage = {
+  get length() { return changing.storage.length; },
+  key(i) {
+    const pass = Math.floor(keyCalls++ / changing.storage.length);
+    return changing.storage.key(pass === 0 ? i : changing.storage.length - 1 - i);
+  },
+  getItem(k) { return changing.storage.getItem(k); },
+  setItem(k,v) { changing.storage.setItem(k,v); },
+  removeItem(k) { changing.storage.removeItem(k); }
+};
+assert.equal(qaOutboxJournal(reorderedStorage,'alice','session_1').list().records.length,
+  2, 'stable records may be enumerated in a different order');
+
 console.log('QA OUTBOX JOURNAL BATCH TESTS PASSED');
