@@ -12,6 +12,10 @@ Date: 2026-10-31 · Owner: QA/ORC (independent issue #90 prototype slice) · Bra
 - No changes to `web/core/sync.js`, `web/files.json`, live outbox, sign-out, Supabase, native code, production data or permissions. No journal authority cutover.
 - #90 stays open. L6 #44 stays draft pending physical-device acceptance #52/#49.
 
-## Verification
-- GitHub CI is the required build, full Node suite and v2 smoke source of truth for this branch. Do not claim local Node/browser/screenshot passes: the connector runtime has no checked-out executable repository.
-- No new UI surface; no screenshot change is expected. Check CI before merging.
+## Verification and integration
+- [x] [Web build, complete Node test suite and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41171777004) — success on exact PR head `1d88e68`. An independent [CI run](https://github.com/Mymayankyadav/carrel-app/actions/runs/41171768695) also passed.
+- [x] [Browser redesign acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41171776930) — success.
+- [x] [V2 navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41171776929) — success.
+- [x] QA/ORC reviewed the implementation/test diff and squash-merged [PR #175](https://github.com/Mymayankyadav/carrel-app/pull/175) as [`95c78df`](https://github.com/Mymayankyadav/carrel-app/commit/95c78df38da99980c37968d401ef995c8f727bce).
+- No local Node/browser execution or physical-device testing is claimed. No new UI surface was introduced; no new screenshots were generated.
+- #90 remains open: this is an observable-race detection fence for a non-production journal, not an atomic cross-tab production outbox.
