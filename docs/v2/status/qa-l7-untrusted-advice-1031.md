@@ -8,7 +8,7 @@ Persisted JSON can contain arrays and objects with shadowed `toString`/`valueOf`
 ## Verification
 - New `web/test/qa_l7_untrusted_advice_test.js`: eleven regression assertions for poisoned JSON, array minutes, malformed dismissals, and legacy compatibility.
 - Executed all 57 existing `web/test/advice_test.js` assertions and 11 targeted regression assertions in isolated V8 before committing; all passed.
-- Full web build, Node/v2 smoke, browser acceptance and navigation CI: **pending**. Do not claim success without workflow evidence.
+- Exact-head [web build, full Node and v2 smoke CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/41163248292) passed on rerun; earlier attempts reproduced issue #90's independent two-tab lost-update race. [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41163248347) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41163248230) passed. ORC reviewed four L7 overview screenshots at 390/1280 in light/dark from rerun artifact `13029577003`. Squash-merged [#172](https://github.com/Mymayankyadav/carrel-app/pull/172) as [`c6053c6`](https://github.com/Mymayankyadav/carrel-app/commit/c6053c615633a494d6a41d171dac993ece6f2138).
 - No new runtime files to register, no CSS or UI surface change, and no new native permissions, data recipients, secrets, Supabase changes or production migration.
 
 ## Boundaries
