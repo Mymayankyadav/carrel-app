@@ -1,5 +1,6 @@
 /* L2 rituals: one focused decision at a time, kit tokens only. */
 .l2-flow{display:flex;flex-direction:column;gap:10px;padding:8px 0 12px}
+.l2-error{font-size:var(--t-xs);color:var(--danger);padding-block:4px}
 .l2-summary{font-size:var(--t-sm);color:var(--text-2);font-weight:600;padding:6px 0}
 .l2-candidate{display:flex;align-items:center;min-height:56px;gap:10px;padding:9px 2px;border-bottom:1px solid var(--line);color:var(--text)}
 .l2-candidate input{accent-color:var(--accent);width:20px;height:20px;flex:none}
