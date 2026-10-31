@@ -11,7 +11,10 @@ Require actual string date keys, convert only primitive string/number review met
 
 ## Verification
 - New regression assertions in `qa_spacing_untrusted_metadata_test.js` cover array-shaped dates, uncoercible JSON metadata, malformed title/subject, and normal due ordering.
-- GitHub CI build, full Node tests, v2 smoke, browser acceptance and navigation: pending until checks report success.
+- Merged [PR #170](https://github.com/Mymayankyadav/carrel-app/pull/170) as [`10a0a05`](https://github.com/Mymayankyadav/carrel-app/commit/10a0a05ff484d3d718b76051298c92bdffd21e01).
+- Fetched branch source and executed 9 focused V8 assertions successfully.
+- Both full web/Node/v2 smoke workflows passed: [41159419523](https://github.com/Mymayankyadav/carrel-app/actions/runs/41159419523) and [41159428847](https://github.com/Mymayankyadav/carrel-app/actions/runs/41159428847). Browser acceptance [41159428815](https://github.com/Mymayankyadav/carrel-app/actions/runs/41159428815) and navigation [41159428845](https://github.com/Mymayankyadav/carrel-app/actions/runs/41159428845) also passed.
+- Downloaded CI screenshot artifact `v2-f1-shots` from run 41159428847 and visually reviewed four L4 Subjects/Reviews views at 390/1280, light/dark. No new visual surface or malformed-data screenshot acceptance is claimed.
 - No new files registered in the manifest, no native changes, new data recipients, secrets, or destructive migration.
 
 ## Boundaries
