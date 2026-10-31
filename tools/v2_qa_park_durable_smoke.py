@@ -48,7 +48,7 @@ with sync_playwright() as p:
       page.screenshot(path=str(out/f'{width}-{theme}-backlog-error.png'),full_page=True)
       page.evaluate('window.commit=window.qaParkCommit;undefined')
       page.locator('#sheet [data-act="t2-park-backlog"][data-id="qa_park_durable"]').click()
-      assert page.evaluate("k => !parkedItems(k).some(x=>x.id==='qa_park_durable')",day)
+      page.wait_for_function("k => !parkedItems(k).some(x=>x.id==='qa_park_durable')",arg=day)
       assert not errors,errors
       page.close()
   browser.close()
