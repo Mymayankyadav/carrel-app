@@ -1,4 +1,9 @@
 /* L2 — Morning and shutdown rituals. All writes use the existing undoable queue. */
+function l2Error(sh){return sh.err?'<div class="l2-error" role="alert">'+esc(sh.err)+'</div>':'';}
+function l2SaveFailure(sh){
+  sh.err='Could not save offline. Check storage and retry.';
+  renderSheet();return false;
+}
 function l2HasMorning(k){return !!(V.rituals&&V.rituals[k]&&V.rituals[k].morning);}
 function l2ShutdownDone(k){return !!(V.rituals&&V.rituals[k]&&V.rituals[k].shutdown);}
 function l2Minutes(items,picks){
@@ -76,7 +81,7 @@ function l2PreviewRibbon(k,blocks){
 }
 function l2MorningPreview(sh){
   const blocks=sh.proposal&&sh.proposal.blocks||[];
-  return '<div class="l2-flow">'+l2PreviewRibbon(sh.k,blocks)+
+  return '<div class="l2-flow">'+l2Error(sh)+l2PreviewRibbon(sh.k,blocks)+
     '<div class="l2-summary">'+blocks.length+' proposed block(s)'+
     (sh.proposal.unplaced.length?' · '+sh.proposal.unplaced.length+' not fully placed':'')+'</div>'+
     (blocks.length?blocks.map(b=>kRow({dot:act(b.activity).color,
@@ -86,6 +91,7 @@ function l2MorningPreview(sh){
 }
 function l2AcceptMorning(sh){
   if(sh.accepted)return true;
+  sh.err='';
   const proposal=sh.proposal||l2MorningProposal(sh).proposal;
   if(!proposal.blocks.length)return false;
   const w=W(),blocks={},used={},byId=Object.fromEntries(sh.candidates.map(x=>[x.id,x]));
@@ -110,11 +116,11 @@ function l2AcceptMorning(sh){
   }
   if(Object.keys(backlog).length)w.update('planning/backlog',{items:backlog},{items:{}});
   if(Object.keys(previous).length)w.plan(addDaysKey(sh.k,-1),{blocks:previous});
-  if(!commit('Day planned.',w))return false;
+  if(!commit('Day planned.',w))return l2SaveFailure(sh);
   sh.accepted=true;sh.acceptedIds=Object.keys(used);return true;
 }
 function l2MorningIntent(sh){
-  return '<div class="l2-flow">'+
+  return '<div class="l2-flow">'+l2Error(sh)+
     kField('One thing that matters today',kText({bind:'sheet.intent',value:sh.intent||'',
       placeholder:'What matters most?',attrs:'maxlength="120" aria-label="Today intention"'}))+
     kField('If… (optional)',kText({bind:'sheet.ifText',value:sh.ifText||'',
@@ -124,12 +130,13 @@ function l2MorningIntent(sh){
 }
 function l2SaveMorning(sh){
   if(!sh.accepted||l2HasMorning(sh.k))return false;
+  sh.err='';
   const cond=String(sh.ifText||'').trim().slice(0,80),then=String(sh.thenText||'').trim().slice(0,80);
   const morning={at:isoLocal(Date.now()),picks:sh.candidates.filter(x=>sh.picks[x.id]).map(x=>x.id),
     intent:String(sh.intent||'').trim().slice(0,120)};
   if(cond&&then)morning.ifThen={if:cond,then};
   const w=W().update('rituals/'+sh.k,{v:1,date:sh.k,morning},{v:1,date:sh.k});
-  if(!commit('Morning plan saved.',w))return false;
+  if(!commit('Morning plan saved.',w))return l2SaveFailure(sh);
   closeSheet();return true;
 }
 function l2MorningSheet(sh){
@@ -186,12 +193,13 @@ function l2ShutdownTomorrow(sh){
   const backlog=backlogList();
   const opts=tomorrow.map(r=>({v:r.id,label:r.title||act(r.activity).name}))
     .concat(backlog.slice(0,6).map(t=>({v:'backlog:'+t.id,label:t.title})));
-  return '<div class="l2-flow">'+
+  return '<div class="l2-flow">'+l2Error(sh)+
     (opts.length?kField('First thing tomorrow',kChips({act:'l2-first',value:sh.first||'',options:opts})):
       kEmpty('Tomorrow starts with a clean slate.'))+'</div>';
 }
 function l2ShutdownSave(sh){
   if(l2ShutdownDone(sh.k))return false;
+  sh.err='';
   const rows=l2ShutdownRows(sh),w=W(),patch={},carry=[],backlog={},ids=[];
   const next=addDaysKey(sh.k,1);
   let order=nextBacklogOrder();
@@ -213,7 +221,7 @@ function l2ShutdownSave(sh){
   const study=(aggregate(ENTRIES,Date.now(),sh.k,sh.k)[sh.k]||{study:0}).study;
   w.update('rituals/'+sh.k,{v:1,date:sh.k,shutdown:{at:isoLocal(Date.now()),done:Math.round(study/MIN),
     carry:ids,first:sh.first||null}},{v:1,date:sh.k});
-  if(!commit('Day shut down.',w))return false;
+  if(!commit('Day shut down.',w))return l2SaveFailure(sh);
   closeSheet();
   if(CUR)toast('Day saved. Stop timer?',{action:{label:'Stop',act:'stop'}});
   return true;
