@@ -86,6 +86,9 @@ with sync_playwright() as p:
     assert not errors, errors
     # Explicit fixture cleanup only; never clear production browser storage.
     assert tab_b.evaluate("""(item) => journal.acknowledge(item)""", second)
+    # The other tab may not yet observe the removal. Assert eventual durable
+    # visibility as above, rather than racing its storage-event propagation.
+    tab_a.wait_for_function('() => journal.list().ok && journal.list().records.length === 0', timeout=10000)
     assert tab_a.evaluate('journal.list().records.length') == 0
     context.close()
     browser.close()
