@@ -40,14 +40,14 @@ with sync_playwright() as p:
         window.commit=()=>false;
         return k;
       }""")
-      expect(page.locator('#sheet [data-act="t2-park-backlog"]')).to_have_count(1)
-      page.locator('#sheet [data-act="t2-park-backlog"]').click()
+      expect(page.locator('#sheet [data-act="t2-park-backlog"][data-id="qa_park_durable"]')).to_have_count(1)
+      page.locator('#sheet [data-act="t2-park-backlog"][data-id="qa_park_durable"]').click()
       expect(page.locator('#sheet [role="alert"]')).to_contain_text('retry')
       assert page.evaluate("""k => UI.sheet && UI.sheet.type==='parked' &&
         parkedItems(k).some(x=>x.id==='qa_park_durable')""",day)
       page.screenshot(path=str(out/f'{width}-{theme}-backlog-error.png'),full_page=True)
       page.evaluate('window.commit=window.qaParkCommit;undefined')
-      page.locator('#sheet [data-act="t2-park-backlog"]').click()
+      page.locator('#sheet [data-act="t2-park-backlog"][data-id="qa_park_durable"]').click()
       assert page.evaluate('UI.sheet===null')
       assert not errors,errors
       page.close()
