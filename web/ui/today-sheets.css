@@ -12,6 +12,7 @@
 .t2-sheet .k-field:has(.k-chips),.t2-sheet .k-field:has(.k-seg){display:flex;align-items:stretch;flex-direction:column;gap:10px}
 .t2-sheet .k-field .k-chips,.t2-sheet .k-field .k-seg{max-width:100%;flex-wrap:wrap}
 .t2-sheet .k-field:has(.k-input){gap:8px}
+.t2-save-error{font-size:var(--t-xs);color:var(--danger);padding-block:4px}
 .t2-park-input{width:100%;min-height:104px;resize:none}
 .t2-counter{align-self:flex-end;font-size:var(--t-xs);color:var(--text-2)}
 .t2-parked-row{display:flex;align-items:center;gap:6px;min-height:60px;border-bottom:1px solid var(--line)}

@@ -9,6 +9,7 @@ const MIN = 60000, HOUR = 60 * MIN, DAY = 24 * HOUR, now = Date.now();
 const entry = { e: now - 10 * MIN };
 const calls = [], ACT = {}, SHEETS = {}, V = {topics:{},days:{}};
 let parked = [{ id: 'p1', text: 'Check theorem statement' }];
+let parkSaveOK = true, backlogSaveOK = true;
 let aggregates = 0;
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -40,11 +41,11 @@ const ctx = { ACT, SHEETS, UI, V, CUR:null, DAY, ACTMAP, ACTS: Object.values(ACT
     kButton(x.label,'data-act="'+o.act+'" data-v="'+x.v+'"')).join('')+'</div>',
   kBtn: kButton, kTime:o=>'<input type="time" data-bind="'+o.bind+'" value="'+o.hm+'">',
   kEmpty:s=>'<div>'+s+'</div>',
-  startActivity:(id,opts)=>calls.push(['start',id,opts]), parkAdd:s=>calls.push(['park',s]),
+  startActivity:(id,opts)=>calls.push(['start',id,opts]), parkAdd:s=>{calls.push(['park',s]);return parkSaveOK;},
   W:()=>({ops:[],day(){this.ops.push('day');return this;},update(){this.ops.push('topic');return this;}}),
   commit:(_msg,w)=>{calls.push(['commit',w.ops]);return true;},
   toast:msg=>calls.push(['toast',msg]),
-  parkToBacklog:()=>{ calls.push('backlog'); parked=[]; },
+  parkToBacklog:()=>{ calls.push('backlog');if(!backlogSaveOK)return false;parked=[];return true; },
   openPage:(tab,page)=>calls.push(['page',tab,page]),
   openSheet:sh=>{ UI.sheet=sh; calls.push(['open',sh.type]); },
   closeSheet:()=>{UI.sheet=null;calls.push('close');},
@@ -105,14 +106,27 @@ UI.parkText='';
 assert(SHEETS.park().includes('disabled'),'empty thoughts cannot be saved');
 ACT['t2-save-park']();
 assert(!calls.some(x=>Array.isArray(x)&&x[0]==='park'));
-UI.parkText='  A < B  ';
+UI.parkText='  A < B  ';UI.sheet={type:'park'};
 assert(SHEETS.park().includes('A &lt; B'),'text is escaped');
+parkSaveOK=false;
 ACT['t2-save-park']();
+assert.equal(UI.sheet.type,'park','failed Park keeps the editor open');
+assert.equal(UI.parkText,'  A < B  ','failed Park preserves the typed thought');
+assert(SHEETS.park().includes('role="alert"'),'Park failure has accessible retry feedback');
+parkSaveOK=true;
+ACT['t2-save-park']();
+assert.equal(UI.sheet,null,'successful retry closes the Park sheet');
 assert.equal(calls.filter(x=>Array.isArray(x)&&x[0]==='park').at(-1)[1],'A < B');
 UI.parkText='x'.repeat(121);
 assert(SHEETS.park().includes('121/140'),'character count is progressive');
 UI.sheet={type:'parked',k:'2026-10-27'};
 assert(SHEETS.parked(UI.sheet).includes('data-act="t2-park-backlog"'));
+backlogSaveOK=false;
+ACT['t2-park-backlog']({getAttribute: k=>k==='data-k'?'2026-10-27':'p1'});
+assert.equal(UI.sheet.type,'parked','failed move keeps parked list open');
+assert.equal(parked.length,1,'failed move preserves the thought');
+assert(SHEETS.parked(UI.sheet).includes('role="alert"'),'failed move displays retry feedback');
+backlogSaveOK=true;
 ACT['t2-park-backlog']({getAttribute: k=>k==='data-k'?'2026-10-27':'p1'});
 assert(calls.includes('backlog') && calls.includes('close'),'sheet closes on last moved thought');
 parked=[{ id:'p2',text:'Try a lemma'}]; UI.sheet={type:'parked',k:'2026-10-27'};

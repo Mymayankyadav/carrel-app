@@ -58,11 +58,12 @@ function applyPhoneDrifts() {
 }
 function parkAdd(text) {
   const t = String(text || '').trim().slice(0, 140);
-  if (!t || !canWrite()) return;
+  if (!t || !canWrite()) return false;
   const now = Date.now(), k = dayKeyOf(now);
-  commit('Parked.', W().dis(k, uid('d'), { type: 'park', at: isoLocal(now), driftMin: null, text: t, activity: CUR ? CUR.activity : null, entry: CUR ? CUR.id : null, src: 'page', applied: true }), { undo: true });
+  if (!commit('Parked.', W().dis(k, uid('d'), { type: 'park', at: isoLocal(now), driftMin: null, text: t, activity: CUR ? CUR.activity : null, entry: CUR ? CUR.id : null, src: 'page', applied: true }), { undo: true })) return false;
   UI.parkText = '';
   render();
+  return true;
 }
 function parkedItems(k) {
   const items = (V.distractions[k] && V.distractions[k].items) || {};
@@ -70,14 +71,14 @@ function parkedItems(k) {
 }
 function parkToBacklog(k, id) {
   const it = V.distractions[k] && V.distractions[k].items && V.distractions[k].items[id];
-  if (!it || !canWrite()) return;
+  if (!it || !canWrite()) return false;
   const cur = (V.planning.backlog && V.planning.backlog.items) || {};
   const order = Object.keys(cur).reduce((m, x) => Math.max(m, +cur[x].order || 0), 0) + 1;
   const first = ACTS.find(a => a.kind === 'study' && !a.archived);
   const w = W();
   w.update('planning/backlog', { items: { [uid('t')]: { title: it.text, activity: (it.activity && isStudyId(it.activity) ? it.activity : first && first.id) || null, minutes: 30, due: null, prio: 2, order, created: isoLocal(Date.now()) } } }, { items: {} });
   w.dis(k, id, { moved: true });
-  commit('Moved to your backlog.', w, { undo: true });
+  return !!commit('Moved to your backlog.', w, { undo: true });
 }
 
 /* L1: goal ring and earliest eligible planned work (pure, deterministic helpers). */
