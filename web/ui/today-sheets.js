@@ -53,10 +53,14 @@ function sStart(sh){
     intention+energy+
     '</div>'+kSheetFoot(kBtn('Start','data-act="t2-confirm-start"',{kind:'primary',icon:'start'}));
 }
+function t2ParkError(sh){return sh&&sh.err?'<div class="t2-save-error" role="alert">'+esc(sh.err)+'</div>':'';}
+function t2ParkFailed(sh){
+  if(sh){sh.err='Could not save offline. Check storage and retry.';renderSheet();}
+}
 function sPark(){
   const value=UI.parkText||'';
   return kSheetHead('Park a thought')+
-    '<div class="k-sheet-body t2-sheet">'+
+    '<div class="k-sheet-body t2-sheet">'+t2ParkError(UI.sheet)+
     '<textarea class="k-textarea t2-park-input" data-bind="parkText" maxlength="140" rows="3" '+
       'placeholder="What should you remember?" aria-label="Park a thought" autofocus>'+esc(value)+'</textarea>'+
     (value.length>120?'<div class="t2-counter">'+value.length+'/140</div>':'')+
@@ -72,7 +76,7 @@ function sParked(sh){
     kIconBtn('backlog','Move to backlog','data-act="t2-park-backlog" data-k="'+esc(k)+'" data-id="'+esc(item.id)+'"')+
     kIconBtn('delete','Delete','data-act="t2-park-drop" data-k="'+esc(k)+'" data-id="'+esc(item.id)+'"')+
     '</div>').join('');
-  return kSheetHead('Parked')+'<div class="k-sheet-body t2-sheet">'+rows+'</div>';
+  return kSheetHead('Parked')+'<div class="k-sheet-body t2-sheet">'+t2ParkError(sh)+rows+'</div>';
 }
 function sFixStop(){
   const seen=+store.get('seen')||0,now=Date.now();
@@ -194,14 +198,18 @@ Object.assign(ACT,{
     closeSheet(true);startActivity(id,opts);
   },
   't2-save-park'(){
-    const text=String(UI.parkText||'').trim();
-    if(!text)return;
-    closeSheet(true);parkAdd(text);
+    const sh=UI.sheet,text=String(UI.parkText||'').trim();
+    if(!sh||sh.type!=='park'||!text)return;
+    if(parkAdd(text))closeSheet(true);
+    else t2ParkFailed(sh);
   },
   't2-park-backlog'(el){
+    const sh=UI.sheet;if(!sh||sh.type!=='parked')return;
     const k=el.getAttribute('data-k'),id=el.getAttribute('data-id');
-    parkToBacklog(k,id); // existing undoable dual-document transaction
+    if(!parkToBacklog(k,id)){t2ParkFailed(sh);return;}
+    sh.err='';
     if(!parkedItems(k).length)closeSheet(true);
+    else renderSheet();
   },
   't2-park-drop'(el){
     const k=el.getAttribute('data-k'),id=el.getAttribute('data-id');
