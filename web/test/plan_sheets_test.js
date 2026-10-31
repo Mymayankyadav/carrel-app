@@ -5,6 +5,7 @@ const fs=require('fs'),path=require('path'),vm=require('vm');
 const source=fs.readFileSync(path.join(__dirname,'../ui/plan-sheets.js'),'utf8');
 const css=fs.readFileSync(path.join(__dirname,'../ui/plan-sheets.css'),'utf8');
 const MIN=60000,writes=[],commits=[],events=[];
+let failNextCommit=false;
 const base={id:'b1',activity:'math',title:'Integration',minutes:60,at:'09:00',pomo:null,order:1};
 const row={id:'b1',activity:'math',title:'Integration',target:60*MIN,done:15*MIN,
  remaining:45*MIN,st:'partial',pieces:[[120000,180000]]};
@@ -34,7 +35,11 @@ const ctx={
    update(k,data){writes.push(['update',k,data]);return this;},
    set(k,data){writes.push(['set',k,data]);return this;}
  }),
- commit:(message)=>commits.push(message),
+ commit:(message)=>{
+   commits.push(message);
+   if(failNextCommit){failNextCommit=false;return false;}
+   return true;
+ },
  renderSheet:()=>events.push('render-sheet'),render:()=>events.push('render'),
  closeSheet:()=>{UI.sheet=null;events.push('close')},
  openSheet:sh=>{UI.sheet=sh;events.push('open:'+sh.type)},
@@ -142,6 +147,56 @@ assert.deepStrictEqual(writes.at(-1).slice(0,2),['set','plans/2026-10-27']);
 assert.equal(commits.at(-1),'Cleared plan.');
 ACT['p2-menu-end']({getAttribute:k=>k==='data-k'?'2026-10-27':null});
 assert.equal(UI.sheet.type,'planend');
+
+// A failed durable enqueue must retain each editor, its inputs, and a retry path.
+function assertRetryable(open,save,check){
+  open();const draft=UI.sheet;
+  failNextCommit=true;
+  const renders=events.filter(e=>e==='render-sheet').length;
+  save();
+  assert.strictEqual(UI.sheet,draft,'failed save retains the original sheet');
+  assert.match(draft.err,/Could not save offline/);
+  assert(events.filter(e=>e==='render-sheet').length>renders,'error is rendered');
+  if(check)check(draft);
+  save();
+  assert.equal(UI.sheet,null,'successful retry closes the editor');
+}
+UI.ab.activity='missing';
+assertRetryable(()=>{
+  ctx.openQnew('2026-10-27',0,60*MIN);
+  UI.sheet.title='Drafted proof';
+},()=>ctx.saveQnew(),sh=>{
+  assert.equal(sh.title,'Drafted proof');
+  assert.equal(UI.ab.activity,'missing','failed save does not change last activity');
+  assert(SHEETS.qnew(sh).includes('role="alert"'));
+});
+assert.equal(UI.ab.activity,'math','successful retry updates last activity');
+assertRetryable(()=>{
+  ctx.openQnew('2026-10-27',0,60*MIN,'busy',[]);
+  UI.sheet.btitle='Unsent seminar';
+},()=>ctx.saveQnew(),sh=>assert.equal(sh.btitle,'Unsent seminar'));
+assertRetryable(()=>{
+  ctx.openQnew('2026-10-27',0,60*MIN,'busy',[]);
+  UI.sheet.btitle='Unsent recurring class';
+  UI.sheet.weekly=true;UI.sheet.days=[1,3];
+},()=>ctx.saveQnew(),sh=>assert.deepStrictEqual(sh.days,[1,3]));
+assertRetryable(()=>{
+  ctx.openBlockSheet('2026-10-27','b1');
+  UI.sheet.b.title='Unsaved edit';
+},()=>ctx.saveBlockSheet(),sh=>assert.equal(sh.b.title,'Unsaved edit'));
+assertRetryable(()=>{
+  ctx.openBlockSheet('2026-10-27','b1');
+  UI.sheet.b.day='2026-10-28';
+},()=>ctx.saveBlockSheet(),sh=>assert.equal(sh.b.day,'2026-10-28'));
+assertRetryable(()=>ctx.openBlockSheet('2026-10-27','b1'),
+  ()=>ACT['p2-block-del'](),sh=>assert(SHEETS.block(sh).includes('role="alert"')));
+assertRetryable(()=>{
+  UI.sheet={type:'autoplan',k:'2026-10-27',err:'',
+    proposal:{blocks:[{itemId:'task',activity:'math',title:'Proof',minutes:30,at:'09:00'}],unplaced:[]},
+    items:[{id:'task',activity:'math',minutes:30}],factors:{math:1}};
+},()=>ACT['l3-auto-accept'](),sh=>assert(SHEETS.autoplan(sh).includes('role="alert"')));
+assertRetryable(()=>{UI.sheet={type:'planend',k:'2026-10-27',end:'21:45',err:''};},
+  ()=>ACT['p2-planend-save'](),sh=>assert.equal(sh.end,'21:45'));
 
 assert(css.includes('.p2-weekday')&&css.includes('.p2-sheet'));
 assert(!/#[0-9a-fA-F]{3,8}\b|font-family|box-shadow/.test(css),'P2 CSS kit-token only');

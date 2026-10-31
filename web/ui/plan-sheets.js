@@ -1,6 +1,15 @@
 /* P2 — Plan sheets. Keep existing plan/save contracts; only rework presentation. */
 const p2Error = sh => sh.err ? '<div class="p2-error" role="alert">'+esc(sh.err)+'</div>' : '';
 const errLine = p2Error; // Task editors still use this shared helper.
+// Keep every Plan editor open until its complete write set is durably queued.
+function p2CommitSheet(sh,message,w,onSaved){
+  if(!commit(message,w)){
+    sh.err='Could not save offline. Check storage and retry.';
+    renderSheet();return false;
+  }
+  if(onSaved)onSaved();
+  closeSheet(true);return true;
+}
 const HM = /^\d{1,2}:\d{2}/;
 
 function p2Presets(bind, minutes) {
@@ -89,9 +98,8 @@ function saveQnew(){
       minutes:m,order:nextOrder(k),at:sh.pin?sh.start.slice(0,5):null,
       pomo:sh.pomo==='off'?'off':sh.pomo||null
     })}});
-    UI.ab.activity=sh.activity;
-    closeSheet(true);
-    commit('Planned '+fmtDur(m*MIN)+' of '+act(sh.activity).name+'.',w);
+    p2CommitSheet(sh,'Planned '+fmtDur(m*MIN)+' of '+act(sh.activity).name+'.',w,
+      ()=>{UI.ab.activity=sh.activity;});
     return;
   }
   const title=String(sh.btitle||'').trim();
@@ -105,8 +113,7 @@ function saveQnew(){
   if(sh.weekly)w.update('planning/commitments',{items:{[uid('c')]:
     Object.assign(doc,{days:sh.days.slice().sort(),from:k,until:null,archived:false})}},{items:{}});
   else w.plan(k,{events:{[uid('v')]:doc}});
-  closeSheet(true);
-  commit(sh.weekly?'Added weekly item.':'Added busy time.',w);
+  p2CommitSheet(sh,sh.weekly?'Added weekly item.':'Added busy time.',w);
 }
 function p2BlockProgress(r){
   if(!r||r.done<=0)return '';
@@ -170,13 +177,11 @@ function saveBlockSheet(){
     w.plan(sh.k,{blocks:{[sh.id]:done>=1?{minutes:done,status:'done'}:null}});
     w.plan(b.day,{blocks:{[uid('b')]:blockDoc(Object.assign({},patch,
       {minutes:Math.max(5,m-done),order:nextOrder(b.day)}))}});
-    closeSheet(true);
-    commit('Moved block to '+dayName(b.day)+'.',w);
+    p2CommitSheet(sh,'Moved block to '+dayName(b.day)+'.',w);
     return;
   }
   w.plan(sh.k,{blocks:{[sh.id]:patch}});
-  closeSheet(true);
-  commit('Saved block.',w);
+  p2CommitSheet(sh,'Saved block.',w);
 }
 function sWrap(sh){
   const pm=planModelFor(sh.k),left=pm?pm.rows.filter(r=>r.remaining>0):[];
@@ -292,7 +297,7 @@ function l3AutoSheet(sh){
   return kSheetHead('Auto-plan')+
     '<div class="k-sheet-body p2-sheet">'+
     '<div class="p2-muted">Preview · '+sh.proposal.blocks.length+' block(s)</div>'+
-    rows+left+'</div>'+
+    rows+left+p2Error(sh)+'</div>'+
     kSheetFoot(kBtn('Accept plan','data-act="l3-auto-accept"',{kind:'primary'}));
 }
 SHEETS.autoplan=l3AutoSheet;
@@ -316,8 +321,7 @@ ACT['l3-auto-accept']=()=>{
     else items[t.id]={minutes:Math.max(25,Math.ceil((total-used)/factor/5)*5)};
   }
   if(Object.keys(items).length)w.update('planning/backlog',{items},{items:{}});
-  closeSheet(true);
-  commit('Auto-planned '+sh.proposal.blocks.length+' block(s).',w);
+  p2CommitSheet(sh,'Auto-planned '+sh.proposal.blocks.length+' block(s).',w);
 };
 SHEETS.qnew=sQnew;
 SHEETS.block=sBlock;
@@ -345,7 +349,7 @@ Object.assign(ACT,{
     const sh=UI.sheet;
     if(!sh||sh.type!=='block')return;
     const w=W();w.plan(sh.k,{blocks:{[sh.id]:null}});
-    closeSheet(true);commit('Deleted block.',w);
+    p2CommitSheet(sh,'Deleted block.',w);
   },
   'p2-open-fit'(el){
     const k=el&&el.getAttribute('data-k')||UI.cal.anchor||todayKey();
@@ -375,7 +379,7 @@ Object.assign(ACT,{
     sh.err='';
     if(!HM.test(sh.end||'')){sh.err='Choose an end time.';renderSheet();return;}
     const w=W();w.plan(sh.k,{end:sh.end.slice(0,5)});
-    closeSheet(true);commit('Plan ends at '+fmtHM(sh.end)+'.',w);
+    p2CommitSheet(sh,'Plan ends at '+fmtHM(sh.end)+'.',w);
   },
   'p2-plan-menu'(el){
     p2OpenPlanMenu(el,el&&el.getAttribute('data-k'));
