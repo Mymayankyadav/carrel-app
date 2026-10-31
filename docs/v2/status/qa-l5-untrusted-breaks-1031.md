@@ -9,7 +9,7 @@ Only primitive finite numbers and nonblank numeric strings are now accepted. Inv
 
 ## Evidence and gates
 - Expanded `web/test/breaks_test.js` with poisoned objects, arrays, booleans, symbols, blank strings, legacy numeric strings and arithmetic overflow, in addition to existing Flowtime rules.
-- Full Node/web/v2 smoke, browser acceptance and navigation CI: pending PR execution; do not claim green until verified.
+- Exact-head [web build, full Node and v2 smoke CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/41167638327), [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41167638332) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41167638376) passed. ORC reviewed eight L5 Flowtime/break screenshots at 390/1280 in light/dark from artifact `13029587150`. Squash-merged [#173](https://github.com/Mymayankyadav/carrel-app/pull/173) as [`19ee777`](https://github.com/Mymayankyadav/carrel-app/commit/19ee777130b7215b53e5fc1fa5d064732366665f).
 - Pure logic only; existing four-layout screenshot baseline suffices for visual regression review, but no new UI acceptance is claimed.
 
 ## Boundaries

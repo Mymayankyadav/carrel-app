@@ -10,7 +10,7 @@ Owner: QA/ORC, independent L1/T2 parked-thought follow-up. Base: `23566d74e0cd11
 ## Verification
 - `web/test/qa_park_durable_test.js` tests the actual `today.js` helper definitions in a VM under failed/successful commits, read-only state, and an unknown item.
 - `web/test/today_sheets_test.js` covers failure/retry UI state for both actions.
-- CI build, full Node suite, v2 smoke, browser acceptance and navigation audit: **pending** at branch creation; do not mark green without GitHub evidence.
+- Exact-head [web build, full Node and v2 smoke CI](https://github.com/Mymayankyadav/carrel-app/actions/runs/41158970879) passed on rerun; first run exposed the separately tracked #90 two-tab lost-update race. [Browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41158970834) and [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41158970812) passed. ORC reviewed eight Park/Backlog failure-state screenshots at 390/1280 in light/dark from rerun artifact `13029572104`. Squash-merged [#169](https://github.com/Mymayankyadav/carrel-app/pull/169) as [`196e266`](https://github.com/Mymayankyadav/carrel-app/commit/196e2663438569bf2642792867da49079b260dea).
 - New CSS uses existing kit `--danger` and text tokens; no new permissions, network destinations, production data migrations or v1 feature removals.
 
 ## Release boundaries
