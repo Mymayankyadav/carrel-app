@@ -12,3 +12,10 @@ A shared local Plan-sheet guard now waits for a successful durable `commit()` be
 - Full Node/web/v2 smoke, browser acceptance and navigation CI: pending at PR creation; no green CI or screenshots claimed.
 - Existing L6 PR #44 stays draft pending physical-device privacy acceptance #52/#49. Offline cross-tab atomicity issue #90 remains open; this patch only preserves drafts when a conflict is detected.
 - No changes to production data, sync engine, Supabase, Android permissions, v1 functionality, frozen files, BOARD or DECISIONS. Reconcile shared docs only after ORC review/CI.
+
+## Final-head verification and integration
+- PR [#163](https://github.com/Mymayankyadav/carrel-app/pull/163) squash-merged as [`6563ea8`](https://github.com/Mymayankyadav/carrel-app/commit/6563ea8c2ad7b2d7f19c66d66647228833459495).
+- Final PR head `bf9bcfe715ff2789e783a757d1fcc61b92cf4b59`: [web build, all JavaScript tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41148726366) **success**; [browser mock acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41148726404) **success**; [navigation reachability](https://github.com/Mymayankyadav/carrel-app/actions/runs/41148726390) **success**.
+- Downloaded browser-acceptance screenshot artifact `redesign-acceptance`; visually reviewed Plan New and Block sheets in light/dark at 390px and 1280px (eight screenshots). Existing visual presentation remains intact; failure/retry is exercised by Node tests, not claimed as a browser screenshot.
+- The independent cross-tab lost-update issue #90 remains open; successful CI does not prove its atomicity. L6 #44 still needs real-device acceptance #49/#52.
+- No APK required; no native, SQL, Supabase or production data changes. Post-merge Pages deployment not yet asserted here.
