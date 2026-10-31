@@ -13,3 +13,8 @@ After tab B durably acknowledges the final immutable journal record, wait (up to
 - Issue #90 remains open: Web Locks, legacy authority handoff and sign-out acceptance are separate gates.
 - L6 #44 remains draft pending real-device #52/#49.
 - Full CI and two-tab browser smoke pending at PR creation; no passing result claimed.
+
+## Final-head verification
+- PR [#165](https://github.com/Mymayankyadav/carrel-app/pull/165) merged as [`f435d4d`](https://github.com/Mymayankyadav/carrel-app/commit/f435d4de8b32783ab0d582667a5f4781e922e5ea).
+- Final PR head `a65f81eb14f62a705fcca601c6bf00e16c29337f`: [full web build, JavaScript tests and v2 smoke](https://github.com/Mymayankyadav/carrel-app/actions/runs/41149320092) **success**, [browser acceptance](https://github.com/Mymayankyadav/carrel-app/actions/runs/41149320063) **success**, [navigation audit](https://github.com/Mymayankyadav/carrel-app/actions/runs/41149320069) **success**. The complete smoke suite includes the two-tab journal test.
+- No new UI or screenshots for this test-only change. #90 remains open and production sync remains unchanged.
