@@ -118,29 +118,58 @@ function qaOutboxJournal(storage, uid, session, makeId) {
   }
   // Enumeration is fail-closed: malformed data or an inaccessible key cannot
   // be treated as an empty outbox. A caller must not discard partial results.
-  function list() {
-    const records = [];
+  // Storage enumeration is not a snapshot. A concurrent tab may insert or
+  // remove a key while key(i) shifts, or replace a record after its first read.
+  // Compare two complete key sets and re-read every byte before reporting a
+  // deliverable snapshot. This is a fail-closed detection fence, NOT an atomic
+  // transaction: production still needs the shared Web Lock and immutable
+  // journal authority (and must not assume nonparticipating old tabs are safe).
+  function enumerateKeys() {
+    const keys = [];
     try {
       const count = storage.length;
       if (!Number.isSafeInteger(count) || count < 0)
         return { ok: false, error: 'enumerate' };
+      const seen = new Set();
       for (let i = 0; i < count; i++) {
         const key = storage.key(i);
-        if (typeof key !== 'string') return { ok: false, error: 'enumerate' };
-        if (!key.startsWith(prefix)) continue;
-        const id = key.slice(prefix.length);
-        if (!validPart(id)) return { ok: false, error: 'corrupt', key };
-        const got = read(key);
-        if (!got.ok || got.raw === null)
-          return { ok: false, error: 'read', key };
-        let record;
-        try { record = JSON.parse(got.raw); }
-        catch (e) { return { ok: false, error: 'corrupt', key }; }
-        if (!validRecord(record, id))
-          return { ok: false, error: 'corrupt', key };
-        records.push({ key, raw: got.raw, record });
+        if (typeof key !== 'string' || seen.has(key))
+          return { ok: false, error: 'enumerate' };
+        seen.add(key);
+        if (key.startsWith(prefix)) keys.push(key);
       }
-    } catch (e) { return { ok: false, error: 'enumerate' }; }
+      if (storage.length !== count) return { ok: false, error: 'changed' };
+    } catch (_) { return { ok: false, error: 'enumerate' }; }
+    return { ok: true, keys };
+  }
+  function list() {
+    const first = enumerateKeys();
+    if (!first.ok) return first;
+    const records = [];
+    for (const key of first.keys) {
+      const id = key.slice(prefix.length);
+      if (!validPart(id)) return { ok: false, error: 'corrupt', key };
+      const got = read(key);
+      if (!got.ok || got.raw === null)
+        return { ok: false, error: 'read', key };
+      let record;
+      try { record = JSON.parse(got.raw); }
+      catch (_) { return { ok: false, error: 'corrupt', key }; }
+      if (!validRecord(record, id))
+        return { ok: false, error: 'corrupt', key };
+      records.push({ key, raw: got.raw, record });
+    }
+    const second = enumerateKeys();
+    if (!second.ok) return second;
+    if (second.keys.length !== first.keys.length ||
+        second.keys.some(key => !first.keys.includes(key)))
+      return { ok: false, error: 'changed' };
+    for (const item of records) {
+      const got = read(item.key);
+      if (!got.ok) return { ok: false, error: 'read', key: item.key };
+      if (got.raw !== item.raw)
+        return { ok: false, error: 'changed', key: item.key };
+    }
     // localStorage key enumeration is NOT a FIFO guarantee. Ordered records
     // must all carry distinct sequence numbers; mixed modes fail closed.
     const ordered = records.filter(item => own(item.record, 'seq'));
